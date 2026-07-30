@@ -440,9 +440,6 @@ function Raid:SendPlanSnapshot(target)
     self:QueueSync("SNAP_BEGIN", {
         raid.key, encounterIndex,
     }, distribution, target)
-    -- Keep the current-boss change inside the snapshot transaction. Sending
-    -- it first made personal assignments briefly refresh against a boss whose
-    -- assignment payload had not arrived yet.
     self:BroadcastCurrentBoss(target)
     local plan = self:GetPlan(false) or {}
     for key, value in pairs(plan) do
@@ -472,9 +469,6 @@ function Raid:SendPlanSnapshot(target)
     if self.simulation.enabled then
         self:BroadcastSimulationRoster(target)
     elseif self.IsActualRaidLeader and self:IsActualRaidLeader() then
-        -- Only the raid leader owns the authoritative "no simulation"
-        -- snapshot. An assistant answering HELLO must not clear a simulation
-        -- currently being used by another raid editor for testing.
         self:BroadcastSimulationClear(target)
     end
     local bossOverride = self:GetBossOverride(false)
@@ -767,9 +761,6 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
             self.db.lastEncounterByRaid[raidKey] = encounterIndex
         end
     elseif kind == "SIM_BEGIN" then
-        -- Simulation is a raid-testing tool, so both the raid leader and
-        -- assistants may publish it. IsAuthorizedPeer above still rejects
-        -- normal raid members. Track the sender so transactions cannot mix.
         self.receivingSimulation = sender
         self.pendingRemoteSimulationRoster = {}
     elseif kind == "SIM_PLAYER" then
@@ -940,7 +931,6 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     elseif kind == "PRESETSET" or kind == "PRESETRESET"
         or kind == "PRESETCLEAR"
     then
-        -- Preset libraries are local. Applying one still syncs BOSS settings.
         do end
     elseif kind == "RESET" then
         local plans = self.simulation.enabled
@@ -970,10 +960,6 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         end
         self:UpdateRoster()
     end
-    -- A snapshot is a transaction. SNAP_BEGIN clears the destination and the
-    -- following packets rebuild it, so refreshing between those packets makes
-    -- the visible plan flash empty and redraw once per assignment. Keep the
-    -- existing UI intact until SNAP_END has committed the complete snapshot.
     local applyingSnapshot = self.receivingSnapshots
         and next(self.receivingSnapshots) ~= nil
     if not applyingSnapshot then

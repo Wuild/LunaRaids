@@ -14,12 +14,15 @@ Thunderstrike.
 - GitHub: <https://github.com/Wuild/LunaRaids>
 - Patreon: <https://patreon.com/wuild>
 
+
+[![Support on Patreon](https://img.shields.io/badge/Support-Patreon-ff424d?logo=patreon&logoColor=white)](https://www.patreon.com/wuild)
+
+
 ![LunaRaids encounter assignments](Media/assignments.png)
 
 ## What LunaRaids does
 
 ### Raid plans and boss assignments
-<
 LunaRaids contains templates for every supported Vanilla and TBC raid. Each
 raid contains its bosses, encounter artwork, mechanics notes, recommended
 assignment slots, and default target markers.
@@ -412,3 +415,49 @@ entire LunaRaids window; other pages remain open.
 | `/lr sim 25` | Simulate a 25-player raid |
 | `/lr sim 40` | Simulate a 40-player raid |
 | `/lr sim clear` | Clear simulation |
+
+## Source layout
+
+Every game-flavor TOC loads only `Libraries.xml` and `LunaRaids.xml`.
+`LunaRaids.xml` is the single source of truth for addon file order, so adding
+or moving a module does not require editing each supported manifest.
+
+Core behavior is grouped under `Core/`:
+
+- `Bootstrap.lua` owns addon state, database defaults, and shared core helpers.
+- `Plans.lua` owns raid selection, assignments, markers, and saved plans.
+- `Roster.lua` owns live/manual rosters, group movement, and simulation.
+- `Messaging.lua` owns queued announcements and assignment whispers.
+- `Lifecycle.lua` owns root addon initialization and slash commands.
+
+Feature services are grouped under `Modules/`:
+
+- `Communication/Service.lua` owns addon-message synchronization.
+- `CharacterIntel/Service.lua` owns inspected and shared character metadata.
+- `Cooldowns/` separates cooldown definitions, tracking, presentation, and
+  lifecycle.
+
+UI code is grouped by feature under `UI/`:
+
+- `Framework.lua` owns shared styling, pixel helpers, widgets, and `Raid.UI`.
+- `Roster.lua`, `Assignments.lua`, and `AssignmentView.lua` own planning views.
+- `GearInspect.lua` owns gear inspection.
+- `ReadyCheckService.lua`, `ReadyCheckView.lua`, and
+  `ReadyCheckLifecycle.lua` separate ready-check data, presentation, and
+  Ace-managed events.
+- `QuickActions.lua`, `SettingsView.lua`, and `MainWindow.lua` own their
+  respective surfaces.
+
+Feature files use the public `Raid.UI` toolkit instead of reaching into
+another file's private locals. If a helper is genuinely shared between two
+features, the defining feature publishes it on `Raid.UI`.
+
+Raid cooldowns live under `Modules/Cooldowns/`. `Definitions.lua` is a
+data-only registry, `Engine.lua` owns tracking and synchronization, `View.lua`
+owns presentation, and `Lifecycle.lua` owns the AceAddon lifecycle and event
+subscriptions. This separation allows cooldown definitions or presentation
+to be replaced without changing the tracking engine.
+
+Ready checks and gear inspection are also AceAddon modules. Each feature owns
+its event subscriptions and can be disabled independently without changing
+the root addon lifecycle.

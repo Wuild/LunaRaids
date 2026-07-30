@@ -1,0 +1,55 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <Script file="Data.lua"/>
+
+    <!-- Raid definitions -->
+    <Script file="Raids\karazhan.lua"/>
+    <Script file="Raids\gruul.lua"/>
+    <Script file="Raids\magtheridon.lua"/>
+    <Script file="Raids\ssc.lua"/>
+    <Script file="Raids\tempest_keep.lua"/>
+    <Script file="Raids\hyjal.lua"/>
+    <Script file="Raids\black_temple.lua"/>
+    <Script file="Raids\zulaman.lua"/>
+    <Script file="Raids\sunwell.lua"/>
+    <Script file="Raids\molten_core.lua"/>
+    <Script file="Raids\onyxia.lua"/>
+    <Script file="Raids\blackwing_lair.lua"/>
+    <Script file="Raids\zulgurub.lua"/>
+    <Script file="Raids\aq20.lua"/>
+    <Script file="Raids\aq40.lua"/>
+    <Script file="Raids\naxxramas.lua"/>
+
+    <!-- Core services -->
+    <Script file="Core\Bootstrap.lua"/>
+    <Script file="Core\Plans.lua"/>
+    <Script file="Core\Roster.lua"/>
+    <Script file="Core\Messaging.lua"/>
+    <Script file="Core\Lifecycle.lua"/>
+
+    <!-- Feature services -->
+    <Script file="Modules\Communication\Service.lua"/>
+    <Script file="Modules\CharacterIntel\Service.lua"/>
+
+    <!-- User interface -->
+    <Script file="UI\Framework.lua"/>
+    <Script file="UI\Roster.lua"/>
+    <Script file="UI\Assignments.lua"/>
+    <Script file="UI\GearInspect.lua"/>
+    <Script file="UI\AssignmentView.lua"/>
+    <Script file="UI\ReadyCheckService.lua"/>
+    <Script file="UI\ReadyCheckView.lua"/>
+    <Script file="UI\ReadyCheckLifecycle.lua"/>
+    <Script file="UI\QuickActions.lua"/>
+    <Script file="UI\SettingsView.lua"/>
+    <Script file="UI\MainWindow.lua"/>
+
+    <Script file="Settings.lua"/>
+
+    <!-- Cooldown module -->
+    <Script file="Modules\Cooldowns\Definitions.lua"/>
+    <Script file="Modules\Cooldowns\Engine.lua"/>
+    <Script file="Modules\Cooldowns\View.lua"/>
+    <Script file="Modules\Cooldowns\Lifecycle.lua"/>
+</Ui>

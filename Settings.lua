@@ -11,10 +11,6 @@ end
 local function IsListed(list, name)
     local full = Trim(name):lower()
     local short = ShortName(name):lower()
-    -- Character names cannot contain whitespace or punctuation (apart from
-    -- the realm separator), so treat every other character as a delimiter.
-    -- This accepts spaces, commas, semicolons, slashes, newlines, and mixed
-    -- separators without requiring a particular list format.
     for entry in tostring(list or ""):gmatch(
         "[A-Za-z\128-\255][A-Za-z\128-\255%-]*")
     do
@@ -42,8 +38,6 @@ local function FindRaidMember(name)
     local wantedFull = Trim(name):lower()
     local wantedShort = ShortName(name):lower()
     if wantedFull == "" then return nil end
-    -- Classic can briefly report a zero group count while raidN roster data
-    -- is already available, so inspect the complete raid range directly.
     for index = 1, 40 do
         local unit = "raid" .. index
         local memberName = GetUnitName and GetUnitName(unit, true)
@@ -186,8 +180,6 @@ function Raid:ApplyLootRules(force, replaceMaster)
     end
     local currentMethodID = type(currentMethod) == "number"
         and currentMethod or methodIDs[currentMethod]
-    -- A periodic audit must not undo a master looter selected through
-    -- Blizzard's UI. Explicit LunaRaids changes pass replaceMaster=true.
     if not replaceMaster and currentMethodID == methodIDs.master then
         method = "master"
         methodID = methodIDs.master
@@ -201,8 +193,6 @@ function Raid:ApplyLootRules(force, replaceMaster)
                 or "party" .. partyMaster)
         local currentMaster = masterUnit
             and (GetUnitName(masterUnit, true) or UnitName(masterUnit))
-        -- Never replace a valid master looter during the periodic settings
-        -- audit. This allows a raid leader to make a temporary manual choice.
         if not replaceMaster and currentMethodID == methodID
             and currentMaster and FindRaidMember(currentMaster)
         then
@@ -241,8 +231,6 @@ function Raid:ApplyLootRules(force, replaceMaster)
         end
         applyThreshold()
         if C_Timer and C_Timer.After then
-            -- Classic can reject the threshold until the loot-method roster
-            -- update has completed, so retry after Blizzard settles it.
             C_Timer.After(.5, applyThreshold)
             C_Timer.After(2, applyThreshold)
         end
@@ -370,9 +358,6 @@ function Raid:ResetWindowPosition()
 end
 
 function Raid:InitializeSettings()
-    -- Settings are rendered inside the main LunaRaids window. AceDB remains
-    -- the account-wide backing store; no Blizzard/AceConfig category is
-    -- registered.
     self:RegisterEvent("PLAYER_REGEN_ENABLED", "AuditLootRules")
     self:RegisterEvent("PLAYER_REGEN_DISABLED", "HandleCombatStarted")
     if not self.lootRuleTicker and C_Timer and C_Timer.NewTicker then

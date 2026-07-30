@@ -21,10 +21,6 @@ local function TalentTabDetails(inspect, index)
     end
     if not results[1] then return nil, 0 end
 
-    -- Older Classic clients return:
-    -- name, icon, pointsSpent, background.
-    -- Anniversary clients may return:
-    -- id, name, description, icon, pointsSpent, ...
     if type(results[2]) == "string" then
         return results[2], tonumber(results[4]) or 0
     end
@@ -62,9 +58,6 @@ local function IsKnownSpec(spec)
 end
 
 local function DetectSpecialization(inspect, unit)
-    -- Anniversary/TBC exposes some modern specialization APIs, but their
-    -- result can describe the default specialization rather than the actual
-    -- Classic talent build. Prefer the tree with the most spent points.
     if GetNumTalentTabs and GetTalentTabInfo then
         local ok, count = pcall(GetNumTalentTabs, inspect, false)
         if not ok then ok, count = pcall(GetNumTalentTabs) end
@@ -127,9 +120,6 @@ function Raid:StoreCharacterIntel(data)
         and self.db.characterIntel[data.guid]
         or self.db.characterIntel[data.name]
     if existing then
-        -- Inspection APIs briefly return no specialization while another
-        -- inspect is starting or item data is loading. Never let that
-        -- transient state erase a specialization we already know.
         if not IsKnownSpec(data.spec) and IsKnownSpec(existing.spec) then
             data.spec = existing.spec
         end
@@ -143,13 +133,8 @@ function Raid:StoreCharacterIntel(data)
         local existingUpdated = tonumber(existing.updated) or 0
         local incomingIsSelf = IsSelfReported(data)
         local existingIsSelf = IsSelfReported(existing)
-        -- A player's own addon report is authoritative for their spec and
-        -- role. Officer inspection is only a fallback and must never replace
-        -- an equally-new or newer self report.
         if existingIsSelf and not incomingIsSelf then
             if not IsKnownSpec(existing.spec) and IsKnownSpec(data.spec) then
-                -- Preserve ownership/source while allowing a valid fallback
-                -- inspection to fill a field the player's report lacked.
                 existing.spec = data.spec
                 existing.points = data.points
                 existing.localUpdated = data.localUpdated
@@ -314,8 +299,6 @@ function Raid:TryInspectNext()
     if not self:IsLocalRaidEditor() then return end
     if InCombatLockdown and InCombatLockdown() then return end
     if _G.InspectFrame and InspectFrame:IsShown() then return end
-    -- Keep the shared Blizzard inspect channel quiet enough for MRT, TipTac,
-    -- and the default InspectFrame to finish consuming each result.
     if now - (self.lastGlobalInspectAt or 0) < 5 then return end
     if now - (self.lastInspectAt or 0) < 5 then return end
     local unit = self:FindInspectableUnit()
@@ -367,9 +350,6 @@ function Raid:INSPECT_READY(_, guid)
         localUpdated = GetTime and GetTime() or 0,
     }
     self.pendingInspect = nil
-    -- INSPECT_READY only means the shared inspect data is available. Other
-    -- addons (notably MRT) may read it on a short delayed timer, so leave the
-    -- Blizzard inspect state intact and give them a courtesy window.
     self.lastGlobalInspectAt = GetTime and GetTime() or 0
     self:StoreCharacterIntel(data)
     self:BroadcastInspectedIntel(data)

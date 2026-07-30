@@ -9,26 +9,4 @@
 ## SavedVariables: LunaRaidsDB
 
 Libraries.xml
-Data.lua
-Raids\karazhan.lua
-Raids\gruul.lua
-Raids\magtheridon.lua
-Raids\ssc.lua
-Raids\tempest_keep.lua
-Raids\hyjal.lua
-Raids\black_temple.lua
-Raids\zulaman.lua
-Raids\sunwell.lua
-Raids\molten_core.lua
-Raids\onyxia.lua
-Raids\blackwing_lair.lua
-Raids\zulgurub.lua
-Raids\aq20.lua
-Raids\aq40.lua
-Raids\naxxramas.lua
-Core.lua
-Communication.lua
-CharacterIntel.lua
-UI.lua
-Settings.lua
-RaidCooldowns.lua
+LunaRaids.xml
