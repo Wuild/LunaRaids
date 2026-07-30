@@ -1,0 +1,788 @@
+{
+  "molten_core": {
+    "title": "Molten Core",
+    "description": "Defeat Ragnaros.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_ragnaros.jpg",
+    "file": "Assets/Bosses/molten_core.tga",
+    "source": ".data/classic.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/molten_core.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_ragnaros.jpg",
+        "kind": "raid"
+      },
+      "Ragnaros": {
+        "file": "Assets/Bosses/molten_core.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_ragnaros.jpg",
+        "kind": "raid"
+      },
+      "Lucifron": {
+        "file": "Assets/Bosses/molten_core__lucifron.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Magmadar": {
+        "file": "Assets/Bosses/molten_core__magmadar.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Gehennas": {
+        "file": "Assets/Bosses/molten_core__gehennas.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Garr": {
+        "file": "Assets/Bosses/molten_core__garr.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Baron Geddon": {
+        "file": "Assets/Bosses/molten_core__barongeddon.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Shazzrah": {
+        "file": "Assets/Bosses/molten_core__shazzrah.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Sulfuron Harbinger": {
+        "file": "Assets/Bosses/molten_core__sulfuronharbinger.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Golemagg the Incinerator": {
+        "file": "Assets/Bosses/molten_core__golemaggtheincinerator.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Majordomo Executus": {
+        "file": "Assets/Bosses/molten_core__majordomoexecutus.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "blackwing_lair": {
+    "title": "Blackwing Lair",
+    "description": "Defeat Nefarian.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_nefarion.jpg",
+    "file": "Assets/Bosses/blackwing_lair.tga",
+    "source": ".data/classic.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/blackwing_lair.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_nefarion.jpg",
+        "kind": "raid"
+      },
+      "Nefarian": {
+        "file": "Assets/Bosses/blackwing_lair.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_nefarion.jpg",
+        "kind": "raid"
+      },
+      "Razorgore the Untamed": {
+        "file": "Assets/Bosses/blackwing_lair__razorgoretheuntamed.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Vaelastrasz the Corrupt": {
+        "file": "Assets/Bosses/blackwing_lair__vaelastraszthecorrupt.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Broodlord Lashlayer": {
+        "file": "Assets/Bosses/blackwing_lair__broodlordlashlayer.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Firemaw": {
+        "file": "Assets/Bosses/blackwing_lair__firemaw.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Ebonroc": {
+        "file": "Assets/Bosses/blackwing_lair__ebonroc.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Flamegor": {
+        "file": "Assets/Bosses/blackwing_lair__flamegor.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Chromaggus": {
+        "file": "Assets/Bosses/blackwing_lair__chromaggus.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "aq20": {
+    "title": "Ruins of Ahn'Qiraj",
+    "description": "Defeat Ossirian the Unscarred.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_ossiriantheunscarred.jpg",
+    "file": "Assets/Bosses/aq20.tga",
+    "source": ".data/classic.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/aq20.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_ossiriantheunscarred.jpg",
+        "kind": "raid"
+      },
+      "Ossirian the Unscarred": {
+        "file": "Assets/Bosses/aq20.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_ossiriantheunscarred.jpg",
+        "kind": "raid"
+      },
+      "Kurinnaxx": {
+        "file": "Assets/Bosses/aq20__kurinnaxx.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "General Rajaxx": {
+        "file": "Assets/Bosses/aq20__generalrajaxx.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Moam": {
+        "file": "Assets/Bosses/aq20__moam.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Buru the Gorger": {
+        "file": "Assets/Bosses/aq20__buruthegorger.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Ayamiss the Hunter": {
+        "file": "Assets/Bosses/aq20__ayamissthehunter.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "aq40": {
+    "title": "Temple of Ahn'Qiraj",
+    "description": "Defeat C'Thun.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_cthun.jpg",
+    "file": "Assets/Bosses/aq40.tga",
+    "source": ".data/classic.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/aq40.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_cthun.jpg",
+        "kind": "raid"
+      },
+      "C'Thun": {
+        "file": "Assets/Bosses/aq40.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_cthun.jpg",
+        "kind": "raid"
+      },
+      "The Prophet Skeram": {
+        "file": "Assets/Bosses/aq40__theprophetskeram.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "The Bug Trio": {
+        "file": "Assets/Bosses/aq40__thebugtrio.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Battleguard Sartura": {
+        "file": "Assets/Bosses/aq40__battleguardsartura.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Fankriss the Unyielding": {
+        "file": "Assets/Bosses/aq40__fankrisstheunyielding.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Viscidus": {
+        "file": "Assets/Bosses/aq40__viscidus.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Princess Huhuran": {
+        "file": "Assets/Bosses/aq40__princesshuhuran.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "The Twin Emperors": {
+        "file": "Assets/Bosses/aq40__thetwinemperors.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Ouro": {
+        "file": "Assets/Bosses/aq40__ouro.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "karazhan": {
+    "title": "Karazhan",
+    "description": "Defeat Prince Malchezaar in Karazhan.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_princemalchezaar_02.jpg",
+    "file": "Assets/Bosses/karazhan.tga",
+    "source": ".data/tbc.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/karazhan.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_princemalchezaar_02.jpg",
+        "kind": "raid"
+      },
+      "Prince Malchezaar": {
+        "file": "Assets/Bosses/karazhan.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_princemalchezaar_02.jpg",
+        "kind": "raid"
+      },
+      "Attumen the Huntsman": {
+        "file": "Assets/Bosses/karazhan__attumenthehuntsman.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Moroes": {
+        "file": "Assets/Bosses/karazhan__moroes.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Maiden of Virtue": {
+        "file": "Assets/Bosses/karazhan__maidenofvirtue.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Opera Event": {
+        "file": "Assets/Bosses/karazhan__operaevent.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Nightbane": {
+        "file": "Assets/Bosses/karazhan__nightbane.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "The Curator": {
+        "file": "Assets/Bosses/karazhan__thecurator.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Terestian Illhoof": {
+        "file": "Assets/Bosses/karazhan__terestianillhoof.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Shade of Aran": {
+        "file": "Assets/Bosses/karazhan__shadeofaran.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Netherspite": {
+        "file": "Assets/Bosses/karazhan__netherspite.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Chess Event": {
+        "file": "Assets/Bosses/karazhan__chessevent.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "gruul": {
+    "title": "Gruul's Lair",
+    "description": "Defeat Gruul the Dragonkiller in Gruul's Lair.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_gruulthedragonkiller.jpg",
+    "file": "Assets/Bosses/gruul.tga",
+    "source": ".data/tbc.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/gruul.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_gruulthedragonkiller.jpg",
+        "kind": "raid"
+      },
+      "Gruul the Dragonkiller": {
+        "file": "Assets/Bosses/gruul.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_gruulthedragonkiller.jpg",
+        "kind": "raid"
+      },
+      "High King Maulgar": {
+        "file": "Assets/Bosses/gruul__highkingmaulgar.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "magtheridon": {
+    "title": "Magtheridon's Lair",
+    "description": "Defeat Magtheridon in Magtheridon's Lair.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_magtheridon.jpg",
+    "file": "Assets/Bosses/magtheridon.tga",
+    "source": ".data/tbc.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/magtheridon.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_magtheridon.jpg",
+        "kind": "raid"
+      },
+      "Magtheridon": {
+        "file": "Assets/Bosses/magtheridon.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_magtheridon.jpg",
+        "kind": "raid"
+      }
+    }
+  },
+  "ssc": {
+    "title": "Serpentshrine Cavern",
+    "description": "Defeat Lady Vashj in Serpentshrine Cavern.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_ladyvashj.jpg",
+    "file": "Assets/Bosses/ssc.tga",
+    "source": ".data/tbc.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/ssc.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_ladyvashj.jpg",
+        "kind": "raid"
+      },
+      "Lady Vashj": {
+        "file": "Assets/Bosses/ssc.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_ladyvashj.jpg",
+        "kind": "raid"
+      },
+      "Hydross the Unstable": {
+        "file": "Assets/Bosses/ssc__hydrosstheunstable.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "The Lurker Below": {
+        "file": "Assets/Bosses/ssc__thelurkerbelow.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Leotheras the Blind": {
+        "file": "Assets/Bosses/ssc__leotherastheblind.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Fathom-Lord Karathress": {
+        "file": "Assets/Bosses/ssc__fathomlordkarathress.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Morogrim Tidewalker": {
+        "file": "Assets/Bosses/ssc__morogrimtidewalker.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "tempest_keep": {
+    "title": "Tempest Keep",
+    "description": "Defeat Kael'thas Sunstrider in Tempest Keep.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_character_bloodelf_male.jpg",
+    "file": "Assets/Bosses/tempest_keep.tga",
+    "source": ".data/tbc.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/tempest_keep.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_character_bloodelf_male.jpg",
+        "kind": "raid"
+      },
+      "Kael'thas Sunstrider": {
+        "file": "Assets/Bosses/tempest_keep.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_character_bloodelf_male.jpg",
+        "kind": "raid"
+      },
+      "Al'ar": {
+        "file": "Assets/Bosses/tempest_keep__alar.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Void Reaver": {
+        "file": "Assets/Bosses/tempest_keep__voidreaver.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "High Astromancer Solarian": {
+        "file": "Assets/Bosses/tempest_keep__highastromancersolarian.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "hyjal": {
+    "title": "The Battle for Mount Hyjal",
+    "description": "Defeat Archimonde in The Battle for Mount Hyjal.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_archimonde.jpg",
+    "file": "Assets/Bosses/hyjal.tga",
+    "source": ".data/tbc.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/hyjal.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_archimonde.jpg",
+        "kind": "raid"
+      },
+      "Archimonde": {
+        "file": "Assets/Bosses/hyjal.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_archimonde.jpg",
+        "kind": "raid"
+      },
+      "Rage Winterchill": {
+        "file": "Assets/Bosses/hyjal__ragewinterchill.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Anetheron": {
+        "file": "Assets/Bosses/hyjal__anetheron.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Kaz'rogal": {
+        "file": "Assets/Bosses/hyjal__kazrogal.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Azgalor": {
+        "file": "Assets/Bosses/hyjal__azgalor.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "black_temple": {
+    "title": "The Black Temple",
+    "description": "Defeat Illidan Stormrage in The Black Temple.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_illidan.jpg",
+    "file": "Assets/Bosses/black_temple.tga",
+    "source": ".data/tbc.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/black_temple.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_illidan.jpg",
+        "kind": "raid"
+      },
+      "Illidan Stormrage": {
+        "file": "Assets/Bosses/black_temple.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_illidan.jpg",
+        "kind": "raid"
+      },
+      "High Warlord Naj'entus": {
+        "file": "Assets/Bosses/black_temple__highwarlordnajentus.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Supremus": {
+        "file": "Assets/Bosses/black_temple__supremus.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Shade of Akama": {
+        "file": "Assets/Bosses/black_temple__shadeofakama.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Teron Gorefiend": {
+        "file": "Assets/Bosses/black_temple__terongorefiend.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Gurtogg Bloodboil": {
+        "file": "Assets/Bosses/black_temple__gurtoggbloodboil.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Reliquary of Souls": {
+        "file": "Assets/Bosses/black_temple__reliquaryofsouls.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Mother Shahraz": {
+        "file": "Assets/Bosses/black_temple__mothershahraz.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "The Illidari Council": {
+        "file": "Assets/Bosses/black_temple__theillidaricouncil.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "sunwell": {
+    "title": "Sunwell Plateau",
+    "description": "Defeat Kil'jaeden in Sunwell Plateau.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_kiljaedan.jpg",
+    "file": "Assets/Bosses/sunwell.tga",
+    "source": ".data/tbc.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/sunwell.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_kiljaedan.jpg",
+        "kind": "raid"
+      },
+      "Kil'jaeden": {
+        "file": "Assets/Bosses/sunwell.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_kiljaedan.jpg",
+        "kind": "raid"
+      },
+      "Kalecgos": {
+        "file": "Assets/Bosses/sunwell__kalecgos.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Brutallus": {
+        "file": "Assets/Bosses/sunwell__brutallus.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Felmyst": {
+        "file": "Assets/Bosses/sunwell__felmyst.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Eredar Twins": {
+        "file": "Assets/Bosses/sunwell__eredartwins.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "M'uru": {
+        "file": "Assets/Bosses/sunwell__muru.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "onyxia": {
+    "title": "Onyxia's Lair (10 player)",
+    "description": "Defeat Onyxia in 10-player mode.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_onyxia.jpg",
+    "file": "Assets/Bosses/onyxia.tga",
+    "source": ".data/lichking.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/onyxia.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_onyxia.jpg",
+        "kind": "raid"
+      },
+      "Onyxia": {
+        "file": "Assets/Bosses/onyxia.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_onyxia.jpg",
+        "kind": "raid"
+      }
+    }
+  },
+  "naxxramas": {
+    "title": "The Fall of Naxxramas (10 player)",
+    "description": "Defeat every boss in Naxxramas in 10-player mode.",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_dungeon_naxxramas_normal.jpg",
+    "file": "Assets/Bosses/naxxramas.tga",
+    "source": ".data/lichking.txt",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/naxxramas.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_dungeon_naxxramas_normal.jpg",
+        "kind": "raid"
+      },
+      "Kel'Thuzad": {
+        "file": "Assets/Bosses/naxxramas.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_dungeon_naxxramas_normal.jpg",
+        "kind": "raid"
+      },
+      "Anub'Rekhan": {
+        "file": "Assets/Bosses/naxxramas__anubrekhan.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Grand Widow Faerlina": {
+        "file": "Assets/Bosses/naxxramas__grandwidowfaerlina.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_grandwidowfaerlina.jpg",
+        "kind": "blizzard"
+      },
+      "Maexxna": {
+        "file": "Assets/Bosses/naxxramas__maexxna.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_maexxna.jpg",
+        "kind": "blizzard"
+      },
+      "Noth the Plaguebringer": {
+        "file": "Assets/Bosses/naxxramas__noththeplaguebringer.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Heigan the Unclean": {
+        "file": "Assets/Bosses/naxxramas__heigantheunclean.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_heigantheunclean.jpg",
+        "kind": "blizzard"
+      },
+      "Loatheb": {
+        "file": "Assets/Bosses/naxxramas__loatheb.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_loatheb.jpg",
+        "kind": "blizzard"
+      },
+      "Instructor Razuvious": {
+        "file": "Assets/Bosses/naxxramas__instructorrazuvious.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Gothik the Harvester": {
+        "file": "Assets/Bosses/naxxramas__gothiktheharvester.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "The Four Horsemen": {
+        "file": "Assets/Bosses/naxxramas__thefourhorsemen.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Patchwerk": {
+        "file": "Assets/Bosses/naxxramas__patchwerk.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_patchwerk.jpg",
+        "kind": "blizzard"
+      },
+      "Grobbulus": {
+        "file": "Assets/Bosses/naxxramas__grobbulus.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Gluth": {
+        "file": "Assets/Bosses/naxxramas__gluth.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Thaddius": {
+        "file": "Assets/Bosses/naxxramas__thaddius.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_thaddius.jpg",
+        "kind": "blizzard"
+      },
+      "Sapphiron": {
+        "file": "Assets/Bosses/naxxramas__sapphiron.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_sapphiron_01.jpg",
+        "kind": "blizzard"
+      }
+    }
+  },
+  "zulaman": {
+    "title": "zulaman",
+    "description": "Fallback raid artwork",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_zuljin.jpg",
+    "file": "Assets/Bosses/zulaman.tga",
+    "source": "Data.lua",
+    "kind": "blizzard-final-boss",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/zulaman.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_zuljin.jpg",
+        "kind": "raid"
+      },
+      "Zul'jin": {
+        "file": "Assets/Bosses/zulaman.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_zuljin.jpg",
+        "kind": "raid"
+      },
+      "Akil'zon": {
+        "file": "Assets/Bosses/zulaman__akilzon.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Nalorakk": {
+        "file": "Assets/Bosses/zulaman__nalorakk.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Jan'alai": {
+        "file": "Assets/Bosses/zulaman__janalai.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Halazzi": {
+        "file": "Assets/Bosses/zulaman__halazzi.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Hex Lord Malacrass": {
+        "file": "Assets/Bosses/zulaman__hexlordmalacrass.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  },
+  "zulgurub": {
+    "title": "zulgurub",
+    "description": "Fallback raid artwork",
+    "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_hakkar.jpg",
+    "file": "Assets/Bosses/zulgurub.tga",
+    "source": "Data.lua",
+    "kind": "blizzard-final-boss",
+    "encounters": {
+      "Raid Overview": {
+        "file": "Assets/Bosses/zulgurub.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_hakkar.jpg",
+        "kind": "raid"
+      },
+      "Hakkar": {
+        "file": "Assets/Bosses/zulgurub.tga",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/achievement_boss_hakkar.jpg",
+        "kind": "raid"
+      },
+      "High Priestess Jeklik": {
+        "file": "Assets/Bosses/zulgurub__highpriestessjeklik.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "High Priest Venoxis": {
+        "file": "Assets/Bosses/zulgurub__highpriestvenoxis.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "High Priestess Mar'li": {
+        "file": "Assets/Bosses/zulgurub__highpriestessmarli.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Bloodlord Mandokir": {
+        "file": "Assets/Bosses/zulgurub__bloodlordmandokir.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Edge of Madness: Gri'lek": {
+        "file": "Assets/Bosses/zulgurub__edgeofmadnessgrilek.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Edge of Madness: Hazza'rah": {
+        "file": "Assets/Bosses/zulgurub__edgeofmadnesshazzarah.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Edge of Madness: Renataki": {
+        "file": "Assets/Bosses/zulgurub__edgeofmadnessrenataki.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Edge of Madness: Wushoolay": {
+        "file": "Assets/Bosses/zulgurub__edgeofmadnesswushoolay.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Gahz'ranka": {
+        "file": "Assets/Bosses/zulgurub__gahzranka.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "High Priest Thekal": {
+        "file": "Assets/Bosses/zulgurub__highpriestthekal.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "High Priestess Arlokk": {
+        "file": "Assets/Bosses/zulgurub__highpriestessarlokk.tga",
+        "url": null,
+        "kind": "generated"
+      },
+      "Jin'do the Hexxer": {
+        "file": "Assets/Bosses/zulgurub__jindothehexxer.tga",
+        "url": null,
+        "kind": "generated"
+      }
+    }
+  }
+}
