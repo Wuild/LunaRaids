@@ -1,7 +1,7 @@
 local _, Raid = ...
 
 local ROW_HEIGHT = 38
-local FRAME_WIDTH, FRAME_HEIGHT = 980, 760
+local FRAME_WIDTH, FRAME_HEIGHT = 900, 650
 local ROSTER_WIDTH, ROSTER_ROW_WIDTH = 260, 248
 local ASSIGNMENT_ROW_WIDTH = 674
 local BOSS_RAIL_WIDTH, BOSS_BUTTON_SIZE = 48, 38
@@ -11,6 +11,8 @@ local ACCENT = { .18, .70, 1.00, 1 }
 local BORDER = { .16, .22, .28, 1 }
 local MUTED = { .55, .62, .69, 1 }
 local WHITE = "Interface\\Buttons\\WHITE8X8"
+local FONT_PATH = "Interface\\AddOns\\LunaRaids\\Assets\\Expressway.ttf"
+local fontObjects, fontObjectSerial = {}, 0
 local ROLE_TEXTURE =
     "Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES"
 local ROLE_COORDS = {
@@ -186,6 +188,27 @@ for _, column in ipairs(READY_CHECK_COLUMNS) do
 end
 local READY_CHECK_FOOD_MATCHES = { READY_CHECK_COLUMNS[1] }
 
+local function IsMainWindowRegion(region)
+    local current = region
+    for _ = 1, 16 do
+        if not current then return false end
+        if current.GetName
+            and current:GetName() == "LunaRaidsLeaderFrame"
+        then
+            return true
+        end
+        current = current.GetParent and current:GetParent() or nil
+    end
+    return false
+end
+
+local function MainWindowDensity(minimum)
+    local scale = UIParent and UIParent:GetEffectiveScale() or 1
+    if not scale or scale <= .70 then return 1 end
+    local progress = math.min(1, (scale - .70) / .30)
+    return 1 - ((1 - minimum) * progress)
+end
+
 local function Pixel(value)
     local scale = UIParent and UIParent:GetEffectiveScale() or 1
     if not scale or scale <= 0 then scale = 1 end
@@ -337,17 +360,61 @@ local function BackdropFrame(frameType, name, parent, extraTemplate)
     return CreateFrame(frameType, name, parent, template)
 end
 
+local function GetFontObject(size, flags)
+    size = math.max(1, tonumber(size) or 10)
+    flags = flags or ""
+    local key = tostring(size) .. "\031" .. flags
+    if fontObjects[key] then return fontObjects[key] end
+    fontObjectSerial = fontObjectSerial + 1
+    local objectName = "LunaRaidsFont" .. fontObjectSerial
+    local object
+    if CreateFontFamily and GameFontNormal
+        and GameFontNormal.GetFontObjectForAlphabet
+    then
+        local members = {}
+        for _, alphabet in ipairs({
+            "roman", "russian", "korean",
+            "simplifiedchinese", "traditionalchinese",
+        }) do
+            local path = FONT_PATH
+            if alphabet ~= "roman" and alphabet ~= "russian" then
+                local fallback =
+                    GameFontNormal:GetFontObjectForAlphabet(alphabet)
+                path = fallback and fallback:GetFont() or FONT_PATH
+            end
+            members[#members + 1] = {
+                alphabet = alphabet,
+                file = path,
+                height = size,
+                flags = flags,
+            }
+        end
+        local ok, family = pcall(CreateFontFamily, objectName, members)
+        if ok then object = family end
+    end
+    if not object then
+        object = CreateFont(objectName)
+        if not object:SetFont(FONT_PATH, size, flags) then
+            object:SetFont(STANDARD_TEXT_FONT, size, flags)
+        end
+    end
+    fontObjects[key] = object
+    return object
+end
+
 local function Font(parent, size, color, text)
     local font = parent:CreateFontString(
         nil, "OVERLAY",
         size and size <= 9 and "GameFontHighlightSmall"
             or "GameFontHighlight")
-    local fontFile, _, fontFlags = font:GetFont()
-    if fontFile and size then
-        font:SetFont(fontFile, Pixel(size), fontFlags or "")
+    if size and IsMainWindowRegion(parent) then
+        size = math.max(7, size * MainWindowDensity(.82))
     end
-    font:SetShadowOffset(Pixel(1), Pixel(-1))
-    font:SetShadowColor(0, 0, 0, .85)
+    if size then
+        font:SetFontObject(GetFontObject(Pixel(size), "MONOCHROMEOUTLINE"))
+    end
+    font:SetShadowOffset(0, 0)
+    font:SetShadowColor(0, 0, 0, 0)
     if color == "accent" then
         font:SetTextColor(unpack(ACCENT))
     elseif color == "muted" then
@@ -392,6 +459,10 @@ end
 
 local function Button(parent, text, width, height, template)
     local button = BackdropFrame("Button", nil, parent, template)
+    if IsMainWindowRegion(parent) then
+        height = math.max(
+            18, height * MainWindowDensity(.86))
+    end
     PixelSetSize(button, width, height)
     button:SetBackdrop({
         bgFile = WHITE,
@@ -466,6 +537,9 @@ end
 
 local function AddButtonIcon(button, texture, size)
     size = size or 18
+    if IsMainWindowRegion(button) then
+        size = size * MainWindowDensity(.84)
+    end
     local left = size <= 16 and 8 or 10
     button.ActionIcon = button:CreateTexture(nil, "OVERLAY")
     button.ActionIcon:SetTexture(texture)
@@ -481,7 +555,9 @@ local function AddDropdownArrow(button)
     button.DropdownArrow = button:CreateTexture(nil, "OVERLAY")
     button.DropdownArrow:SetTexture(
         "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up")
-    PixelSetSize(button.DropdownArrow, 18, 18)
+    local size = IsMainWindowRegion(button)
+        and 18 * MainWindowDensity(.84) or 18
+    PixelSetSize(button.DropdownArrow, size, size)
     button.DropdownArrow:SetPoint("RIGHT", -6, 0)
     button.Text:ClearAllPoints()
     button.Text:SetPoint("LEFT", 9, 0)
@@ -578,7 +654,9 @@ end
 
 local function EditField(parent, width, placeholder)
     local field = BackdropFrame("EditBox", nil, parent)
-    PixelSetSize(field, width, 28)
+    local height = IsMainWindowRegion(parent)
+        and 28 * MainWindowDensity(.86) or 28
+    PixelSetSize(field, width, height)
     field:SetBackdrop({
         bgFile = WHITE, edgeFile = WHITE, edgeSize = Pixel(1),
     })
@@ -586,7 +664,7 @@ local function EditField(parent, width, placeholder)
     field:SetBackdropColor(.025, .04, .055, .98)
     field:SetBackdropBorderColor(unpack(BORDER))
     field:SetAutoFocus(false)
-    field:SetFontObject(GameFontHighlightSmall)
+    field:SetFontObject(GetFontObject(Pixel(9), "MONOCHROMEOUTLINE"))
     field:SetTextInsets(9, 9, 0, 0)
     field:SetMaxLetters(240)
     field.Placeholder = Font(field, 9, "muted", placeholder or "")
@@ -607,6 +685,103 @@ local function EditField(parent, width, placeholder)
         self.Placeholder:SetShown(self:GetText() == "")
     end)
     return field
+end
+
+local function Slider(
+    parent, width, minimum, maximum, step, formatter, onChanged)
+    local slider = CreateFrame("Button", nil, parent)
+    PixelSetSize(slider, width, 28)
+    slider.minimum = minimum
+    slider.maximum = maximum
+    slider.step = step
+    slider.formatter = formatter
+    slider.onChanged = onChanged
+    slider.Track = slider:CreateTexture(nil, "BACKGROUND")
+    slider.Track:SetTexture(WHITE)
+    slider.Track:SetPoint("LEFT", 4, 0)
+    slider.Track:SetPoint("RIGHT", -4, 0)
+    SetPixelHeight(slider.Track, 4)
+    slider.Track:SetVertexColor(.035, .075, .10, 1)
+    slider.Fill = slider:CreateTexture(nil, "ARTWORK")
+    slider.Fill:SetTexture(WHITE)
+    slider.Fill:SetPoint("LEFT", slider.Track, "LEFT", 0, 0)
+    SetPixelHeight(slider.Fill, 4)
+    slider.Fill:SetVertexColor(unpack(ACCENT))
+    slider.Thumb = BackdropFrame("Frame", nil, slider)
+    PixelSetSize(slider.Thumb, 10, 16)
+    slider.Thumb:SetBackdrop({
+        bgFile = WHITE, edgeFile = WHITE, edgeSize = Pixel(1),
+    })
+    slider.Thumb:SetBackdropColor(.08, .28, .39, 1)
+    slider.Thumb:SetBackdropBorderColor(unpack(ACCENT))
+    slider.Value = Font(slider, 9, "accent", "")
+    slider.Value:SetPoint("BOTTOM", slider, "TOP", 0, -1)
+    slider.Low = Font(slider, 8, "muted", tostring(minimum))
+    slider.Low:SetPoint("TOPLEFT", slider, "BOTTOMLEFT", 2, 1)
+    slider.High = Font(slider, 8, "muted", tostring(maximum))
+    slider.High:SetPoint("TOPRIGHT", slider, "BOTTOMRIGHT", -2, 1)
+    function slider:SetValue(value, silent)
+        value = math.max(self.minimum, math.min(self.maximum, value))
+        value = math.floor((value / self.step) + .5) * self.step
+        local changed = self.value ~= value
+        self.value = value
+        local ratio = (value - self.minimum)
+            / math.max(.0001, self.maximum - self.minimum)
+        local trackWidth = math.max(1, width - 8)
+        self.Thumb:ClearAllPoints()
+        self.Thumb:SetPoint(
+            "CENTER", self.Track, "LEFT", ratio * trackWidth, 0)
+        self.Fill:SetWidth(math.max(1, ratio * trackWidth))
+        self.Value:SetText(self.formatter(value))
+        if changed and not silent and self.onChanged then
+            self.onChanged(value)
+        end
+    end
+    function slider:GetValue()
+        return self.value
+    end
+    local function UpdateFromCursor(self)
+        local cursorX = GetCursorPosition()
+        local scale = self:GetEffectiveScale()
+        local left = self.Track:GetLeft()
+        local trackWidth = self.Track:GetWidth()
+        if not cursorX or not scale or not left
+            or not trackWidth or trackWidth <= 0
+        then
+            return
+        end
+        local ratio = math.max(
+            0, math.min(1, ((cursorX / scale) - left) / trackWidth))
+        self:SetValue(
+            self.minimum + ((self.maximum - self.minimum) * ratio))
+    end
+    slider:SetScript("OnMouseDown", function(self, button)
+        if button ~= "LeftButton" then return end
+        self.dragging = true
+        UpdateFromCursor(self)
+        self:SetScript("OnUpdate", function(activeSlider)
+            if not IsMouseButtonDown("LeftButton") then
+                activeSlider.dragging = nil
+                activeSlider:SetScript("OnUpdate", nil)
+                return
+            end
+            UpdateFromCursor(activeSlider)
+        end)
+    end)
+    slider:SetScript("OnMouseUp", function(self)
+        self.dragging = nil
+        self:SetScript("OnUpdate", nil)
+    end)
+    slider:SetScript("OnHide", function(self)
+        self.dragging = nil
+        self:SetScript("OnUpdate", nil)
+    end)
+    slider:SetScript("OnMouseWheel", function(self, delta)
+        self:SetValue((self.value or self.minimum) + (delta * self.step))
+    end)
+    slider:EnableMouseWheel(true)
+    slider:SetValue(minimum, true)
+    return slider
 end
 
 local function ShowSelectionMenu(
@@ -925,6 +1100,8 @@ Raid.UI = {
     Panel = Panel,
     SectionHeader = SectionHeader,
     EditField = EditField,
+    GetFontObject = GetFontObject,
+    Slider = Slider,
     ShowSelectionMenu = ShowSelectionMenu,
     ShowMultiSelectionMenu = ShowMultiSelectionMenu,
     CurrentGuildRankEntries = CurrentGuildRankEntries,

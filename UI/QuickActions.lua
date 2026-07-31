@@ -39,6 +39,7 @@ function Raid:CreateQuickActionBar()
         saved.point or "CENTER", UIParent,
         saved.point or "CENTER", saved.x or 0, saved.y or 0)
     bar:SetFrameStrata("MEDIUM")
+    bar:SetScale(self:GetHUDScale())
     bar:SetClampedToScreen(true)
     bar:SetMovable(true)
     bar:EnableMouse(true)

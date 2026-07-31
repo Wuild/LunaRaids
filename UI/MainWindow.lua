@@ -174,16 +174,48 @@ function Raid:ApplyPixelSnapping()
 end
 
 function Raid:UI_SCALE_CHANGED()
+    self:ApplyInterfaceScale()
     if self.frame and self.frame:IsShown() then
         self:RedrawWorkspace()
     end
     if self.readyCheckWindow then
-        FitAndClampToScreen(self.readyCheckWindow)
+        self.readyCheckWindow:SetScale(self:GetHUDScale())
     end
     if self.quickActionBar then
-        FitAndClampToScreen(self.quickActionBar)
+        self.quickActionBar:SetScale(self:GetHUDScale())
     end
     self:ApplyPixelSnapping()
+end
+
+function Raid:GetAutomaticInterfaceScale()
+    local effectiveScale = UIParent and UIParent:GetEffectiveScale() or 1
+    if not effectiveScale or effectiveScale <= 0 then return 1 end
+    return math.min(1, .768 / effectiveScale)
+end
+
+function Raid:GetHUDScale()
+    return (tonumber(self.db.hudScale) or 1)
+        * self:GetAutomaticInterfaceScale()
+end
+
+function Raid:ApplyInterfaceScale()
+    local hudScale = math.max(
+        .25, math.min(1.25, tonumber(self.db.hudScale) or 1))
+    self.db.hudScale = hudScale
+    hudScale = hudScale * self:GetAutomaticInterfaceScale()
+    if self.frame then self.frame:SetScale(1) end
+    if self.personalAssignmentFrame then
+        self.personalAssignmentFrame:SetScale(hudScale)
+    end
+    if self.readyCheckWindow then
+        self.readyCheckWindow:SetScale(hudScale)
+    end
+    if self.quickActionBar then
+        self.quickActionBar:SetScale(hudScale)
+    end
+    if self.RefreshRaidCooldowns then
+        self:RefreshRaidCooldowns()
+    end
 end
 
 function Raid:UpdateWindowLayout()
@@ -274,8 +306,7 @@ function Raid:CreateUI()
         UISpecialFrames[#UISpecialFrames + 1] =
             "LunaRaidsLeaderFrame"
     end
-    PixelSetSize(
-        frame,
+    frame:SetSize(
         math.max(860, self.db.window.width or FRAME_WIDTH),
         math.max(520, self.db.window.height or FRAME_HEIGHT))
     frame:SetPoint(
@@ -391,8 +422,8 @@ function Raid:CreateUI()
 
     frame.CloseButton = Button(frame, "X", 28, 28)
     frame.CloseButton:SetPoint("TOPRIGHT", -7, -8)
-    frame.CloseButton.Text:SetFont(
-        "Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+    frame.CloseButton.Text:SetFontObject(
+        Raid.UI.GetFontObject(12, "MONOCHROMEOUTLINE"))
     frame.CloseButton.Text:SetTextColor(.72, .79, .84)
     frame.CloseButton:SetScript("OnClick", function() frame:Hide() end)
     frame.CloseButton:HookScript("OnEnter", function(self)

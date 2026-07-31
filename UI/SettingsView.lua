@@ -25,6 +25,7 @@ local InstallPixelBorder, Button = UI.InstallPixelBorder, UI.Button
 local StyleButton, AddButtonIcon = UI.StyleButton, UI.AddButtonIcon
 local AddDropdownArrow, AddButtonTooltip = UI.AddDropdownArrow, UI.AddButtonTooltip
 local Panel, SectionHeader, EditField = UI.Panel, UI.SectionHeader, UI.EditField
+local Slider = UI.Slider
 local ShowSelectionMenu = UI.ShowSelectionMenu
 local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
@@ -108,12 +109,12 @@ function Raid:CreateSettingsView()
     local general = CreateFrame("Frame", nil, view.Content)
     general:SetPoint("TOPLEFT", 12, -8)
     general:SetPoint("TOPRIGHT", -12, -8)
-    general:SetHeight(224)
+    general:SetHeight(270)
     SectionHeader(general, "GENERAL")
     local interfaceCard = Panel(general)
     interfaceCard:SetPoint("TOPLEFT", 0, -40)
     interfaceCard:SetPoint("TOPRIGHT", 0, -40)
-    interfaceCard:SetHeight(184)
+    interfaceCard:SetHeight(230)
     SectionHeader(interfaceCard, "INTERFACE & MESSAGES")
     local function SettingLabel(parent, text, description, y)
         local label = Font(parent, 10, "text", text)
@@ -121,6 +122,50 @@ function Raid:CreateSettingsView()
         local detail = Font(parent, 9, "muted", description)
         detail:SetPoint("TOPLEFT", 14, y - 16)
         return label, detail
+    end
+    local function ScaleSlider(name, parent, y, onChanged)
+        local slider = Slider(
+            parent, 164, .25, 1.25, .05,
+            function(value)
+                return ("%d%%"):format(value * 100)
+            end,
+            function(value)
+                if not view.updatingScaleSliders then
+                    onChanged(value)
+                end
+            end)
+        slider:SetPoint("TOPRIGHT", parent, -14, y)
+        slider.Low:SetText("25%")
+        slider.High:SetText("125%")
+        return slider
+    end
+    local function SpacingSlider(name, parent, y, onChanged)
+        local slider = Slider(
+            parent, 164, 0, 12, 1,
+            function(value)
+                return ("%dpx"):format(value)
+            end,
+            function(value)
+                if not view.updatingScaleSliders then
+                    onChanged(value)
+                end
+            end)
+        slider:SetPoint("TOPRIGHT", parent, -14, y)
+        return slider
+    end
+    local function TextSizeSlider(parent, y, onChanged)
+        local slider = Slider(
+            parent, 164, 6, 14, 1,
+            function(value)
+                return ("%dpx"):format(value)
+            end,
+            function(value)
+                if not view.updatingScaleSliders then
+                    onChanged(value)
+                end
+            end)
+        slider:SetPoint("TOPRIGHT", parent, -14, y)
+        return slider
     end
 
     SettingLabel(interfaceCard, "Minimap launcher",
@@ -151,14 +196,14 @@ function Raid:CreateSettingsView()
     end)
     SettingLabel(interfaceCard, "Message interval",
         "Delay between chat messages to avoid throttling.", -128)
-    view.DelayMinus = Button(interfaceCard, "-", 30, 28)
-    view.DelayMinus:SetPoint("TOPRIGHT", -126, -131)
-    view.DelayValue = Button(interfaceCard, "", 88, 28)
+    view.DelayMinus = Button(interfaceCard, "-", 26, 28)
+    view.DelayValue = Button(interfaceCard, "", 68, 28)
+    view.DelayPlus = Button(interfaceCard, "+", 26, 28)
+    view.DelayPlus:SetPoint("TOPRIGHT", -14, -131)
     view.DelayValue:SetPoint(
-        "LEFT", view.DelayMinus, "RIGHT", 4, 0)
-    view.DelayPlus = Button(interfaceCard, "+", 30, 28)
-    view.DelayPlus:SetPoint(
-        "LEFT", view.DelayValue, "RIGHT", 4, 0)
+        "RIGHT", view.DelayPlus, "LEFT", -4, 0)
+    view.DelayMinus:SetPoint(
+        "RIGHT", view.DelayValue, "LEFT", -4, 0)
     view.DelayMinus:SetScript("OnClick", function()
         Raid.db.messageDelay = math.max(
             .20, (Raid.db.messageDelay or .45) - .05)
@@ -169,6 +214,15 @@ function Raid:CreateSettingsView()
             1.50, (Raid.db.messageDelay or .45) + .05)
         Raid:RefreshSettingsView()
     end)
+    SettingLabel(interfaceCard, "HUD scale",
+        "Resize cooldowns, quick actions, ready checks, and assignments.",
+        -174)
+    view.HUDScale = ScaleSlider(
+        "LunaRaidsHUDScale", interfaceCard, -181,
+        function(value)
+            Raid.db.hudScale = value
+            Raid:ApplyInterfaceScale()
+        end)
 
     view.ResetWindow = Button(view, "RESET WINDOW", 138, 27)
     view.ResetWindow:SetPoint(
@@ -222,14 +276,14 @@ function Raid:CreateSettingsView()
     SettingLabel(
         automation, "Ready-check results",
         "Time the completed window remains open before fading.", -130)
-    view.ReadyHoldMinus = Button(automation, "-", 30, 28)
-    view.ReadyHoldMinus:SetPoint("TOPRIGHT", -126, -134)
-    view.ReadyHoldValue = Button(automation, "", 88, 28)
+    view.ReadyHoldMinus = Button(automation, "-", 26, 28)
+    view.ReadyHoldValue = Button(automation, "", 68, 28)
+    view.ReadyHoldPlus = Button(automation, "+", 26, 28)
+    view.ReadyHoldPlus:SetPoint("TOPRIGHT", automation, -14, -134)
     view.ReadyHoldValue:SetPoint(
-        "LEFT", view.ReadyHoldMinus, "RIGHT", 4, 0)
-    view.ReadyHoldPlus = Button(automation, "+", 30, 28)
-    view.ReadyHoldPlus:SetPoint(
-        "LEFT", view.ReadyHoldValue, "RIGHT", 4, 0)
+        "RIGHT", view.ReadyHoldPlus, "LEFT", -4, 0)
+    view.ReadyHoldMinus:SetPoint(
+        "RIGHT", view.ReadyHoldValue, "LEFT", -4, 0)
     view.ReadyHoldMinus:SetScript("OnClick", function()
         Raid.db.readyCheck.holdDuration = math.max(
             5, (Raid.db.readyCheck.holdDuration or 15) - 5)
@@ -310,7 +364,7 @@ function Raid:CreateSettingsView()
     local cooldowns = CreateFrame("Frame", nil, view.Content)
     cooldowns:SetPoint("TOPLEFT", 12, -8)
     cooldowns:SetPoint("TOPRIGHT", -12, -8)
-    cooldowns:SetHeight(628)
+    cooldowns:SetHeight(804)
     SectionHeader(
         cooldowns, "RAID COOLDOWNS",
         "Choose the raid abilities displayed by the standalone cooldown HUD.",
@@ -340,7 +394,7 @@ function Raid:CreateSettingsView()
     view.CooldownBody = Panel(cooldowns)
     view.CooldownBody:SetPoint("TOPLEFT", cooldowns, 0, -78)
     view.CooldownBody:SetPoint("TOPRIGHT", cooldowns, 0, -78)
-    view.CooldownBody:SetHeight(536)
+    view.CooldownBody:SetHeight(712)
     view.CooldownBody:SetFrameLevel(
         math.max(0, cooldowns:GetFrameLevel() - 1))
     view.CooldownBody:EnableMouse(false)
@@ -463,6 +517,7 @@ function Raid:CreateSettingsView()
     view.CooldownScale:SetScript("OnClick", function()
         local settings = Raid:GetRaidCooldownSettings()
         ShowSelectionMenu(view.CooldownScale, {
+            { .25, "25%" }, { .5, "50%" },
             { .75, "75%" }, { .85, "85%" }, { 1, "100%" },
             { 1.1, "110%" }, { 1.25, "125%" },
         }, settings.scale or 1, function(value)
@@ -472,8 +527,8 @@ function Raid:CreateSettingsView()
         end)
     end)
     local alphaLabel, alphaDetail = SettingLabel(
-        cooldowns, "Overall HUD opacity",
-        "Fade the complete display, including icons, names, and bars.", -358)
+        cooldowns, "Progress-bar opacity",
+        "Adjust the colored cooldown bars without fading the HUD.", -358)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         alphaLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -569,6 +624,66 @@ function Raid:CreateSettingsView()
             Raid:RefreshRaidCooldowns()
             Raid:RefreshSettingsView()
         end)
+    end)
+    local rowSpacingLabel, rowSpacingDetail = SettingLabel(
+        cooldowns, "Row spacing",
+        "Vertical space between cooldown rows.", -578)
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        rowSpacingLabel
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        rowSpacingDetail
+    view.CooldownRowSpacing = SpacingSlider(
+        "LunaRaidsCooldownRowSpacing", cooldowns, -585,
+        function(value)
+            Raid:GetRaidCooldownSettings().rowSpacing = value
+            Raid:RefreshRaidCooldowns()
+        end)
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        view.CooldownRowSpacing
+    local columnSpacingLabel, columnSpacingDetail = SettingLabel(
+        cooldowns, "Column spacing",
+        "Horizontal space between abilities and players.", -622)
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        columnSpacingLabel
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        columnSpacingDetail
+    view.CooldownColumnSpacing = SpacingSlider(
+        "LunaRaidsCooldownColumnSpacing", cooldowns, -629,
+        function(value)
+            Raid:GetRaidCooldownSettings().columnSpacing = value
+            Raid:RefreshRaidCooldowns()
+        end)
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        view.CooldownColumnSpacing
+    local textSizeLabel, textSizeDetail = SettingLabel(
+        cooldowns, "Progress-bar text size",
+        "Resize player names and status text inside cooldown bars.", -666)
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        textSizeLabel
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        textSizeDetail
+    view.CooldownTextSize = TextSizeSlider(cooldowns, -673,
+        function(value)
+            Raid:GetRaidCooldownSettings().textSize = value
+            Raid:RefreshRaidCooldowns()
+        end)
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        view.CooldownTextSize
+    local whisperLabel, whisperDetail = SettingLabel(
+        cooldowns, "Cooldown whispers",
+        "Allow clicking players to whisper cooldown requests.", -710)
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        whisperLabel
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        whisperDetail
+    view.CooldownWhispers = Button(cooldowns, "", 180, 28)
+    view.CooldownWhispers:SetPoint("TOPRIGHT", cooldowns, -14, -714)
+    view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
+        view.CooldownWhispers
+    view.CooldownWhispers:SetScript("OnClick", function()
+        local settings = Raid:GetRaidCooldownSettings()
+        settings.whisperEnabled = not settings.whisperEnabled
+        Raid:RefreshSettingsView()
     end)
     local cooldownDefinitions = Raid.GetRaidCooldownDefinitions
         and Raid:GetRaidCooldownDefinitions() or {}
@@ -865,7 +980,7 @@ function Raid:RefreshSettingsView()
     view.Back:Hide()
     view.Content:SetWidth(math.max(1, view:GetWidth() - 28))
     view.Content:SetHeight(
-        adminTab and 496 or cooldownTab and 644 or 658)
+        adminTab and 496 or cooldownTab and 820 or 704)
     if view.Scroll.UpdateScrollbar then
         view.Scroll:UpdateScrollbar()
     end
@@ -946,6 +1061,13 @@ function Raid:RefreshSettingsView()
     view.CooldownScale.Text:SetText(
         ("%d%%"):format(
             math.floor((cooldownSettings.scale or 1) * 100 + .5)))
+    view.updatingScaleSliders = true
+    view.HUDScale:SetValue(self.db.hudScale or 1)
+    view.CooldownRowSpacing:SetValue(cooldownSettings.rowSpacing or 1)
+    view.CooldownColumnSpacing:SetValue(
+        cooldownSettings.columnSpacing or 1)
+    view.CooldownTextSize:SetValue(cooldownSettings.textSize or 8)
+    view.updatingScaleSliders = nil
     view.CooldownAlpha.Text:SetText(
         ("%d%%"):format(
             math.floor(
@@ -967,6 +1089,12 @@ function Raid:RefreshSettingsView()
     StyleButton(
         view.CooldownRowTotals,
         cooldownSettings.showAbilityTotal and "positive" or nil)
+    view.CooldownWhispers.Text:SetText(
+        cooldownSettings.whisperEnabled
+            and "WHISPERS: ON" or "WHISPERS: OFF")
+    StyleButton(
+        view.CooldownWhispers,
+        cooldownSettings.whisperEnabled and "positive" or nil)
     local cooldownVisibilityLabels = {
         ALWAYS = "ALWAYS",
         GROUP = "PARTY & RAID",

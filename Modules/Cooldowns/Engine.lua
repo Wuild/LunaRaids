@@ -31,8 +31,8 @@ local function Label(parent, size, text, color)
     local label = parent:CreateFontString(
         nil, "OVERLAY", size <= 9 and "GameFontHighlightSmall"
             or "GameFontHighlight")
-    local font, _, flags = label:GetFont()
-    if font then label:SetFont(font, size, flags or "") end
+    label:SetFontObject(
+        Raid.UI.GetFontObject(size, "MONOCHROMEOUTLINE"))
     label:SetText(text or "")
     label:SetTextColor(unpack(color or { .9, .9, .9, 1 }))
     return label
@@ -93,6 +93,7 @@ function Raid:GetRaidCooldownSettings()
     end
     settings.spells = settings.spells or {}
     settings.active = settings.active or {}
+    settings.effects = settings.effects or {}
     settings.expanded = settings.expanded or {}
     settings.page = math.max(1, tonumber(settings.page) or 1)
     settings.layout = settings.layout or "CATEGORIES"
@@ -103,12 +104,22 @@ function Raid:GetRaidCooldownSettings()
         settings.cooldownColor or { 1, .32, .24 }
     settings.scale = tonumber(settings.scale) or 1
     settings.hudOpacity = tonumber(settings.hudOpacity) or .82
+    settings.textSize = math.max(
+        6, math.min(14, math.floor(tonumber(settings.textSize) or 8)))
+    settings.rowSpacing = math.max(
+        0, math.min(12, math.floor(tonumber(settings.rowSpacing) or 1)))
+    settings.columnSpacing = math.max(
+        0, math.min(12, math.floor(
+            tonumber(settings.columnSpacing) or 1)))
     if settings.locked == nil then settings.locked = false end
     if settings.showAbilityName == nil then
         settings.showAbilityName = true
     end
     if settings.showAbilityTotal == nil then
         settings.showAbilityTotal = true
+    end
+    if settings.whisperEnabled == nil then
+        settings.whisperEnabled = false
     end
     settings.visibility = settings.visibility or "GROUP"
     for _, definition in ipairs(DEFINITIONS) do
@@ -135,10 +146,9 @@ function Raid:IsRaidCooldownPlayerEligible(player, definition)
 end
 
 function Raid:HandleRaidCooldownCombatLog()
-    local _, event, _, sourceGUID, sourceName, _, _, _, _, _, _,
+    local _, event, _, sourceGUID, sourceName, _, _, destGUID, destName, _, _,
         spellID = CombatLogGetCurrentEventInfo()
-    local definition = event == "SPELL_CAST_SUCCESS"
-        and BY_SPELL[tonumber(spellID)]
+    local definition = BY_SPELL[tonumber(spellID)]
     if not definition or not sourceName then return end
     local belongs = false
     for _, player in ipairs(self.roster or {}) do
@@ -151,6 +161,31 @@ function Raid:HandleRaidCooldownCombatLog()
         end
     end
     if not belongs then return end
+    local effectDuration = tonumber(definition[9])
+    if effectDuration and (event == "SPELL_AURA_APPLIED"
+        or event == "SPELL_AURA_REFRESH"
+        or event == "SPELL_AURA_REMOVED")
+    then
+        local settings = self:GetRaidCooldownSettings()
+        local effects = settings.effects[definition[1]] or {}
+        settings.effects[definition[1]] = effects
+        local owner = sourceGUID or ShortName(sourceName):lower()
+        if event == "SPELL_AURA_REMOVED" then
+            effects[owner] = nil
+        else
+            effects[owner] = {
+                guid = sourceGUID,
+                name = sourceName,
+                targetGUID = destGUID,
+                targetName = destName,
+                duration = effectDuration,
+                expires = CurrentTime() + effectDuration,
+            }
+        end
+        self:RefreshRaidCooldowns()
+        return
+    end
+    if event ~= "SPELL_CAST_SUCCESS" then return end
     self.raidCooldownState = self:GetRaidCooldownSettings().active
     local key = definition[1]
     self.raidCooldownState[key] = self.raidCooldownState[key] or {}
@@ -159,6 +194,22 @@ function Raid:HandleRaidCooldownCombatLog()
         expires = CurrentTime() + definition[5],
     }
     self:RefreshRaidCooldowns()
+end
+
+function Raid:GetRaidCooldownEffect(definition, player)
+    local settings = self:GetRaidCooldownSettings()
+    local effects = settings.effects[definition[1]] or {}
+    local now = CurrentTime()
+    for owner, effect in pairs(effects) do
+        if not tonumber(effect.expires) or effect.expires <= now then
+            effects[owner] = nil
+        elseif effect.guid and player.guid and effect.guid == player.guid
+            or ShortName(effect.name):lower()
+                == ShortName(player.name):lower()
+        then
+            return effect
+        end
+    end
 end
 
 function Raid:GetRaidCooldownState(definition, player)

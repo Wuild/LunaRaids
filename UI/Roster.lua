@@ -700,6 +700,7 @@ function Raid:CreatePersonalAssignmentFrame()
     end
     local saved = self.db.assignmentInfo
     local frame = Panel(UIParent)
+    frame:SetScale(self:GetHUDScale())
     local savedWidth = math.max(
         320, math.min(720, tonumber(saved.width) or 360))
     PixelSetSize(frame, savedWidth, 76)

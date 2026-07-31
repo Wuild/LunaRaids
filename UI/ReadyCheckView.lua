@@ -39,6 +39,7 @@ function Raid:CreateReadyCheckWindow()
         saved.point or "CENTER", UIParent,
         saved.point or "CENTER", saved.x or 0, saved.y or 120)
     frame:SetFrameStrata("HIGH")
+    frame:SetScale(self:GetHUDScale())
     frame:SetFrameLevel(200)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
@@ -563,7 +564,7 @@ function Raid:RefreshReadyCheckWindow(frame)
     if not frame.Embedded then
         frame:SetHeight(
             math.min(560, math.max(92, 71 + (#pending * 21))))
-        FitAndClampToScreen(frame)
+        frame:SetScale(self:GetHUDScale())
     end
     frame.Scroll:Show()
     for _, header in ipairs(frame.Headers) do header:Show() end

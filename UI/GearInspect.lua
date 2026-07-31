@@ -395,7 +395,7 @@ function Raid:CreateGearInspectRow(index, view)
         cell.Icon:SetAlpha(.18)
         cell.Level = Font(cell, 8, "text", "")
         cell.Level:SetPoint("BOTTOMRIGHT", -1, 1)
-        cell.Level:SetShadowColor(0, 0, 0, 1)
+        cell.Level:SetShadowColor(0, 0, 0, 0)
         cell:SetScript("OnEnter", function(self)
             if not self.link then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")

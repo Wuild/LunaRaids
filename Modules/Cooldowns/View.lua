@@ -9,6 +9,32 @@ local CurrentTime = View.CurrentTime
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local ACCENT = { .12, .72, 1, 1 }
 local MUTED = { .55, .66, .72, 1 }
+local function SetLabelSize(label, size)
+    label:SetFontObject(
+        Raid.UI.GetFontObject(size, "MONOCHROMEOUTLINE"))
+end
+local function FitBarText(label, playerName, suffix, maximumWidth)
+    local name = ShortName(playerName)
+    suffix = suffix or ""
+    label:SetText(name .. suffix)
+    if label:GetStringWidth() <= maximumWidth then return end
+    local function BestName(trailingText)
+        local best, characters = "", 0
+        for length = 1, #name do
+            local candidate = CompactName(name, length)
+            label:SetText(candidate .. trailingText)
+            if label:GetStringWidth() > maximumWidth then break end
+            best, characters = candidate, length
+        end
+        return best, characters
+    end
+    local best, characters = BestName(suffix)
+    if suffix ~= "" and characters < math.min(3, #name) then
+        best = BestName("")
+        suffix = ""
+    end
+    label:SetText(best .. suffix)
+end
 function Raid:CreateRaidCooldownFrame()
     if self.raidCooldownFrame then return self.raidCooldownFrame end
     local settings = self:GetRaidCooldownSettings()
@@ -23,11 +49,7 @@ function Raid:CreateRaidCooldownFrame()
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", function()
-        if settings.locked
-            or not IsShiftKeyDown or not IsShiftKeyDown()
-        then
-            return
-        end
+        if settings.locked then return end
         frame:StartMoving()
     end)
     frame:SetScript("OnDragStop", function()
@@ -49,11 +71,7 @@ function Raid:CreateRaidCooldownFrame()
         frame.Grip.Dots[index] = dot
     end
     frame.Grip:SetScript("OnDragStart", function()
-        if Raid:GetRaidCooldownSettings().locked
-            or not IsShiftKeyDown or not IsShiftKeyDown()
-        then
-            return
-        end
+        if Raid:GetRaidCooldownSettings().locked then return end
         frame:StartMoving()
     end)
     frame.Grip:SetScript("OnDragStop", function()
@@ -66,7 +84,7 @@ function Raid:CreateRaidCooldownFrame()
             dot:SetVertexColor(.15, .75, 1, 1)
         end
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Shift-drag to move")
+        GameTooltip:SetText("Drag to move")
         GameTooltip:Show()
     end)
     frame.Grip:SetScript("OnLeave", function(self)
@@ -173,11 +191,7 @@ function Raid:CreateRaidCooldownRow(index)
     row:EnableMouse(true)
     row:RegisterForDrag("LeftButton")
     row:SetScript("OnDragStart", function()
-        if Raid:GetRaidCooldownSettings().locked
-            or not IsShiftKeyDown or not IsShiftKeyDown()
-        then
-            return
-        end
+        if Raid:GetRaidCooldownSettings().locked then return end
         row.wasDragged = true
         owner:StartMoving()
     end)
@@ -224,6 +238,7 @@ end
 
 function Raid:WhisperRaidCooldown(playerName, definition)
     if not playerName or not definition then return end
+    if not self:GetRaidCooldownSettings().whisperEnabled then return end
     if not IsInGroup or not IsInGroup() then
         self:Print("Join a group before sending cooldown requests.")
         return
@@ -286,10 +301,20 @@ function Raid:CreateRaidCooldownChip(row, index)
     chip:EnableMouse(true)
     chip:RegisterForClicks("LeftButtonUp")
     chip:RegisterForDrag("LeftButton")
+    chip:SetScript("OnEnter", function(self)
+        if not self.definition then return end
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(self.definition[2])
+        GameTooltip:AddLine(
+            ShortName(self.playerName) .. " - " .. (self.statusText or ""),
+            .78, .86, .90, true)
+        GameTooltip:Show()
+    end)
+    chip:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
     chip:SetScript("OnClick", function(self)
-        if self.wasDragged or IsShiftKeyDown and IsShiftKeyDown() then
-            return
-        end
+        if self.wasDragged then return end
         if self.playerOnline and self.playerName and self.definition then
             Raid:WhisperRaidCooldown(
                 self.playerName, self.definition)
@@ -297,11 +322,7 @@ function Raid:CreateRaidCooldownChip(row, index)
     end)
     chip:SetScript("OnDragStart", function(self)
         local settings = Raid:GetRaidCooldownSettings()
-        if settings.locked
-            or not IsShiftKeyDown or not IsShiftKeyDown()
-        then
-            return
-        end
+        if settings.locked then return end
         self.wasDragged = true
         Raid:CreateRaidCooldownFrame():StartMoving()
     end)
@@ -325,8 +346,9 @@ function Raid:RefreshRaidCooldowns()
     if not self.db then return end
     local settings = self:GetRaidCooldownSettings()
     local frame = self:CreateRaidCooldownFrame()
-    frame:SetScale(settings.scale)
-    frame:SetAlpha(settings.hudOpacity)
+    frame:SetScale(
+        (settings.scale or 1) * self:GetHUDScale())
+    frame:SetAlpha(1)
     local simulated = self.simulation and self.simulation.enabled
     local visibility = settings.visibility or "GROUP"
     local inGroup = IsInGroup and IsInGroup()
@@ -344,7 +366,8 @@ function Raid:RefreshRaidCooldowns()
     local style = settings.style
     local columnWidth = style == "CARDS" and 142
         or style == "COMPACT" and 112 or 72
-    local columnGap = style == "MINIMAL" and 1 or 4
+    local rowGap = settings.rowSpacing or 1
+    local columnGap = settings.columnSpacing or 1
     local columnHeader = style == "CARDS" and 38
         or style == "COMPACT" and 30 or 23
     local chipHeight = style == "CARDS" and 20
@@ -457,19 +480,23 @@ function Raid:RefreshRaidCooldowns()
             local rowLeadWidth = settings.showAbilityName
                     and (settings.showAbilityTotal and 148 or 120)
                 or settings.showAbilityTotal and 48 or 24
-            local activeColumnWidth = listLayout and 204
+            local activeColumnWidth = listLayout
+                    and (204 + ((columnGap - 1) * 2))
                 or rowLayout
-                    and (rowLeadWidth + (#displayPlayers * 64))
+                    and (rowLeadWidth + (#displayPlayers * 62)
+                        + (math.max(0, #displayPlayers - 1) * columnGap))
                     or columnWidth
             local columnHeight = listLayout
-                    and (#displayPlayers * 19)
-                or rowLayout and 25
-                or columnHeader + (playerRows * (chipHeight + 1)) + 3
+                    and ((#displayPlayers * 18)
+                        + (math.max(0, #displayPlayers - 1) * rowGap))
+                or rowLayout and 18
+                or columnHeader + (playerRows * chipHeight)
+                    + (math.max(0, playerRows - 1) * rowGap) + 3
             local layoutColumns =
                 (rowLayout or listLayout) and 1 or maxColumns
             local columnInBand = ((visible - 1) % layoutColumns) + 1
             if columnInBand == 1 and visible > 1 then
-                bandTop = bandTop + bandTallest + 4
+                bandTop = bandTop + bandTallest + rowGap
                 bandTallest = 0
             end
             bandTallest = math.max(bandTallest, columnHeight)
@@ -486,8 +513,11 @@ function Raid:RefreshRaidCooldowns()
             row:SetSize(activeColumnWidth, columnHeight)
             row:SetBackdropColor(
                 .015, .035, .047, minimal and 0 or .58)
+            local collapseRowBorder = rowLayout and rowGap == 0
+                or not rowLayout and columnGap == 0
             row:SetBackdropBorderColor(
-                .07, .17, .22, minimal and 0 or .62)
+                .07, .17, .22,
+                (minimal or collapseRowBorder) and 0 or .62)
             row.Icon:ClearAllPoints()
             row.Icon:SetTexture(
                 GetSpellTexture and GetSpellTexture(definition[4])
@@ -544,9 +574,10 @@ function Raid:RefreshRaidCooldowns()
                     or style == "CARDS"
                         and (readyCount .. "/" .. onlineCount .. " ready")
                     or (readyCount .. "/" .. onlineCount))
-            local chipWidth = listLayout and 204
+            local chipWidth = listLayout and activeColumnWidth
                 or rowLayout and 62 or math.floor(
-                (activeColumnWidth - 8 - ((lanes - 1) * 2)) / lanes)
+                (activeColumnWidth - 8
+                    - ((lanes - 1) * columnGap)) / lanes)
             for index, player in ipairs(displayPlayers) do
                 local chip = row.Chips[index]
                     or self:CreateRaidCooldownChip(row, index)
@@ -556,20 +587,32 @@ function Raid:RefreshRaidCooldowns()
                     or math.floor((index - 1) / lanes)
                 chip:SetPoint("TOPLEFT",
                     (listLayout and 0 or rowLayout and rowLeadWidth or 4)
-                        + (lane * (chipWidth + 2)),
-                    (listLayout and -((index - 1) * 19)
-                        or rowLayout and -4 or -columnHeader)
-                        - (playerRow * (chipHeight + 1)))
+                        + (lane * (chipWidth + columnGap)),
+                    (listLayout and -((index - 1) * (18 + rowGap))
+                        or rowLayout and 0 or -columnHeader)
+                        - (playerRow * (chipHeight + rowGap)))
                 chip:SetSize(chipWidth, listLayout and 18 or chipHeight)
+                SetLabelSize(chip.Text, settings.textSize)
+                SetLabelSize(chip.Status, settings.textSize)
                 local state = self:GetRaidCooldownState(definition, player)
                 local remaining = state and state.expires - now or 0
+                local effect = self:GetRaidCooldownEffect(
+                    definition, player)
+                local effectRemaining = effect
+                    and effect.expires - now or 0
                 local offline = player.online == false
                 local ready = not offline and remaining <= 0
+                local activeEffect = not offline and effectRemaining > 0
+                local displayRemaining = activeEffect
+                    and effectRemaining or remaining
                 local color = RAID_CLASS_COLORS
                     and RAID_CLASS_COLORS[player.class]
                     or { r = .3, g = .7, b = 1 }
-                local readyColor = settings.classColors and color
-                    or {
+                local readyColor = settings.classColors and {
+                        r = color.r * .72,
+                        g = color.g * .72,
+                        b = color.b * .72,
+                    } or {
                         r = settings.readyColor[1],
                         g = settings.readyColor[2],
                         b = settings.readyColor[3],
@@ -579,30 +622,47 @@ function Raid:RefreshRaidCooldowns()
                     g = settings.cooldownColor[2],
                     b = settings.cooldownColor[3],
                 }
+                local effectColor = { r = .08, g = .52, b = .72 }
+                local barColor = activeEffect and effectColor
+                    or ready and readyColor or cooldownColor
+                local collapseChipBorder = listLayout and rowGap == 0
+                    or rowLayout and columnGap == 0
+                    or not listLayout and not rowLayout
+                        and (rowGap == 0 or columnGap == 0)
                 chip:SetBackdropColor(
                     .02, .045, .058,
                     offline and .24 or minimal and .46 or .64)
                 chip:SetBackdropBorderColor(
                     offline and .25
-                        or ready and readyColor.r or cooldownColor.r,
+                        or barColor.r,
                     offline and .28
-                        or ready and readyColor.g or cooldownColor.g,
+                        or barColor.g,
                     offline and .30
-                        or ready and readyColor.b or cooldownColor.b,
-                    listLayout and .42 or minimal and 0 or .76)
+                        or barColor.b,
+                    collapseChipBorder and 0
+                        or listLayout and .42 or minimal and 0 or .76)
                 local progress = offline and 0
+                    or activeEffect and math.max(
+                        0, math.min(1,
+                            effectRemaining / math.max(
+                                1, tonumber(effect.duration)
+                                    or tonumber(definition[9]) or 1)))
                     or listLayout and ready and 0
                     or ready and 1 or math.max(
                     0, math.min(1, remaining / definition[5]))
-                chip.Fill:SetWidth(math.max(1, (chipWidth - 2) * progress))
+                local horizontalInset = columnGap == 0 and 0 or 1
+                local verticalInset = rowGap == 0 and 0 or 1
+                chip.Fill:ClearAllPoints()
+                chip.Fill:SetPoint(
+                    "TOPLEFT", horizontalInset, -verticalInset)
+                chip.Fill:SetPoint(
+                    "BOTTOMLEFT", horizontalInset, verticalInset)
+                chip.Fill:SetWidth(math.max(
+                    1, (chipWidth - (horizontalInset * 2)) * progress))
                 chip.Fill:SetVertexColor(
-                    ready and readyColor.r or cooldownColor.r,
-                    ready and readyColor.g or cooldownColor.g,
-                    ready and readyColor.b or cooldownColor.b,
+                    barColor.r, barColor.g, barColor.b,
                     1)
-                chip.Fill:SetAlpha(
-                    listLayout and (ready and .16 or .55)
-                        or minimal and .35 or .28)
+                chip.Fill:SetAlpha(settings.hudOpacity)
                 chip.Icon:SetShown(listLayout)
                 chip.IconHit:SetShown(listLayout)
                 chip.definition = definition
@@ -613,34 +673,39 @@ function Raid:RefreshRaidCooldowns()
                         GetSpellTexture
                             and GetSpellTexture(definition[4])
                             or definition[4])
-                    chip.Text:SetPoint("LEFT", chip.Icon, "RIGHT", 5, 0)
-                    chip.Text:SetPoint("RIGHT", chip.Status, "LEFT", -5, 0)
+                    chip.Text:SetPoint(
+                        "LEFT", chip.Icon, "RIGHT", columnGap, 0)
+                    chip.Text:SetPoint(
+                        "RIGHT", chip.Status, "LEFT", -columnGap, 0)
                     chip.Text:SetJustifyH("LEFT")
-                    chip.Text:SetText(CompactName(player.name, 14))
                     chip.Status:SetText(
                         offline and "Offline"
+                            or activeEffect and TimeText(effectRemaining)
                             or ready and "Ready" or TimeText(remaining))
                     chip.Status:SetTextColor(
                         offline and .42
-                            or ready and readyColor.r or cooldownColor.r,
+                            or barColor.r,
                         offline and .46
-                            or ready and readyColor.g or cooldownColor.g,
+                            or barColor.g,
                         offline and .49
-                            or ready and readyColor.b or cooldownColor.b, 1)
+                            or barColor.b, 1)
+                    FitBarText(
+                        chip.Text, player.name, "",
+                        math.max(1, chipWidth - 29
+                            - chip.Status:GetStringWidth()
+                            - (columnGap * 2)))
                 else
                     chip.Text:SetPoint("CENTER")
                     chip.Text:SetJustifyH("CENTER")
-                    chip.Text:SetText(
-                        offline and (
-                            CompactName(player.name, 6)
-                                .. " |cff737b80OFFLINE|r")
-                        or lanes == 1 and (
-                        ready and CompactName(player.name, 8)
-                            or CompactName(player.name, 5) .. " "
-                                .. "|cffff8a70"
-                                .. TimeText(remaining) .. "|r")
-                        or ready and CompactName(player.name, 3)
-                        or "|cffff8a70" .. TimeText(remaining) .. "|r")
+                    local suffix = offline and " |cff737b80OFFLINE|r"
+                        or activeEffect and (
+                            " |cff43bff5" .. TimeText(effectRemaining) .. "|r")
+                        or not ready and (
+                            " |cffff8a70" .. TimeText(displayRemaining) .. "|r")
+                        or ""
+                    FitBarText(
+                        chip.Text, player.name, suffix,
+                        math.max(1, chipWidth - 6))
                 end
                 if listLayout then
                     chip.Text:SetTextColor(
@@ -656,6 +721,12 @@ function Raid:RefreshRaidCooldowns()
                 chip.playerName = player.name
                 chip.playerOnline = not offline
                 chip.statusText = offline and "Offline"
+                    or activeEffect and (
+                        definition[2] .. " active"
+                            .. (effect.targetName and (
+                                " on " .. ShortName(effect.targetName)) or "")
+                            .. ": " .. TimeText(effectRemaining)
+                            .. " remaining")
                     or ready and "Ready"
                     or ((state and state.exact and "Synced: " or "Cooldown: ")
                         .. TimeText(remaining) .. " remaining")

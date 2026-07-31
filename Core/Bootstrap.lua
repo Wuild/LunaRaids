@@ -105,8 +105,9 @@ local defaults = {
     plans = {},
     window = {
         point = "CENTER", x = 0, y = 0,
-        width = 980, height = 760,
+        width = 900, height = 650,
     },
+    hudScale = 1,
     quickBar = {
         point = "CENTER", x = 0, y = 0, hide = false,
         iconOnly = false, visibility = "GROUP",
@@ -128,6 +129,7 @@ local defaults = {
         style = "MINIMAL",
         spells = {},
         active = {},
+        effects = {},
         expanded = {},
         layout = "ROWS",
         sortMode = "SPELL",
@@ -139,6 +141,10 @@ local defaults = {
         locked = false,
         showAbilityName = true,
         showAbilityTotal = true,
+        whisperEnabled = false,
+        textSize = 8,
+        rowSpacing = 1,
+        columnSpacing = 1,
         visibility = "GROUP",
     },
     raidAdmin = {
@@ -293,7 +299,14 @@ function Raid:PrepareDatabase(database)
             database[key] = nil
         end
     end
+    local migrateWindowSize =
+        rawget(database, "windowSizeVersion") ~= 2
     Merge(database, defaults)
+    if migrateWindowSize then
+        database.window.width = defaults.window.width
+        database.window.height = defaults.window.height
+    end
+    database.windowSizeVersion = 2
     database.schemaVersion = defaults.schemaVersion
 end
 
@@ -309,7 +322,7 @@ function Raid:ResetAllSettings()
     local keys = {
         "window", "quickBar", "readyCheck", "assignmentInfo",
         "raidCooldowns", "raidAdmin", "minimap",
-        "announcementChannel", "messageDelay",
+        "announcementChannel", "messageDelay", "hudScale",
     }
     for _, key in ipairs(keys) do
         local source = defaults[key]
@@ -356,6 +369,7 @@ function Raid:ResetAllSettings()
         self:RefreshPersonalAssignments()
     end
     if self.RefreshRaidCooldowns then self:RefreshRaidCooldowns() end
+    if self.ApplyInterfaceScale then self:ApplyInterfaceScale() end
     if self.UpdateWindowLayout then self:UpdateWindowLayout() end
     if self.RefreshSettingsView then self:RefreshSettingsView() end
     self:Print("All addon settings and window positions were reset.")
