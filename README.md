@@ -18,7 +18,7 @@ Thunderstrike.
 [![Support on Patreon](https://img.shields.io/badge/Support-Patreon-ff424d?logo=patreon&logoColor=white)](https://www.patreon.com/wuild)
 
 
-![LunaRaids encounter assignments](Media/assignments.png)
+![LunaRaids encounter assignments](https://github.com/Wuild/LunaRaids/raw/master/Media/assignments.png)
 
 ## What LunaRaids does
 
@@ -63,7 +63,7 @@ Right-click a player for group administration actions such as:
 
 Only authorized players can edit live raid groups.
 
-![Raid group editor](Media/groups.png)
+![Raid group editor](https://github.com/Wuild/LunaRaids/raw/master/Media/groups.png)
 
 ### Raid Status and ready checks
 
@@ -83,9 +83,9 @@ The standalone results window can remain open for a configurable duration.
 Right-clicking it keeps it open, and it will not fade while the mouse is over
 it. It can also be disabled in settings.
 
-![Ready-check results](Media/ready.png)
+![Ready-check results](https://github.com/Wuild/LunaRaids/raw/master/Media/ready.png)
 
-![Raid status, buffs, and consumables](Media/status.png)
+![Raid status, buffs, and consumables](https://github.com/Wuild/LunaRaids/raw/master/Media/status.png)
 
 ### Gear Inspect
 
@@ -96,7 +96,7 @@ throttled inspection as a fallback.
 TacoTip and TipTac data are used when available, but neither addon is
 required.
 
-![Raid gear inspection](Media/gear.png)
+![Raid gear inspection](https://github.com/Wuild/LunaRaids/raw/master/Media/gear.png)
 
 ### Personal assignments
 
@@ -231,7 +231,7 @@ bottom-right resize handle resizes the window.
 Open **Raid Assignments**, press **New Raid**, choose an expansion, and then
 choose a raid.
 
-![Expansion and raid selection](Media/expac.png)
+![Expansion and raid selection](https://github.com/Wuild/LunaRaids/raw/master/Media/expac.png)
 
 The first boss becomes the current boss for a newly created raid. Once the
 raid is active, changing to a different raid requires creating or loading
@@ -415,49 +415,3 @@ entire LunaRaids window; other pages remain open.
 | `/lr sim 25` | Simulate a 25-player raid |
 | `/lr sim 40` | Simulate a 40-player raid |
 | `/lr sim clear` | Clear simulation |
-
-## Source layout
-
-Every game-flavor TOC loads only `Libraries.xml` and `LunaRaids.xml`.
-`LunaRaids.xml` is the single source of truth for addon file order, so adding
-or moving a module does not require editing each supported manifest.
-
-Core behavior is grouped under `Core/`:
-
-- `Bootstrap.lua` owns addon state, database defaults, and shared core helpers.
-- `Plans.lua` owns raid selection, assignments, markers, and saved plans.
-- `Roster.lua` owns live/manual rosters, group movement, and simulation.
-- `Messaging.lua` owns queued announcements and assignment whispers.
-- `Lifecycle.lua` owns root addon initialization and slash commands.
-
-Feature services are grouped under `Modules/`:
-
-- `Communication/Service.lua` owns addon-message synchronization.
-- `CharacterIntel/Service.lua` owns inspected and shared character metadata.
-- `Cooldowns/` separates cooldown definitions, tracking, presentation, and
-  lifecycle.
-
-UI code is grouped by feature under `UI/`:
-
-- `Framework.lua` owns shared styling, pixel helpers, widgets, and `Raid.UI`.
-- `Roster.lua`, `Assignments.lua`, and `AssignmentView.lua` own planning views.
-- `GearInspect.lua` owns gear inspection.
-- `ReadyCheckService.lua`, `ReadyCheckView.lua`, and
-  `ReadyCheckLifecycle.lua` separate ready-check data, presentation, and
-  Ace-managed events.
-- `QuickActions.lua`, `SettingsView.lua`, and `MainWindow.lua` own their
-  respective surfaces.
-
-Feature files use the public `Raid.UI` toolkit instead of reaching into
-another file's private locals. If a helper is genuinely shared between two
-features, the defining feature publishes it on `Raid.UI`.
-
-Raid cooldowns live under `Modules/Cooldowns/`. `Definitions.lua` is a
-data-only registry, `Engine.lua` owns tracking and synchronization, `View.lua`
-owns presentation, and `Lifecycle.lua` owns the AceAddon lifecycle and event
-subscriptions. This separation allows cooldown definitions or presentation
-to be replaced without changing the tracking engine.
-
-Ready checks and gear inspection are also AceAddon modules. Each feature owns
-its event subscriptions and can be disabled independently without changing
-the root addon lifecycle.

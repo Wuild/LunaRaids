@@ -29,7 +29,8 @@ jobs:
           zip -r "$zip_path" "$addon_name" \
             -x "$addon_name/.git/*" \
                "$addon_name/.github/*" \
-               "$addon_name/.idea/*"
+               "$addon_name/.idea/*" \
+               "$addon_name/Media/*"
 
       - name: Publish
         uses: itsmeow/curseforge-upload@v3
