@@ -248,7 +248,7 @@ local raid = Raid:RegisterRaid({
                 "Interrupt 1", "Interrupt 2", "Interrupt 3",
             }),
         }, nil, nil, {
-            icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\naxxramas",
+            icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\naxxramas__kelthuzad",
         }),
     },
 })

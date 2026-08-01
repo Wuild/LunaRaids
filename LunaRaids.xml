@@ -23,8 +23,26 @@
     <Script file="Raids\aq20.lua"/>
     <Script file="Raids\aq40.lua"/>
     <Script file="Raids\naxxramas.lua"/>
-    <Script file="Raids\post_tbc_guides.lua"/>
-    <Script file="Raids\post_tbc.lua"/>
+    <Script file="Raids\wotlk_naxxramas.lua"/>
+    <Script file="Raids\obsidian_sanctum.lua"/>
+    <Script file="Raids\eye_of_eternity.lua"/>
+    <Script file="Raids\vault_of_archavon.lua"/>
+    <Script file="Raids\ulduar.lua"/>
+    <Script file="Raids\trial_of_the_crusader.lua"/>
+    <Script file="Raids\wotlk_onyxia.lua"/>
+    <Script file="Raids\icecrown_citadel.lua"/>
+    <Script file="Raids\ruby_sanctum.lua"/>
+    <Script file="Raids\blackwing_descent.lua"/>
+    <Script file="Raids\bastion_of_twilight.lua"/>
+    <Script file="Raids\throne_of_the_four_winds.lua"/>
+    <Script file="Raids\baradin_hold.lua"/>
+    <Script file="Raids\firelands.lua"/>
+    <Script file="Raids\dragon_soul.lua"/>
+    <Script file="Raids\mogushan_vaults.lua"/>
+    <Script file="Raids\heart_of_fear.lua"/>
+    <Script file="Raids\terrace_of_endless_spring.lua"/>
+    <Script file="Raids\throne_of_thunder.lua"/>
+    <Script file="Raids\siege_of_orgrimmar.lua"/>
 
     <!-- Core services -->
     <Script file="Core\Bootstrap.lua"/>

@@ -39,7 +39,7 @@ local raid = Raid:RegisterRaid({
             "Fear Ward", "Deep Breath Caller",
             "Whelp AoE Lead", "Phase 3 Position Caller",
         }, 10, nil, nil, {
-            icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\onyxia",
+            icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\onyxia__onyxia",
             spellIcon = 18392,
         }),
     },

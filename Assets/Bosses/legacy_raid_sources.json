@@ -1,0 +1,46 @@
+{
+  "kind": "generated Vanilla and Burning Crusade raid icon sprite sheet",
+  "generator": "OpenAI built-in image generation",
+  "source": ".data/generated_icons/legacy_raids_source.png",
+  "grid": {
+    "columns": 4,
+    "rows": 4,
+    "order": [
+      "karazhan",
+      "gruul",
+      "magtheridon",
+      "ssc",
+      "tempest_keep",
+      "hyjal",
+      "black_temple",
+      "zulaman",
+      "sunwell",
+      "molten_core",
+      "onyxia",
+      "blackwing_lair",
+      "zulgurub",
+      "aq20",
+      "aq40",
+      "naxxramas"
+    ]
+  },
+  "outputs": [
+    "Assets/Bosses/karazhan.tga",
+    "Assets/Bosses/gruul.tga",
+    "Assets/Bosses/magtheridon.tga",
+    "Assets/Bosses/ssc.tga",
+    "Assets/Bosses/tempest_keep.tga",
+    "Assets/Bosses/hyjal.tga",
+    "Assets/Bosses/black_temple.tga",
+    "Assets/Bosses/zulaman.tga",
+    "Assets/Bosses/sunwell.tga",
+    "Assets/Bosses/molten_core.tga",
+    "Assets/Bosses/onyxia.tga",
+    "Assets/Bosses/blackwing_lair.tga",
+    "Assets/Bosses/zulgurub.tga",
+    "Assets/Bosses/aq20.tga",
+    "Assets/Bosses/aq40.tga",
+    "Assets/Bosses/naxxramas.tga"
+  ],
+  "scope": "raid-level icons only; encounter boss portraits are unchanged"
+}

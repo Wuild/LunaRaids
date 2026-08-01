@@ -29,6 +29,7 @@ jobs:
           zip -r "$zip_path" "$addon_name" \
             -x "$addon_name/.git/*" \
                "$addon_name/.github/*" \
+               "$addon_name/.data/*" \
                "$addon_name/.idea/*" \
                "$addon_name/Media/*"
 

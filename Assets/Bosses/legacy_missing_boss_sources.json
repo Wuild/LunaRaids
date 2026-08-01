@@ -1,0 +1,31 @@
+{
+  "kind": "generated missing Vanilla and Burning Crusade boss icons",
+  "generator": "OpenAI built-in image generation",
+  "source": ".data/generated_icons/legacy_missing_bosses_source.png",
+  "grid": {
+    "columns": 2,
+    "rows": 2
+  },
+  "entries": [
+    [
+      "zulaman",
+      "Zul'jin",
+      "zuljin"
+    ],
+    [
+      "onyxia",
+      "Onyxia",
+      "onyxia"
+    ],
+    [
+      "zulgurub",
+      "Hakkar",
+      "hakkar"
+    ],
+    [
+      "naxxramas",
+      "Kel'Thuzad",
+      "kelthuzad"
+    ]
+  ]
+}

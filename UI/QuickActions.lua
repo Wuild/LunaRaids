@@ -248,9 +248,13 @@ function Raid:CreateQuickActionBar()
     AddButtonTooltip(
         bar.BossNav.Announce, L.ANNOUNCE_ASSIGNMENTS,
         L.ANNOUNCE_ASSIGNMENTS_DESC .. L.ANNOUNCE_CHANNEL_PICKER_DESC)
+    bar.BossNav.BossIcon = bar.BossNav:CreateTexture(nil, "ARTWORK")
+    PixelSetSize(bar.BossNav.BossIcon, 22, 22)
+    bar.BossNav.BossIcon:SetPoint(
+        "LEFT", bar.BossNav.Previous, "RIGHT", 7, -1)
     bar.BossNav.Name = Font(bar.BossNav, 9, "accent", "")
     bar.BossNav.Name:SetPoint(
-        "LEFT", bar.BossNav.Previous, "RIGHT", 8, -1)
+        "LEFT", bar.BossNav.BossIcon, "RIGHT", 6, -1)
     bar.BossNav.Name:SetPoint(
         "RIGHT", bar.BossNav.Announce, "LEFT", -8, -1)
     bar.BossNav.Name:SetJustifyH("CENTER")
@@ -288,8 +292,10 @@ function Raid:RefreshQuickActionBar()
             or tonumber(self.db.activeEncounter)) or nil
     local encounter = encounterIndex and encounterIndex >= 2
         and raid.encounters[encounterIndex] or nil
+    local isSimulated = self.simulation and self.simulation.enabled
+    local raidGroup = IsInRaid and IsInRaid() or false
     local showBossNav = encounter
-        and IsInRaid and IsInRaid()
+        and (raidGroup or isSimulated)
         and self:IsLocalRaidEditor() or false
     bar:SetHeight(showBossNav and 76 or 42)
     bar.Handle:ClearAllPoints()
@@ -298,6 +304,8 @@ function Raid:RefreshQuickActionBar()
         "BOTTOMLEFT", 1, showBossNav and 35 or 1)
     bar.BossNav:SetShown(showBossNav)
     if showBossNav then
+        bar.BossNav.BossIcon:SetTexture(
+            encounter.icon or raid.icon or "Interface\\Icons\\INV_Sword_27")
         bar.BossNav.Name:SetText(encounter.name:upper())
         local hasPrevious = encounterIndex > 2
         local hasNext = encounterIndex < #raid.encounters
@@ -306,15 +314,14 @@ function Raid:RefreshQuickActionBar()
         bar.BossNav.Previous:SetAlpha(hasPrevious and 1 or .35)
         bar.BossNav.Next:SetAlpha(hasNext and 1 or .35)
     end
-    local grouped = IsInGroup and IsInGroup()
-    local raidGroup = IsInRaid and IsInRaid()
-    local authorized = grouped and (
+    local grouped = IsInGroup and IsInGroup() or false
+    local authorized = isSimulated or grouped and (
         UnitIsGroupLeader and UnitIsGroupLeader("player")
         or UnitIsGroupAssistant and UnitIsGroupAssistant("player"))
     local visibility = settings.visibility or "GROUP"
     local allowed = visibility == "ALWAYS"
         or visibility == "GROUP" and authorized
-        or visibility == "RAID" and raidGroup and authorized
+        or visibility == "RAID" and (raidGroup or isSimulated) and authorized
     if settings.hideInCombat
         and InCombatLockdown and InCombatLockdown()
     then

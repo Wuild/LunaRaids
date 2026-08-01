@@ -615,16 +615,6 @@ function Raid:RefreshBossRail()
         button.currentBoss = index == currentBossIndex
         button.CurrentDot:SetShown(button.currentBoss)
         local icon = encounter.icon or raid.icon
-        local spellID = encounter.spellIcon
-        if spellID then
-            local spellTexture
-            if C_Spell and C_Spell.GetSpellTexture then
-                spellTexture = C_Spell.GetSpellTexture(spellID)
-            elseif GetSpellTexture then
-                spellTexture = GetSpellTexture(spellID)
-            end
-            icon = spellTexture or icon
-        end
         button.Icon:SetTexture(
             icon or "Interface\\Icons\\INV_Sword_27")
         button.Icon:SetDesaturated(not button.selected)

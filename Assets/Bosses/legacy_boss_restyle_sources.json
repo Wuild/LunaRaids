@@ -1,0 +1,603 @@
+{
+  "kind": "generated Vanilla and Burning Crusade boss icon restyle",
+  "generator": "OpenAI built-in image generation",
+  "sheets": [
+    {
+      "source": ".data/generated_icons/legacy_bosses_1_source.png",
+      "columns": 5,
+      "rows": 5,
+      "encounters": [
+        {
+          "raid": "karazhan",
+          "boss": "Attumen the Huntsman"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "Moroes"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "Maiden of Virtue"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "Opera Event"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "Nightbane"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "The Curator"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "Terestian Illhoof"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "Shade of Aran"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "Netherspite"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "Chess Event"
+        },
+        {
+          "raid": "karazhan",
+          "boss": "Prince Malchezaar"
+        },
+        {
+          "raid": "gruul",
+          "boss": "High King Maulgar"
+        },
+        {
+          "raid": "gruul",
+          "boss": "Gruul the Dragonkiller"
+        },
+        {
+          "raid": "magtheridon",
+          "boss": "Magtheridon"
+        },
+        {
+          "raid": "ssc",
+          "boss": "Hydross the Unstable"
+        },
+        {
+          "raid": "ssc",
+          "boss": "The Lurker Below"
+        },
+        {
+          "raid": "ssc",
+          "boss": "Leotheras the Blind"
+        },
+        {
+          "raid": "ssc",
+          "boss": "Fathom-Lord Karathress"
+        },
+        {
+          "raid": "ssc",
+          "boss": "Morogrim Tidewalker"
+        },
+        {
+          "raid": "ssc",
+          "boss": "Lady Vashj"
+        },
+        {
+          "raid": "tempest_keep",
+          "boss": "Al'ar"
+        },
+        {
+          "raid": "tempest_keep",
+          "boss": "Void Reaver"
+        },
+        {
+          "raid": "tempest_keep",
+          "boss": "High Astromancer Solarian"
+        },
+        {
+          "raid": "tempest_keep",
+          "boss": "Kael'thas Sunstrider"
+        },
+        {
+          "raid": "hyjal",
+          "boss": "Rage Winterchill"
+        }
+      ]
+    },
+    {
+      "source": ".data/generated_icons/legacy_bosses_2_source.png",
+      "columns": 5,
+      "rows": 5,
+      "encounters": [
+        {
+          "raid": "hyjal",
+          "boss": "Anetheron"
+        },
+        {
+          "raid": "hyjal",
+          "boss": "Kaz'rogal"
+        },
+        {
+          "raid": "hyjal",
+          "boss": "Azgalor"
+        },
+        {
+          "raid": "hyjal",
+          "boss": "Archimonde"
+        },
+        {
+          "raid": "black_temple",
+          "boss": "High Warlord Naj'entus"
+        },
+        {
+          "raid": "black_temple",
+          "boss": "Supremus"
+        },
+        {
+          "raid": "black_temple",
+          "boss": "Shade of Akama"
+        },
+        {
+          "raid": "black_temple",
+          "boss": "Teron Gorefiend"
+        },
+        {
+          "raid": "black_temple",
+          "boss": "Gurtogg Bloodboil"
+        },
+        {
+          "raid": "black_temple",
+          "boss": "Reliquary of Souls"
+        },
+        {
+          "raid": "black_temple",
+          "boss": "Mother Shahraz"
+        },
+        {
+          "raid": "black_temple",
+          "boss": "The Illidari Council"
+        },
+        {
+          "raid": "black_temple",
+          "boss": "Illidan Stormrage"
+        },
+        {
+          "raid": "zulaman",
+          "boss": "Akil'zon"
+        },
+        {
+          "raid": "zulaman",
+          "boss": "Nalorakk"
+        },
+        {
+          "raid": "zulaman",
+          "boss": "Jan'alai"
+        },
+        {
+          "raid": "zulaman",
+          "boss": "Halazzi"
+        },
+        {
+          "raid": "zulaman",
+          "boss": "Hex Lord Malacrass"
+        },
+        {
+          "raid": "zulaman",
+          "boss": "Zul'jin"
+        },
+        {
+          "raid": "sunwell",
+          "boss": "Kalecgos"
+        },
+        {
+          "raid": "sunwell",
+          "boss": "Brutallus"
+        },
+        {
+          "raid": "sunwell",
+          "boss": "Felmyst"
+        },
+        {
+          "raid": "sunwell",
+          "boss": "Eredar Twins"
+        },
+        {
+          "raid": "sunwell",
+          "boss": "M'uru"
+        },
+        {
+          "raid": "sunwell",
+          "boss": "Kil'jaeden"
+        }
+      ]
+    },
+    {
+      "source": ".data/generated_icons/legacy_bosses_3_source.png",
+      "columns": 5,
+      "rows": 5,
+      "encounters": [
+        {
+          "raid": "molten_core",
+          "boss": "Lucifron"
+        },
+        {
+          "raid": "molten_core",
+          "boss": "Magmadar"
+        },
+        {
+          "raid": "molten_core",
+          "boss": "Gehennas"
+        },
+        {
+          "raid": "molten_core",
+          "boss": "Garr"
+        },
+        {
+          "raid": "molten_core",
+          "boss": "Baron Geddon"
+        },
+        {
+          "raid": "molten_core",
+          "boss": "Shazzrah"
+        },
+        {
+          "raid": "molten_core",
+          "boss": "Sulfuron Harbinger"
+        },
+        {
+          "raid": "molten_core",
+          "boss": "Golemagg the Incinerator"
+        },
+        {
+          "raid": "molten_core",
+          "boss": "Majordomo Executus"
+        },
+        {
+          "raid": "molten_core",
+          "boss": "Ragnaros"
+        },
+        {
+          "raid": "onyxia",
+          "boss": "Onyxia"
+        },
+        {
+          "raid": "blackwing_lair",
+          "boss": "Razorgore the Untamed"
+        },
+        {
+          "raid": "blackwing_lair",
+          "boss": "Vaelastrasz the Corrupt"
+        },
+        {
+          "raid": "blackwing_lair",
+          "boss": "Broodlord Lashlayer"
+        },
+        {
+          "raid": "blackwing_lair",
+          "boss": "Firemaw"
+        },
+        {
+          "raid": "blackwing_lair",
+          "boss": "Ebonroc"
+        },
+        {
+          "raid": "blackwing_lair",
+          "boss": "Flamegor"
+        },
+        {
+          "raid": "blackwing_lair",
+          "boss": "Chromaggus"
+        },
+        {
+          "raid": "blackwing_lair",
+          "boss": "Nefarian"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "High Priestess Jeklik"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "High Priest Venoxis"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "High Priestess Mar'li"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "Bloodlord Mandokir"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "Edge of Madness: Gri'lek"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "Edge of Madness: Hazza'rah"
+        }
+      ]
+    },
+    {
+      "source": ".data/generated_icons/legacy_bosses_4_source.png",
+      "columns": 5,
+      "rows": 5,
+      "encounters": [
+        {
+          "raid": "zulgurub",
+          "boss": "Edge of Madness: Renataki"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "Edge of Madness: Wushoolay"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "Gahz'ranka"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "High Priest Thekal"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "High Priestess Arlokk"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "Jin'do the Hexxer"
+        },
+        {
+          "raid": "zulgurub",
+          "boss": "Hakkar"
+        },
+        {
+          "raid": "aq20",
+          "boss": "Kurinnaxx"
+        },
+        {
+          "raid": "aq20",
+          "boss": "General Rajaxx"
+        },
+        {
+          "raid": "aq20",
+          "boss": "Moam"
+        },
+        {
+          "raid": "aq20",
+          "boss": "Buru the Gorger"
+        },
+        {
+          "raid": "aq20",
+          "boss": "Ayamiss the Hunter"
+        },
+        {
+          "raid": "aq20",
+          "boss": "Ossirian the Unscarred"
+        },
+        {
+          "raid": "aq40",
+          "boss": "The Prophet Skeram"
+        },
+        {
+          "raid": "aq40",
+          "boss": "The Bug Trio"
+        },
+        {
+          "raid": "aq40",
+          "boss": "Battleguard Sartura"
+        },
+        {
+          "raid": "aq40",
+          "boss": "Fankriss the Unyielding"
+        },
+        {
+          "raid": "aq40",
+          "boss": "Viscidus"
+        },
+        {
+          "raid": "aq40",
+          "boss": "Princess Huhuran"
+        },
+        {
+          "raid": "aq40",
+          "boss": "The Twin Emperors"
+        },
+        {
+          "raid": "aq40",
+          "boss": "Ouro"
+        },
+        {
+          "raid": "aq40",
+          "boss": "C'Thun"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Anub'Rekhan"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Grand Widow Faerlina"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Maexxna"
+        }
+      ]
+    },
+    {
+      "source": ".data/generated_icons/legacy_bosses_5_source.png",
+      "columns": 5,
+      "rows": 5,
+      "encounters": [
+        {
+          "raid": "naxxramas",
+          "boss": "Noth the Plaguebringer"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Heigan the Unclean"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Loatheb"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Instructor Razuvious"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Gothik the Harvester"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "The Four Horsemen"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Patchwerk"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Grobbulus"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Gluth"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Thaddius"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Sapphiron"
+        },
+        {
+          "raid": "naxxramas",
+          "boss": "Kel'Thuzad"
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    "Assets/Bosses/karazhan__attumenthehuntsman.tga",
+    "Assets/Bosses/karazhan__moroes.tga",
+    "Assets/Bosses/karazhan__maidenofvirtue.tga",
+    "Assets/Bosses/karazhan__operaevent.tga",
+    "Assets/Bosses/karazhan__nightbane.tga",
+    "Assets/Bosses/karazhan__thecurator.tga",
+    "Assets/Bosses/karazhan__terestianillhoof.tga",
+    "Assets/Bosses/karazhan__shadeofaran.tga",
+    "Assets/Bosses/karazhan__netherspite.tga",
+    "Assets/Bosses/karazhan__chessevent.tga",
+    "Assets/Bosses/karazhan__princemalchezaar.tga",
+    "Assets/Bosses/gruul__highkingmaulgar.tga",
+    "Assets/Bosses/gruul__gruulthedragonkiller.tga",
+    "Assets/Bosses/magtheridon__magtheridon.tga",
+    "Assets/Bosses/ssc__hydrosstheunstable.tga",
+    "Assets/Bosses/ssc__thelurkerbelow.tga",
+    "Assets/Bosses/ssc__leotherastheblind.tga",
+    "Assets/Bosses/ssc__fathomlordkarathress.tga",
+    "Assets/Bosses/ssc__morogrimtidewalker.tga",
+    "Assets/Bosses/ssc__ladyvashj.tga",
+    "Assets/Bosses/tempest_keep__alar.tga",
+    "Assets/Bosses/tempest_keep__voidreaver.tga",
+    "Assets/Bosses/tempest_keep__highastromancersolarian.tga",
+    "Assets/Bosses/tempest_keep__kaelthassunstrider.tga",
+    "Assets/Bosses/hyjal__ragewinterchill.tga",
+    "Assets/Bosses/hyjal__anetheron.tga",
+    "Assets/Bosses/hyjal__kazrogal.tga",
+    "Assets/Bosses/hyjal__azgalor.tga",
+    "Assets/Bosses/hyjal__archimonde.tga",
+    "Assets/Bosses/black_temple__highwarlordnajentus.tga",
+    "Assets/Bosses/black_temple__supremus.tga",
+    "Assets/Bosses/black_temple__shadeofakama.tga",
+    "Assets/Bosses/black_temple__terongorefiend.tga",
+    "Assets/Bosses/black_temple__gurtoggbloodboil.tga",
+    "Assets/Bosses/black_temple__reliquaryofsouls.tga",
+    "Assets/Bosses/black_temple__mothershahraz.tga",
+    "Assets/Bosses/black_temple__theillidaricouncil.tga",
+    "Assets/Bosses/black_temple__illidanstormrage.tga",
+    "Assets/Bosses/zulaman__akilzon.tga",
+    "Assets/Bosses/zulaman__nalorakk.tga",
+    "Assets/Bosses/zulaman__janalai.tga",
+    "Assets/Bosses/zulaman__halazzi.tga",
+    "Assets/Bosses/zulaman__hexlordmalacrass.tga",
+    "Assets/Bosses/zulaman__zuljin.tga",
+    "Assets/Bosses/sunwell__kalecgos.tga",
+    "Assets/Bosses/sunwell__brutallus.tga",
+    "Assets/Bosses/sunwell__felmyst.tga",
+    "Assets/Bosses/sunwell__eredartwins.tga",
+    "Assets/Bosses/sunwell__muru.tga",
+    "Assets/Bosses/sunwell__kiljaeden.tga",
+    "Assets/Bosses/molten_core__lucifron.tga",
+    "Assets/Bosses/molten_core__magmadar.tga",
+    "Assets/Bosses/molten_core__gehennas.tga",
+    "Assets/Bosses/molten_core__garr.tga",
+    "Assets/Bosses/molten_core__barongeddon.tga",
+    "Assets/Bosses/molten_core__shazzrah.tga",
+    "Assets/Bosses/molten_core__sulfuronharbinger.tga",
+    "Assets/Bosses/molten_core__golemaggtheincinerator.tga",
+    "Assets/Bosses/molten_core__majordomoexecutus.tga",
+    "Assets/Bosses/molten_core__ragnaros.tga",
+    "Assets/Bosses/onyxia__onyxia.tga",
+    "Assets/Bosses/blackwing_lair__razorgoretheuntamed.tga",
+    "Assets/Bosses/blackwing_lair__vaelastraszthecorrupt.tga",
+    "Assets/Bosses/blackwing_lair__broodlordlashlayer.tga",
+    "Assets/Bosses/blackwing_lair__firemaw.tga",
+    "Assets/Bosses/blackwing_lair__ebonroc.tga",
+    "Assets/Bosses/blackwing_lair__flamegor.tga",
+    "Assets/Bosses/blackwing_lair__chromaggus.tga",
+    "Assets/Bosses/blackwing_lair__nefarian.tga",
+    "Assets/Bosses/zulgurub__highpriestessjeklik.tga",
+    "Assets/Bosses/zulgurub__highpriestvenoxis.tga",
+    "Assets/Bosses/zulgurub__highpriestessmarli.tga",
+    "Assets/Bosses/zulgurub__bloodlordmandokir.tga",
+    "Assets/Bosses/zulgurub__edgeofmadnessgrilek.tga",
+    "Assets/Bosses/zulgurub__edgeofmadnesshazzarah.tga",
+    "Assets/Bosses/zulgurub__edgeofmadnessrenataki.tga",
+    "Assets/Bosses/zulgurub__edgeofmadnesswushoolay.tga",
+    "Assets/Bosses/zulgurub__gahzranka.tga",
+    "Assets/Bosses/zulgurub__highpriestthekal.tga",
+    "Assets/Bosses/zulgurub__highpriestessarlokk.tga",
+    "Assets/Bosses/zulgurub__jindothehexxer.tga",
+    "Assets/Bosses/zulgurub__hakkar.tga",
+    "Assets/Bosses/aq20__kurinnaxx.tga",
+    "Assets/Bosses/aq20__generalrajaxx.tga",
+    "Assets/Bosses/aq20__moam.tga",
+    "Assets/Bosses/aq20__buruthegorger.tga",
+    "Assets/Bosses/aq20__ayamissthehunter.tga",
+    "Assets/Bosses/aq20__ossiriantheunscarred.tga",
+    "Assets/Bosses/aq40__theprophetskeram.tga",
+    "Assets/Bosses/aq40__thebugtrio.tga",
+    "Assets/Bosses/aq40__battleguardsartura.tga",
+    "Assets/Bosses/aq40__fankrisstheunyielding.tga",
+    "Assets/Bosses/aq40__viscidus.tga",
+    "Assets/Bosses/aq40__princesshuhuran.tga",
+    "Assets/Bosses/aq40__thetwinemperors.tga",
+    "Assets/Bosses/aq40__ouro.tga",
+    "Assets/Bosses/aq40__cthun.tga",
+    "Assets/Bosses/naxxramas__anubrekhan.tga",
+    "Assets/Bosses/naxxramas__grandwidowfaerlina.tga",
+    "Assets/Bosses/naxxramas__maexxna.tga",
+    "Assets/Bosses/naxxramas__noththeplaguebringer.tga",
+    "Assets/Bosses/naxxramas__heigantheunclean.tga",
+    "Assets/Bosses/naxxramas__loatheb.tga",
+    "Assets/Bosses/naxxramas__instructorrazuvious.tga",
+    "Assets/Bosses/naxxramas__gothiktheharvester.tga",
+    "Assets/Bosses/naxxramas__thefourhorsemen.tga",
+    "Assets/Bosses/naxxramas__patchwerk.tga",
+    "Assets/Bosses/naxxramas__grobbulus.tga",
+    "Assets/Bosses/naxxramas__gluth.tga",
+    "Assets/Bosses/naxxramas__thaddius.tga",
+    "Assets/Bosses/naxxramas__sapphiron.tga",
+    "Assets/Bosses/naxxramas__kelthuzad.tga"
+  ]
+}

@@ -1,0 +1,410 @@
+{
+  "kind": "generated WotLK, Cataclysm and Mists boss sprite sheets",
+  "generator": "OpenAI built-in image generation",
+  "raids": {
+    "baradin_hold": {
+      "source": ".data/generated_icons/baradin_hold__bosses_source.png",
+      "columns": 2,
+      "rows": 2,
+      "bosses": [
+        "Argaloth",
+        "Occu'thar",
+        "Alizabal"
+      ]
+    },
+    "bastion_of_twilight": {
+      "source": ".data/generated_icons/bastion_of_twilight__bosses_source.png",
+      "columns": 3,
+      "rows": 2,
+      "bosses": [
+        "Halfus Wyrmbreaker",
+        "Valiona and Theralion",
+        "Ascendant Council",
+        "Cho'gall",
+        "Sinestra"
+      ]
+    },
+    "blackwing_descent": {
+      "source": ".data/generated_icons/blackwing_descent__bosses_source.png",
+      "columns": 3,
+      "rows": 2,
+      "bosses": [
+        "Magmaw",
+        "Omnotron Defense System",
+        "Maloriak",
+        "Atramedes",
+        "Chimaeron",
+        "Nefarian"
+      ]
+    },
+    "dragon_soul": {
+      "source": ".data/generated_icons/dragon_soul__bosses_source.png",
+      "columns": 4,
+      "rows": 2,
+      "bosses": [
+        "Morchok",
+        "Warlord Zon'ozz",
+        "Yor'sahj the Unsleeping",
+        "Hagara the Stormbinder",
+        "Ultraxion",
+        "Warmaster Blackhorn",
+        "Spine of Deathwing",
+        "Madness of Deathwing"
+      ]
+    },
+    "eye_of_eternity": {
+      "source": ".data/generated_icons/eye_of_eternity__bosses_source.png",
+      "columns": 1,
+      "rows": 1,
+      "bosses": [
+        "Malygos"
+      ]
+    },
+    "firelands": {
+      "source": ".data/generated_icons/firelands__bosses_source.png",
+      "columns": 4,
+      "rows": 2,
+      "bosses": [
+        "Beth'tilac",
+        "Lord Rhyolith",
+        "Alysrazor",
+        "Shannox",
+        "Baleroc",
+        "Majordomo Staghelm",
+        "Ragnaros"
+      ]
+    },
+    "heart_of_fear": {
+      "source": ".data/generated_icons/heart_of_fear__bosses_source.png",
+      "columns": 3,
+      "rows": 2,
+      "bosses": [
+        "Imperial Vizier Zor'lok",
+        "Blade Lord Ta'yak",
+        "Garalon",
+        "Wind Lord Mel'jarak",
+        "Amber-Shaper Un'sok",
+        "Grand Empress Shek'zeer"
+      ]
+    },
+    "icecrown_citadel": {
+      "source": ".data/generated_icons/icecrown_citadel__bosses_source.png",
+      "columns": 4,
+      "rows": 3,
+      "bosses": [
+        "Lord Marrowgar",
+        "Lady Deathwhisper",
+        "Gunship Battle",
+        "Deathbringer Saurfang",
+        "Festergut",
+        "Rotface",
+        "Professor Putricide",
+        "Blood Prince Council",
+        "Blood-Queen Lana'thel",
+        "Valithria Dreamwalker",
+        "Sindragosa",
+        "The Lich King"
+      ]
+    },
+    "mogushan_vaults": {
+      "source": ".data/generated_icons/mogushan_vaults__bosses_source.png",
+      "columns": 3,
+      "rows": 2,
+      "bosses": [
+        "The Stone Guard",
+        "Feng the Accursed",
+        "Gara'jal the Spiritbinder",
+        "The Spirit Kings",
+        "Elegon",
+        "Will of the Emperor"
+      ]
+    },
+    "obsidian_sanctum": {
+      "source": ".data/generated_icons/obsidian_sanctum__bosses_source.png",
+      "columns": 1,
+      "rows": 1,
+      "bosses": [
+        "Sartharion"
+      ]
+    },
+    "ruby_sanctum": {
+      "source": ".data/generated_icons/ruby_sanctum__bosses_source.png",
+      "columns": 2,
+      "rows": 2,
+      "bosses": [
+        "Baltharus the Warborn",
+        "Saviana Ragefire",
+        "General Zarithrian",
+        "Halion"
+      ]
+    },
+    "siege_of_orgrimmar": {
+      "source": ".data/generated_icons/siege_of_orgrimmar__bosses_source.png",
+      "columns": 4,
+      "rows": 4,
+      "bosses": [
+        "Immerseus",
+        "The Fallen Protectors",
+        "Norushen",
+        "Sha of Pride",
+        "Galakras",
+        "Iron Juggernaut",
+        "Kor'kron Dark Shaman",
+        "General Nazgrim",
+        "Malkorok",
+        "Spoils of Pandaria",
+        "Thok the Bloodthirsty",
+        "Siegecrafter Blackfuse",
+        "Paragons of the Klaxxi",
+        "Garrosh Hellscream"
+      ]
+    },
+    "terrace_of_endless_spring": {
+      "source": ".data/generated_icons/terrace_of_endless_spring__bosses_source.png",
+      "columns": 2,
+      "rows": 2,
+      "bosses": [
+        "Protectors of the Endless",
+        "Tsulong",
+        "Lei Shi",
+        "Sha of Fear"
+      ]
+    },
+    "throne_of_the_four_winds": {
+      "source": ".data/generated_icons/throne_of_the_four_winds__bosses_source.png",
+      "columns": 2,
+      "rows": 1,
+      "bosses": [
+        "Conclave of Wind",
+        "Al'Akir"
+      ]
+    },
+    "throne_of_thunder": {
+      "source": ".data/generated_icons/throne_of_thunder__bosses_source.png",
+      "columns": 4,
+      "rows": 4,
+      "bosses": [
+        "Jin'rokh the Breaker",
+        "Horridon",
+        "Council of Elders",
+        "Tortos",
+        "Megaera",
+        "Ji-Kun",
+        "Durumu the Forgotten",
+        "Primordius",
+        "Dark Animus",
+        "Iron Qon",
+        "Twin Consorts",
+        "Lei Shen",
+        "Ra-den"
+      ]
+    },
+    "trial_of_the_crusader": {
+      "source": ".data/generated_icons/trial_of_the_crusader__bosses_source.png",
+      "columns": 3,
+      "rows": 2,
+      "bosses": [
+        "The Northrend Beasts",
+        "Lord Jaraxxus",
+        "Faction Champions",
+        "The Twin Val'kyr",
+        "Anub'arak"
+      ]
+    },
+    "ulduar": {
+      "source": ".data/generated_icons/ulduar__bosses_source.png",
+      "columns": 4,
+      "rows": 4,
+      "bosses": [
+        "Flame Leviathan",
+        "Ignis the Furnace Master",
+        "Razorscale",
+        "XT-002 Deconstructor",
+        "The Assembly of Iron",
+        "Kologarn",
+        "Auriaya",
+        "Hodir",
+        "Thorim",
+        "Freya",
+        "Mimiron",
+        "General Vezax",
+        "Yogg-Saron",
+        "Algalon the Observer"
+      ]
+    },
+    "vault_of_archavon": {
+      "source": ".data/generated_icons/vault_of_archavon__bosses_source.png",
+      "columns": 2,
+      "rows": 2,
+      "bosses": [
+        "Archavon the Stone Watcher",
+        "Emalon the Storm Watcher",
+        "Koralon the Flame Watcher",
+        "Toravon the Ice Watcher"
+      ]
+    },
+    "wotlk_naxxramas": {
+      "source": ".data/generated_icons/wotlk_naxxramas__bosses_source.png",
+      "columns": 4,
+      "rows": 4,
+      "bosses": [
+        "Anub'Rekhan",
+        "Grand Widow Faerlina",
+        "Maexxna",
+        "Noth the Plaguebringer",
+        "Heigan the Unclean",
+        "Loatheb",
+        "Instructor Razuvious",
+        "Gothik the Harvester",
+        "The Four Horsemen",
+        "Patchwerk",
+        "Grobbulus",
+        "Gluth",
+        "Thaddius",
+        "Sapphiron",
+        "Kel'Thuzad"
+      ]
+    },
+    "wotlk_onyxia": {
+      "source": ".data/generated_icons/wotlk_onyxia__bosses_source.png",
+      "columns": 1,
+      "rows": 1,
+      "bosses": [
+        "Onyxia"
+      ]
+    }
+  },
+  "outputs": [
+    "Assets/Bosses/baradin_hold__argaloth.tga",
+    "Assets/Bosses/baradin_hold__occuthar.tga",
+    "Assets/Bosses/baradin_hold__alizabal.tga",
+    "Assets/Bosses/bastion_of_twilight__halfuswyrmbreaker.tga",
+    "Assets/Bosses/bastion_of_twilight__valionaandtheralion.tga",
+    "Assets/Bosses/bastion_of_twilight__ascendantcouncil.tga",
+    "Assets/Bosses/bastion_of_twilight__chogall.tga",
+    "Assets/Bosses/bastion_of_twilight__sinestra.tga",
+    "Assets/Bosses/blackwing_descent__magmaw.tga",
+    "Assets/Bosses/blackwing_descent__omnotrondefensesystem.tga",
+    "Assets/Bosses/blackwing_descent__maloriak.tga",
+    "Assets/Bosses/blackwing_descent__atramedes.tga",
+    "Assets/Bosses/blackwing_descent__chimaeron.tga",
+    "Assets/Bosses/blackwing_descent__nefarian.tga",
+    "Assets/Bosses/dragon_soul__morchok.tga",
+    "Assets/Bosses/dragon_soul__warlordzonozz.tga",
+    "Assets/Bosses/dragon_soul__yorsahjtheunsleeping.tga",
+    "Assets/Bosses/dragon_soul__hagarathestormbinder.tga",
+    "Assets/Bosses/dragon_soul__ultraxion.tga",
+    "Assets/Bosses/dragon_soul__warmasterblackhorn.tga",
+    "Assets/Bosses/dragon_soul__spineofdeathwing.tga",
+    "Assets/Bosses/dragon_soul__madnessofdeathwing.tga",
+    "Assets/Bosses/eye_of_eternity__malygos.tga",
+    "Assets/Bosses/firelands__bethtilac.tga",
+    "Assets/Bosses/firelands__lordrhyolith.tga",
+    "Assets/Bosses/firelands__alysrazor.tga",
+    "Assets/Bosses/firelands__shannox.tga",
+    "Assets/Bosses/firelands__baleroc.tga",
+    "Assets/Bosses/firelands__majordomostaghelm.tga",
+    "Assets/Bosses/firelands__ragnaros.tga",
+    "Assets/Bosses/heart_of_fear__imperialvizierzorlok.tga",
+    "Assets/Bosses/heart_of_fear__bladelordtayak.tga",
+    "Assets/Bosses/heart_of_fear__garalon.tga",
+    "Assets/Bosses/heart_of_fear__windlordmeljarak.tga",
+    "Assets/Bosses/heart_of_fear__ambershaperunsok.tga",
+    "Assets/Bosses/heart_of_fear__grandempressshekzeer.tga",
+    "Assets/Bosses/icecrown_citadel__lordmarrowgar.tga",
+    "Assets/Bosses/icecrown_citadel__ladydeathwhisper.tga",
+    "Assets/Bosses/icecrown_citadel__gunshipbattle.tga",
+    "Assets/Bosses/icecrown_citadel__deathbringersaurfang.tga",
+    "Assets/Bosses/icecrown_citadel__festergut.tga",
+    "Assets/Bosses/icecrown_citadel__rotface.tga",
+    "Assets/Bosses/icecrown_citadel__professorputricide.tga",
+    "Assets/Bosses/icecrown_citadel__bloodprincecouncil.tga",
+    "Assets/Bosses/icecrown_citadel__bloodqueenlanathel.tga",
+    "Assets/Bosses/icecrown_citadel__valithriadreamwalker.tga",
+    "Assets/Bosses/icecrown_citadel__sindragosa.tga",
+    "Assets/Bosses/icecrown_citadel__thelichking.tga",
+    "Assets/Bosses/mogushan_vaults__thestoneguard.tga",
+    "Assets/Bosses/mogushan_vaults__fengtheaccursed.tga",
+    "Assets/Bosses/mogushan_vaults__garajalthespiritbinder.tga",
+    "Assets/Bosses/mogushan_vaults__thespiritkings.tga",
+    "Assets/Bosses/mogushan_vaults__elegon.tga",
+    "Assets/Bosses/mogushan_vaults__willoftheemperor.tga",
+    "Assets/Bosses/obsidian_sanctum__sartharion.tga",
+    "Assets/Bosses/ruby_sanctum__baltharusthewarborn.tga",
+    "Assets/Bosses/ruby_sanctum__savianaragefire.tga",
+    "Assets/Bosses/ruby_sanctum__generalzarithrian.tga",
+    "Assets/Bosses/ruby_sanctum__halion.tga",
+    "Assets/Bosses/siege_of_orgrimmar__immerseus.tga",
+    "Assets/Bosses/siege_of_orgrimmar__thefallenprotectors.tga",
+    "Assets/Bosses/siege_of_orgrimmar__norushen.tga",
+    "Assets/Bosses/siege_of_orgrimmar__shaofpride.tga",
+    "Assets/Bosses/siege_of_orgrimmar__galakras.tga",
+    "Assets/Bosses/siege_of_orgrimmar__ironjuggernaut.tga",
+    "Assets/Bosses/siege_of_orgrimmar__korkrondarkshaman.tga",
+    "Assets/Bosses/siege_of_orgrimmar__generalnazgrim.tga",
+    "Assets/Bosses/siege_of_orgrimmar__malkorok.tga",
+    "Assets/Bosses/siege_of_orgrimmar__spoilsofpandaria.tga",
+    "Assets/Bosses/siege_of_orgrimmar__thokthebloodthirsty.tga",
+    "Assets/Bosses/siege_of_orgrimmar__siegecrafterblackfuse.tga",
+    "Assets/Bosses/siege_of_orgrimmar__paragonsoftheklaxxi.tga",
+    "Assets/Bosses/siege_of_orgrimmar__garroshhellscream.tga",
+    "Assets/Bosses/terrace_of_endless_spring__protectorsoftheendless.tga",
+    "Assets/Bosses/terrace_of_endless_spring__tsulong.tga",
+    "Assets/Bosses/terrace_of_endless_spring__leishi.tga",
+    "Assets/Bosses/terrace_of_endless_spring__shaoffear.tga",
+    "Assets/Bosses/throne_of_the_four_winds__conclaveofwind.tga",
+    "Assets/Bosses/throne_of_the_four_winds__alakir.tga",
+    "Assets/Bosses/throne_of_thunder__jinrokhthebreaker.tga",
+    "Assets/Bosses/throne_of_thunder__horridon.tga",
+    "Assets/Bosses/throne_of_thunder__councilofelders.tga",
+    "Assets/Bosses/throne_of_thunder__tortos.tga",
+    "Assets/Bosses/throne_of_thunder__megaera.tga",
+    "Assets/Bosses/throne_of_thunder__jikun.tga",
+    "Assets/Bosses/throne_of_thunder__durumutheforgotten.tga",
+    "Assets/Bosses/throne_of_thunder__primordius.tga",
+    "Assets/Bosses/throne_of_thunder__darkanimus.tga",
+    "Assets/Bosses/throne_of_thunder__ironqon.tga",
+    "Assets/Bosses/throne_of_thunder__twinconsorts.tga",
+    "Assets/Bosses/throne_of_thunder__leishen.tga",
+    "Assets/Bosses/throne_of_thunder__raden.tga",
+    "Assets/Bosses/trial_of_the_crusader__thenorthrendbeasts.tga",
+    "Assets/Bosses/trial_of_the_crusader__lordjaraxxus.tga",
+    "Assets/Bosses/trial_of_the_crusader__factionchampions.tga",
+    "Assets/Bosses/trial_of_the_crusader__thetwinvalkyr.tga",
+    "Assets/Bosses/trial_of_the_crusader__anubarak.tga",
+    "Assets/Bosses/ulduar__flameleviathan.tga",
+    "Assets/Bosses/ulduar__ignisthefurnacemaster.tga",
+    "Assets/Bosses/ulduar__razorscale.tga",
+    "Assets/Bosses/ulduar__xt002deconstructor.tga",
+    "Assets/Bosses/ulduar__theassemblyofiron.tga",
+    "Assets/Bosses/ulduar__kologarn.tga",
+    "Assets/Bosses/ulduar__auriaya.tga",
+    "Assets/Bosses/ulduar__hodir.tga",
+    "Assets/Bosses/ulduar__thorim.tga",
+    "Assets/Bosses/ulduar__freya.tga",
+    "Assets/Bosses/ulduar__mimiron.tga",
+    "Assets/Bosses/ulduar__generalvezax.tga",
+    "Assets/Bosses/ulduar__yoggsaron.tga",
+    "Assets/Bosses/ulduar__algalontheobserver.tga",
+    "Assets/Bosses/vault_of_archavon__archavonthestonewatcher.tga",
+    "Assets/Bosses/vault_of_archavon__emalonthestormwatcher.tga",
+    "Assets/Bosses/vault_of_archavon__koralontheflamewatcher.tga",
+    "Assets/Bosses/vault_of_archavon__toravontheicewatcher.tga",
+    "Assets/Bosses/wotlk_naxxramas__anubrekhan.tga",
+    "Assets/Bosses/wotlk_naxxramas__grandwidowfaerlina.tga",
+    "Assets/Bosses/wotlk_naxxramas__maexxna.tga",
+    "Assets/Bosses/wotlk_naxxramas__noththeplaguebringer.tga",
+    "Assets/Bosses/wotlk_naxxramas__heigantheunclean.tga",
+    "Assets/Bosses/wotlk_naxxramas__loatheb.tga",
+    "Assets/Bosses/wotlk_naxxramas__instructorrazuvious.tga",
+    "Assets/Bosses/wotlk_naxxramas__gothiktheharvester.tga",
+    "Assets/Bosses/wotlk_naxxramas__thefourhorsemen.tga",
+    "Assets/Bosses/wotlk_naxxramas__patchwerk.tga",
+    "Assets/Bosses/wotlk_naxxramas__grobbulus.tga",
+    "Assets/Bosses/wotlk_naxxramas__gluth.tga",
+    "Assets/Bosses/wotlk_naxxramas__thaddius.tga",
+    "Assets/Bosses/wotlk_naxxramas__sapphiron.tga",
+    "Assets/Bosses/wotlk_naxxramas__kelthuzad.tga",
+    "Assets/Bosses/wotlk_onyxia__onyxia.tga"
+  ]
+}

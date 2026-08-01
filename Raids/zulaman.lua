@@ -198,7 +198,7 @@ local raid = Raid:RegisterRaid({
                 "Flame Whirl Position Caller",
             }),
         }, nil, nil, {
-            icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\zulaman",
+            icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\zulaman__zuljin",
             spellIcon = 43093,
             mechanics = {
                 Mechanic("Handle each animal phase separately: clear Grievous Throw and dispel Paralysis."),

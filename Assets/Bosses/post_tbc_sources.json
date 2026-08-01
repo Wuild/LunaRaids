@@ -1,0 +1,53 @@
+{
+  "kind": "generated raid icon sprite sheet",
+  "generator": "OpenAI built-in image generation",
+  "source": ".data/generated_icons/post_tbc_raids_source.png",
+  "grid": {
+    "columns": 5,
+    "rows": 4,
+    "order": [
+      "wotlk_naxxramas",
+      "obsidian_sanctum",
+      "eye_of_eternity",
+      "vault_of_archavon",
+      "ulduar",
+      "trial_of_the_crusader",
+      "wotlk_onyxia",
+      "icecrown_citadel",
+      "ruby_sanctum",
+      "blackwing_descent",
+      "bastion_of_twilight",
+      "throne_of_the_four_winds",
+      "baradin_hold",
+      "firelands",
+      "dragon_soul",
+      "mogushan_vaults",
+      "heart_of_fear",
+      "terrace_of_endless_spring",
+      "throne_of_thunder",
+      "siege_of_orgrimmar"
+    ]
+  },
+  "outputs": [
+    "Assets/Bosses/wotlk_naxxramas.tga",
+    "Assets/Bosses/obsidian_sanctum.tga",
+    "Assets/Bosses/eye_of_eternity.tga",
+    "Assets/Bosses/vault_of_archavon.tga",
+    "Assets/Bosses/ulduar.tga",
+    "Assets/Bosses/trial_of_the_crusader.tga",
+    "Assets/Bosses/wotlk_onyxia.tga",
+    "Assets/Bosses/icecrown_citadel.tga",
+    "Assets/Bosses/ruby_sanctum.tga",
+    "Assets/Bosses/blackwing_descent.tga",
+    "Assets/Bosses/bastion_of_twilight.tga",
+    "Assets/Bosses/throne_of_the_four_winds.tga",
+    "Assets/Bosses/baradin_hold.tga",
+    "Assets/Bosses/firelands.tga",
+    "Assets/Bosses/dragon_soul.tga",
+    "Assets/Bosses/mogushan_vaults.tga",
+    "Assets/Bosses/heart_of_fear.tga",
+    "Assets/Bosses/terrace_of_endless_spring.tga",
+    "Assets/Bosses/throne_of_thunder.tga",
+    "Assets/Bosses/siege_of_orgrimmar.tga"
+  ]
+}

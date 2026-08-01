@@ -189,7 +189,7 @@ local raid = Raid:RegisterRaid({
                 "Corrupted Blood Spread Caller",
             }),
         }, nil, nil, {
-            icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\zulgurub",
+            icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\zulgurub__hakkar",
             spellIcon = 24324,
         }),
     },
