@@ -5,8 +5,9 @@ Classic. It combines encounter assignments, raid groups, readiness checks,
 gear inspection, personal assignment reminders, officer synchronization, and
 raid cooldown tracking in one interface.
 
-It is designed for Vanilla and The Burning Crusade raids, including the
-post-nerf encounter versions used on Anniversary realms.
+It supports raids from Vanilla through Mists of Pandaria, including the
+post-nerf Vanilla and Burning Crusade encounter versions used on Anniversary
+realms.
 
 LunaRaids is developed by **Wuild** with help from the guild **Voracious** on
 Thunderstrike.
@@ -23,9 +24,12 @@ Thunderstrike.
 ## What LunaRaids does
 
 ### Raid plans and boss assignments
-LunaRaids contains templates for every supported Vanilla and TBC raid. Each
-raid contains its bosses, encounter artwork, mechanics notes, recommended
-assignment slots, and default target markers.
+LunaRaids contains templates for every supported raid from Vanilla through
+Mists of Pandaria. Templates include boss-specific mechanics notes and
+assignment slots for tank jobs, healing coverage, interrupts, dispels, soaks,
+kiting, control, positioning, and other encounter-critical responsibilities.
+Vanilla and Burning Crusade encounters also include dedicated encounter
+artwork and default target markers.
 
 A raid plan can contain:
 
@@ -157,6 +161,35 @@ raid leader, or raid assistants. Choosing Always removes those group and
 permission visibility restrictions.
 
 ## Supported raids
+
+### Mists of Pandaria
+
+- Mogu'shan Vaults
+- Heart of Fear
+- Terrace of Endless Spring
+- Throne of Thunder
+- Siege of Orgrimmar
+
+### Cataclysm
+
+- Blackwing Descent
+- The Bastion of Twilight
+- Throne of the Four Winds
+- Baradin Hold
+- Firelands
+- Dragon Soul
+
+### Wrath of the Lich King
+
+- Naxxramas
+- The Obsidian Sanctum
+- The Eye of Eternity
+- Vault of Archavon
+- Ulduar
+- Trial of the Crusader
+- Onyxia's Lair
+- Icecrown Citadel
+- The Ruby Sanctum
 
 ### The Burning Crusade
 

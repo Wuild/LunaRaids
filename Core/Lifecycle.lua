@@ -239,11 +239,11 @@ function Raid:HandleSlashCommand(input)
             "Usage: /lr sim 10, /lr sim 25, /lr sim 40, or /lr sim clear")
     elseif input == "reset" then
         self:ClearPlan()
-        self:Print("Current encounter assignments cleared.")
+        self:Print(self.L.ENCOUNTER_ASSIGNMENTS_CLEARED)
     elseif input == "sync" then
         if self.RequestPeerSync then
             self:RequestPeerSync()
-            self:Print("Requested the current LunaRaids plan.")
+            self:Print(self.L.CURRENT_PLAN_REQUESTED)
         end
     elseif input == "minimap" then
         self.db.minimap.hide = not self.db.minimap.hide
@@ -263,6 +263,7 @@ end
 
 function Raid:OnEnable()
     self:InitializeCommunication()
+    self:RestoreSimulationSession()
     self:RefreshLoginRoster()
     if self.RefreshPersonalAssignments then
         self:RefreshPersonalAssignments()
@@ -271,5 +272,6 @@ function Raid:OnEnable()
         self:CreateQuickActionBar()
         self:RefreshQuickActionBar()
     end
+    if self.RefreshMechanicsHUD then self:RefreshMechanicsHUD() end
     if self.RequestPeerSync then self:RequestPeerSync() end
 end

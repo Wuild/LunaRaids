@@ -6,11 +6,25 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
     key = "magtheridon", name = "Magtheridon's Lair", size = 25,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\magtheridon",
+    guides = {
+        ["Magtheridon"] = {
+            Mechanic("Use a dedicated interrupt on every Channeler's Dark Mending and Shadow Bolt Volley; banish or tank Abyssals away."),
+            Mechanic("All five cubes must be clicked together before Blast Nova; clickers hold through the channel and rotate for Mind Exhaustion."),
+            Mechanic("At 30%, move away from walls before the ceiling collapse and stabilize tank healing before resuming full damage."),
+        },
+    },
+    recommendations = {
+        Rec("interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+        Rec("channeler tank", { "WARRIOR", "DRUID", "PALADIN" }, { "Protection", "Feral" }),
+        Rec("clicker", { "HUNTER", "MAGE", "WARLOCK", "PRIEST", "SHAMAN" }, { "Marksmanship", "Frost", "Affliction", "Shadow", "Elemental" }),
+        Rec("banish", { "WARLOCK" }, { "Affliction", "Demonology" }),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", {

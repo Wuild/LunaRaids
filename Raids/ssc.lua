@@ -6,11 +6,55 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
+local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
     key = "ssc", name = "Serpentshrine Cavern", size = 25,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\ssc",
+    guides = {
+        ["Hydross the Unstable"] = {
+            Mechanic("Frost and nature tanks use the matching resistance set; healers swap focus before each planned boundary crossing."),
+            Mechanic("Threat resets on every transition, so damage stops until the new tank has control and all four adds are collected."),
+        },
+        ["The Lurker Below"] = {
+            Mechanic("Spout rotates in one direction from Lurker's facing; submerge or circle with it rather than crossing the beam."),
+            Mechanic("Platform teams crowd-control Ambushers and kill Guardians first while tanks prevent adds reaching healers."),
+        },
+        ["Leotheras the Blind"] = {
+            Mechanic("Interrupt every Spellbinder heal before activation and reset threat after each Whirlwind and form transition."),
+            Mechanic("The fire-resistance warlock builds demon-form threat at range; Inner Demon targets save cooldowns to kill their own add."),
+        },
+        ["Fathom-Lord Karathress"] = {
+            Mechanic("Keep Caribdis away from the kill group, interrupt every heal, and move out of Tornado disruption."),
+            Mechanic("Destroy Spitfire Totem instantly, control Sharkkis' pet, and prepare for Karathress to inherit each adviser ability."),
+        },
+        ["Morogrim Tidewalker"] = {
+            Mechanic("After Earthquake, paladin or AoE tanks gather both murloc packs before damage begins; healers avoid early threat."),
+            Mechanic("Watery Grave healers watch the grave locations, and below 25% everyone avoids globules while maintaining the murloc plan."),
+        },
+        ["Lady Vashj"] = {
+            Mechanic("Tainted Core carriers cannot move; relay each core through assigned players and use it on the matching shield generator."),
+            Mechanic("Slow and kite Striders without letting them fear the platform, tank Coilfang Elites, and prioritize Tainted Elementals."),
+            Mechanic("In phase 3, spread Static Charge, move from poison, and kill Sporebats before toxic ground overwhelms the platform."),
+        },
+    },
+    recommendations = {
+        Rec("nature resistance", { "HUNTER", "SHAMAN" }, { "Survival", "Restoration", "Elemental" }, Reuse),
+        Rec("frost resistance", { "PALADIN", "SHAMAN" }, { "Holy", "Protection", "Restoration" }, Reuse),
+        Rec("frost tank", { "WARRIOR", "DRUID" }, { "Protection", "Feral" }),
+        Rec("nature tank", { "WARRIOR", "DRUID" }, { "Protection", "Feral" }),
+        Rec("ambusher cc", { "MAGE", "HUNTER", "WARLOCK" }, { "Frost", "Survival", "Affliction" }),
+        Rec("demon tank", { "WARLOCK" }, { "Destruction", "Demonology" }),
+        Rec("interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+        Rec("murloc tank", { "PALADIN", "WARRIOR", "DRUID" }, { "Protection", "Feral" }),
+        Rec("murloc aoe", { "MAGE", "WARLOCK", "SHAMAN" }, { "Frost", "Fire", "Destruction", "Elemental" }),
+        Rec("strider kiter", { "HUNTER", "WARLOCK", "MAGE" }, { "Marksmanship", "Affliction", "Frost" }),
+        Rec("strider slow", { "MAGE", "SHAMAN", "HUNTER" }, { "Frost", "Elemental", "Survival" }),
+        Rec("elemental", { "HUNTER", "WARLOCK", "MAGE", "SHAMAN" }, { "Marksmanship", "Affliction", "Frost", "Elemental" }, { encounter = "Lady Vashj" }),
+        Rec("core", { "HUNTER", "MAGE", "WARLOCK", "SHAMAN" }, { "Marksmanship", "Frost", "Affliction", "Elemental" }, { encounter = "Lady Vashj" }),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", { A.TANK.MAIN, A.TANK.OFF, A.TANK.THIRD }),

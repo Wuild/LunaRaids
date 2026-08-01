@@ -1,5 +1,6 @@
 local _, Raid = ...
 local UI = Raid.UI
+local L = Raid.L
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -68,9 +69,9 @@ function Raid:CreateQuickActionBar()
     end)
     bar.Handle:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Raid Tools")
+        GameTooltip:SetText(L.RAID_TOOLS)
         GameTooltip:AddLine(
-            "Drag to move. Right-click to reset position.",
+            L.DRAG_RESET_POSITION,
             MUTED[1], MUTED[2], MUTED[3], true)
         GameTooltip:Show()
     end)
@@ -80,47 +81,47 @@ function Raid:CreateQuickActionBar()
     bar.Handle.Icon:SetTexture("Interface\\Icons\\INV_BannerPVP_02")
     PixelSetSize(bar.Handle.Icon, 22, 22)
     bar.Handle.Icon:SetPoint("LEFT", 8, 0)
-    bar.Handle.Title = Font(bar.Handle, 9, "accent", "RAID\nTOOLS")
+    bar.Handle.Title = Font(bar.Handle, 9, "accent", L.RAID_TOOLS_COMPACT)
     bar.Handle.Title:SetPoint("LEFT", bar.Handle.Icon, "RIGHT", 6, 0)
 
     local actions = {
         {
-            label = "READY",
+            label = L.ACTION_READY,
             icon = "Interface\\RaidFrame\\ReadyCheck-Ready",
-            title = "Ready Check",
-            detail = "Start Blizzard's raid ready check.",
+            title = L.READY_CHECK,
+            detail = L.READY_CHECK_DESC,
             action = function() Raid:StartReadyCheck() end,
             rightAction = function()
                 Raid:ShowPinnedReadyCheckWindow()
             end,
         },
         {
-            label = "ROLES",
+            label = L.ACTION_ROLES,
             icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",
-            title = "Role Check",
-            detail = "Ask the group to confirm their combat roles.",
+            title = L.ROLE_CHECK,
+            detail = L.ROLE_CHECK_DESC,
             action = function() Raid:StartRoleCheck() end,
         },
         {
-            label = "PULL 10",
+            label = L.ACTION_PULL_10,
             icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
-            title = "Pull Timer",
-            detail = "Start a 10-second group countdown.",
+            title = L.PULL_TIMER,
+            detail = L.PULL_TIMER_DESC,
             action = function() Raid:StartPullCountdown(10) end,
         },
         {
-            label = "BREAK 5",
+            label = L.ACTION_BREAK_5,
             icon = "Interface\\Icons\\INV_Drink_05",
-            title = "Break Timer",
-            detail = "Announce and start a five-minute break.",
+            title = L.BREAK_TIMER,
+            detail = L.BREAK_TIMER_DESC,
             action = function() Raid:StartBreakTimer(5) end,
             rightAction = function(button)
                 ShowSelectionMenu(
                     button,
                     {
-                        { 5, "5 minutes" },
-                        { 10, "10 minutes" },
-                        { 15, "15 minutes" },
+                        { 5, L.MINUTES_5 },
+                        { 10, L.MINUTES_10 },
+                        { 15, L.MINUTES_15 },
                     },
                     5,
                     function(minutes)
@@ -128,14 +129,13 @@ function Raid:CreateQuickActionBar()
                     end,
                     156)
             end,
-            rightDetail =
-                "\nRight-click to choose 5, 10, or 15 minutes.",
+            rightDetail = L.RIGHT_CLICK_BREAK,
         },
         {
-            label = "ASSIGN",
+            label = L.ACTION_ASSIGN,
             icon = "Interface\\Icons\\INV_Misc_Note_05",
-            title = "Raid Assignments",
-            detail = "Open LunaRaids directly to the raid assignments.",
+            title = L.RAID_ASSIGNMENTS,
+            detail = L.RAID_ASSIGNMENTS_DESC,
             action = function()
                 Raid:CreateUI()
                 if Raid.settingsView and Raid.settingsView:IsShown() then
@@ -172,7 +172,7 @@ function Raid:CreateQuickActionBar()
             entry.detail .. (
                 entry.rightDetail
                 or rightAction
-                    and "\nRight-click to open and pin the latest results."
+                    and L.RIGHT_CLICK_PIN_RESULTS
                 or ""))
         if index == 1 then StyleButton(button, "primary") end
         bar.Actions[index] = button
@@ -198,8 +198,8 @@ function Raid:CreateQuickActionBar()
         "OnClick", function() Raid:NavigateBoss(-1) end)
     bar.BossNav.Previous.tooltipAnchorFrame = bar
     AddButtonTooltip(
-        bar.BossNav.Previous, "Previous Boss",
-        "Select the previous boss and set it as the current encounter.")
+        bar.BossNav.Previous, L.PREVIOUS_BOSS,
+        L.PREVIOUS_BOSS_DESC)
     bar.BossNav.Next = Button(bar.BossNav, "", 28, 24)
     bar.BossNav.Next:SetPoint("RIGHT", -4, -1)
     bar.BossNav.Next.Icon =
@@ -212,8 +212,8 @@ function Raid:CreateQuickActionBar()
         "OnClick", function() Raid:NavigateBoss(1) end)
     bar.BossNav.Next.tooltipAnchorFrame = bar
     AddButtonTooltip(
-        bar.BossNav.Next, "Next Boss",
-        "Select the next boss and set it as the current encounter.")
+        bar.BossNav.Next, L.NEXT_BOSS,
+        L.NEXT_BOSS_DESC)
     bar.BossNav.Announce = Button(bar.BossNav, "", 28, 24)
     bar.BossNav.Announce:SetPoint(
         "RIGHT", bar.BossNav.Next, "LEFT", -4, 0)
@@ -223,7 +223,20 @@ function Raid:CreateQuickActionBar()
         "Interface\\Icons\\Ability_Warrior_BattleShout", 15)
     bar.BossNav.Announce.ActionIcon:ClearAllPoints()
     bar.BossNav.Announce.ActionIcon:SetPoint("CENTER")
-    bar.BossNav.Announce:SetScript("OnClick", function()
+    bar.BossNav.Announce:RegisterForClicks(
+        "LeftButtonUp", "RightButtonUp")
+    bar.BossNav.Announce:SetScript("OnClick", function(self, mouseButton)
+        if mouseButton == "RightButton" then
+            Raid:ShowAnnouncementChannelMenu(self, function(channel)
+                local raid = Raid:GetRaid()
+                local index = Raid:GetCurrentBossIndex(raid)
+                if index and Raid.db.activeEncounter ~= index then
+                    Raid:SetEncounter(index)
+                end
+                Raid:AnnounceAssignments(channel)
+            end)
+            return
+        end
         local raid = Raid:GetRaid()
         local index = Raid:GetCurrentBossIndex(raid)
         if index and Raid.db.activeEncounter ~= index then
@@ -233,8 +246,8 @@ function Raid:CreateQuickActionBar()
     end)
     bar.BossNav.Announce.tooltipAnchorFrame = bar
     AddButtonTooltip(
-        bar.BossNav.Announce, "Announce Assignments",
-        "Announce assignments for the selected boss.")
+        bar.BossNav.Announce, L.ANNOUNCE_ASSIGNMENTS,
+        L.ANNOUNCE_ASSIGNMENTS_DESC .. L.ANNOUNCE_CHANNEL_PICKER_DESC)
     bar.BossNav.Name = Font(bar.BossNav, 9, "accent", "")
     bar.BossNav.Name:SetPoint(
         "LEFT", bar.BossNav.Previous, "RIGHT", 8, -1)

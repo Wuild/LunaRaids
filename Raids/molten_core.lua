@@ -6,11 +6,61 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
+local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "VANILLA",
     key = "molten_core", name = "Molten Core", size = 40,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\molten_core",
+    guides = {
+        ["Lucifron"] = {
+            Mechanic("Off-tanks separate both Flamewaker Protectors; interrupt and kill them before Lucifron."),
+            Mechanic("Decurse Lucifron's Curse immediately and dispel Impending Doom while mana users conserve resources."),
+        },
+        ["Magmadar"] = {
+            Mechanic("Face Magmadar away from the raid; ranged and healers spread outside his frontal cone."),
+            Mechanic("Hunters rotate Tranquilizing Shot on Frenzy, and everyone moves out of fire patches."),
+        },
+        ["Gehennas"] = {
+            Mechanic("Pull and tank Gehennas away from his guards; interrupt and focus the guards first."),
+            Mechanic("Decurse Gehennas' Curse quickly and move out of Rain of Fire without dragging the boss."),
+        },
+        ["Garr"] = {
+            Mechanic("Assign tanks or banishes to every Firesworn and keep them separated from Garr."),
+            Mechanic("Kill or release adds in a controlled order; dispel Garr's slowing effect and avoid chained eruptions."),
+        },
+        ["Baron Geddon"] = {
+            Mechanic("Spread around the room, move away during Inferno, and keep the tank in healer range."),
+            Mechanic("Living Bomb targets immediately run to the assigned safe area before exploding."),
+        },
+        ["Shazzrah"] = {
+            Mechanic("Spread casters around the tank and stop damage briefly after each teleport while threat stabilizes."),
+            Mechanic("Decurse Shazzrah's Curse continuously and purge or dispel his self-buff to reduce damage."),
+        },
+        ["Sulfuron Harbinger"] = {
+            Mechanic("Separate Sulfuron from the four priests and focus one add at a time."),
+            Mechanic("Maintain an interrupt rotation on Dark Mending and dispel Shadow Word: Pain from the raid."),
+        },
+        ["Golemagg the Incinerator"] = {
+            Mechanic("Tank Golemagg away from both Core Ragers; off-tanks hold the dogs without trying to kill them early."),
+            Mechanic("Melee watch stacking Magma Splash, and healers prepare for heavy damage below 10%."),
+        },
+        ["Majordomo Executus"] = {
+            Mechanic("Control healers with polymorph where possible and kill the elite adds in the assigned order."),
+            Mechanic("Interrupt or purge add healing, stop attacks into Magic Reflection, and never damage Majordomo directly."),
+        },
+        ["Ragnaros"] = {
+            Mechanic("The main tank holds Ragnaros at the edge while melee avoid knockbacks and ranged spread."),
+            Mechanic("During submerge, collapse into assigned groups, control every Son of Flame, and kill them before emergence."),
+        },
+    },
+    recommendations = {
+        Rec("decurse", { "MAGE", "DRUID" }, { "Arcane", "Frost", "Restoration", "Balance" }, Reuse),
+        Rec("tranq", { "HUNTER" }, { "Marksmanship", "Beast Mastery", "Survival" }),
+        Rec("banish", { "WARLOCK" }, { "Affliction", "Demonology" }),
+        Rec("interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", {

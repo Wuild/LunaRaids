@@ -1,5 +1,6 @@
 local _, Raid = ...
 local UI = Raid.UI
+local L = Raid.L
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -30,6 +31,28 @@ local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
 local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
 local CreateScrollArea = UI.CreateScrollArea
+
+local function RecommendationText(values, classNames)
+    local entries = {}
+    for key, weight in pairs(values or {}) do
+        entries[#entries + 1] = { key = key, weight = weight }
+    end
+    table.sort(entries, function(left, right)
+        if left.weight ~= right.weight then
+            return left.weight > right.weight
+        end
+        return left.key < right.key
+    end)
+    local labels = {}
+    for _, entry in ipairs(entries) do
+        labels[#labels + 1] = classNames
+            and LOCALIZED_CLASS_NAMES_MALE
+            and LOCALIZED_CLASS_NAMES_MALE[entry.key]
+            or entry.key
+    end
+    return table.concat(labels, ", ")
+end
+
 function Raid:CreateAssignmentSlot(index)
     local slot = Button(
         self.assignmentContent, "",
@@ -67,7 +90,7 @@ function Raid:CreateAssignmentSlot(index)
         self:SetBackdropColor(.18, .18, .18, .95)
         self:SetBackdropBorderColor(unpack(ACCENT))
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Healing target")
+        GameTooltip:SetText(Raid.L.HEALING_TARGET)
         GameTooltip:AddLine(
             "Click to cycle between tanks and raid healing.",
             unpack(MUTED))
@@ -141,14 +164,30 @@ function Raid:CreateAssignmentSlot(index)
             self:SetBackdropBorderColor(unpack(ACCENT))
         end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Assign player")
+        GameTooltip:SetText(Raid.L.ASSIGN_PLAYER)
         GameTooltip:AddLine(
             "Drag a roster player here, or select a player and click.",
             unpack(MUTED))
         GameTooltip:AddLine(
-            "With no player selected, click to choose the best role and GearScore match.",
+            "With no player selected, click to choose the best role, "
+                .. "encounter recommendation, and GearScore match.",
             .35, .72, 1, true)
-        GameTooltip:AddLine("Right-click to clear this slot.", unpack(MUTED))
+        local definition = self.assignmentDefinition
+        local classes = definition and RecommendationText(
+            definition.recommendedClasses, true) or ""
+        local specs = definition and RecommendationText(
+            definition.recommendedSpecs, false) or ""
+        if classes ~= "" then
+            GameTooltip:AddLine(
+                "Recommended classes: " .. classes,
+                .45, .82, 1, true)
+        end
+        if specs ~= "" then
+            GameTooltip:AddLine(
+                "Recommended specs: " .. specs,
+                .55, .90, .65, true)
+        end
+        GameTooltip:AddLine(Raid.L.RIGHT_CLICK_CLEAR_SLOT, unpack(MUTED))
         GameTooltip:Show()
     end)
     slot:SetScript("OnLeave", function(self)
@@ -184,7 +223,7 @@ function Raid:CreateMarkerRow(index)
     row:SetScript("OnEnter", function(self)
         self:SetBackdropBorderColor(unpack(ACCENT))
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Raid marker")
+        GameTooltip:SetText(Raid.L.RAID_MARKER)
         GameTooltip:AddLine(
             "Left-click to choose the next unused marker. "
             .. "Right-click to clear.",
@@ -266,10 +305,12 @@ function Raid:SetWorkspaceMode(mode)
             end
             self:SetRaidWorkspaceVisible(true)
             self:SetRaidPickerMode(true)
-            if self.newRaidWizard then
-                self.newRaidWizard:Show()
-                self:RefreshNewRaidWizard()
-            end
+            local wizard = self:CreateNewRaidWizard()
+            wizard.step = wizard.step or "EXPANSION"
+            wizard:Show()
+            self:RefreshNewRaidWizard()
+            self.frame.Title:SetText("LUNA RAIDS")
+            self.frame.Subtitle:SetText(self.L.CREATE_OR_LOAD_RAID_PLAN)
             self:RefreshWorkspaceNavigation()
             self:UpdateWindowLayout()
         end
@@ -457,30 +498,30 @@ function Raid:RefreshWorkspaceNavigation()
     end
     if not picker and self.frame and self.frame.Title then
         if groups then
-            self.frame.Title:SetText("RAID GROUPS")
+            self.frame.Title:SetText(self.L.RAID_GROUPS)
             self.frame.Subtitle:SetText(
-                "ARRANGE PLAYERS ACROSS THE LIVE RAID")
+                self.L.ARRANGE_LIVE_RAID)
         elseif status then
-            self.frame.Title:SetText("RAID STATUS")
+            self.frame.Title:SetText(self.L.RAID_STATUS)
             self.frame.Subtitle:SetText(
-                "READINESS, BUFFS, AND CONSUMABLES")
+                self.L.READINESS_BUFFS_CONSUMABLES)
         elseif gear then
-            self.frame.Title:SetText("GEAR INSPECT")
+            self.frame.Title:SetText(self.L.GEAR_INSPECT)
             self.frame.Subtitle:SetText(
-                "LIVE RAID EQUIPMENT AND ITEM LEVELS")
+                self.L.LIVE_RAID_EQUIPMENT)
         elseif about then
-            self.frame.Title:SetText("ABOUT LUNARAIDS")
+            self.frame.Title:SetText(self.L.ABOUT_LUNARAIDS)
             self.frame.Subtitle:SetText(
-                "PROJECT, CONTRIBUTORS, AND SUPPORT")
+                self.L.PROJECT_CONTRIBUTORS_SUPPORT)
         elseif settings then
-            self.frame.Title:SetText("SETTINGS")
+            self.frame.Title:SetText(self.L.SETTINGS)
             self.frame.Subtitle:SetText(
-                "INTERFACE, COMMUNICATION, AND RAID ADMINISTRATION")
+                self.L.INTERFACE_COMMUNICATION_ADMIN)
         else
             local raid = self:GetRaid()
             self.frame.Title:SetText("LUNA RAIDS")
             self.frame.Subtitle:SetText(
-                raid.name:upper() .. "  ·  ACTIVE PLAN")
+                raid.name:upper() .. "  ·  " .. self.L.ACTIVE_PLAN)
         end
     end
     for key, button in pairs(self.workspaceButtons or {}) do
@@ -584,7 +625,7 @@ function Raid:CreateBossSettingsPanel()
     panel:SetFrameLevel(self.assignmentPanel:GetFrameLevel() + 20)
     panel:SetPoint(
         "TOPRIGHT", self.bossSettingsButton, "BOTTOMRIGHT", 0, -5)
-    panel.Title = Font(panel, 11, "accent", "BOSS ASSIGNMENT SETUP")
+    panel.Title = Font(panel, 11, "accent", L.BOSS_ASSIGNMENT_SETUP:upper())
     panel.Title:SetPoint("TOPLEFT", 10, -10)
     panel.Rows = {}
     panel.PresetPrevious = Button(panel, "<", 27, 23)
@@ -592,7 +633,7 @@ function Raid:CreateBossSettingsPanel()
     panel.PresetPrevious:SetScript("OnClick", function()
         Raid:CycleBossPreset(-1)
     end)
-    panel.PresetName = Button(panel, "NO SAVED PRESETS", 252, 23)
+    panel.PresetName = Button(panel, Raid.L.NO_SAVED_PRESETS, 252, 23)
     panel.PresetName:SetPoint(
         "LEFT", panel.PresetPrevious, "RIGHT", 4, 0)
     panel.PresetName:SetScript("OnClick", function()
@@ -603,26 +644,26 @@ function Raid:CreateBossSettingsPanel()
     panel.PresetNext:SetScript("OnClick", function()
         Raid:CycleBossPreset(1)
     end)
-    panel.Save = Button(panel, "SAVE NEW", 70, 24)
+    panel.Save = Button(panel, Raid.L.SAVE_NEW, 70, 24)
     StyleButton(panel.Save, "primary")
     panel.Save:SetPoint("BOTTOMLEFT", 8, 8)
     panel.Save:SetScript("OnClick", function()
         Raid:PromptSaveBossPreset()
     end)
-    panel.Load = Button(panel, "APPLY", 70, 24)
+    panel.Load = Button(panel, Raid.L.APPLY, 70, 24)
     StyleButton(panel.Load, "positive")
     panel.Load:SetPoint("LEFT", panel.Save, "RIGHT", 5, 0)
     panel.Load:SetScript("OnClick", function()
         Raid:LoadBossPreset()
         Raid:RefreshBossSettingsPanel()
     end)
-    panel.Delete = Button(panel, "DELETE", 70, 24)
+    panel.Delete = Button(panel, Raid.L.DELETE, 70, 24)
     StyleButton(panel.Delete, "danger")
     panel.Delete:SetPoint("LEFT", panel.Load, "RIGHT", 5, 0)
     panel.Delete:SetScript("OnClick", function()
         Raid:PromptDeleteBossPreset()
     end)
-    panel.Reset = Button(panel, "DEFAULT", 82, 24)
+    panel.Reset = Button(panel, Raid.L.DEFAULT, 82, 24)
     panel.Reset:SetPoint("LEFT", panel.Delete, "RIGHT", 5, 0)
     panel.Reset:SetScript("OnClick", function()
         Raid:ResetBossOverride()
@@ -638,7 +679,8 @@ function Raid:PromptSaveBossPreset()
         local popup = StaticPopup_Show("LUNARAIDS_SAVE_BOSS_PRESET")
         local editBox = self:GetPopupEditBox(popup)
         if editBox then
-            editBox:SetText(self:GetEncounter().name .. " Setup")
+            editBox:SetText(self:Localize(
+                "ENCOUNTER_SETUP_NAME", self:GetEncounter().name))
             editBox:HighlightText()
         end
     else
@@ -665,10 +707,10 @@ function Raid:RefreshBossSettingsPanel()
     local presets = self:GetBossPresets()
     local selected = self:GetSelectedBossPreset()
     local hasPreset = selected ~= nil
-    panel.Title:SetText("BOSS ASSIGNMENT SETUP  -  "
+    panel.Title:SetText(self.L.BOSS_ASSIGNMENT_SETUP:upper() .. "  -  "
         .. #presets .. (#presets == 1 and " PRESET" or " PRESETS"))
     panel.PresetName.Text:SetText(
-        selected and selected.name:upper() or "NO SAVED PRESETS")
+        selected and selected.name:upper() or self.L.NO_SAVED_PRESETS)
     panel.PresetPrevious:SetEnabled(#presets > 1)
     panel.PresetPrevious:SetAlpha(#presets > 1 and 1 or .42)
     panel.PresetNext:SetEnabled(#presets > 1)
@@ -679,7 +721,7 @@ function Raid:RefreshBossSettingsPanel()
     panel.Delete:SetAlpha(hasPreset and 1 or .42)
     local entries = {
         {
-            label = "Healer Assignments",
+            label = self.L.HEALER_ASSIGNMENTS_TITLE,
             value = self:GetHealingSlotCount(),
             adjust = function(delta)
                 Raid:SetBossHealerCount(
@@ -841,7 +883,7 @@ function Raid:RefreshMechanics()
         self.mechanicLines[index]:Hide()
     end
     self.assignmentContent:SetHeight(math.max(1, y))
-    self.assignmentTitle:SetText(encounter.name:upper() .. "  QUICK GUIDE")
+    self.assignmentTitle:SetText(encounter.name:upper() .. "  " .. self.L.QUICK_GUIDE)
 end
 
 function Raid:CreateRaidGroupFrame(groupIndex)
@@ -874,7 +916,8 @@ function Raid:CreateRaidGroupFrame(groupIndex)
     group.Divider:SetPoint("BOTTOMRIGHT", 0, 0)
     SetPixelWidth(group.Divider, 1)
     group.Divider:SetVertexColor(.09, .14, .18, .65)
-    group.Title = Font(group, 10, "accent", "GROUP " .. groupIndex)
+    group.Title = Font(group, 10, "accent",
+        Raid:Localize("GROUP_NUMBER", groupIndex))
     group.Title:SetPoint("LEFT", group.HeaderBg, "LEFT", 10, 0)
     group.Count = Font(group, 9, "muted", "0/5")
     group.Count:SetPoint("RIGHT", group.HeaderBg, "RIGHT", -9, 0)
@@ -960,14 +1003,14 @@ function Raid:CreateRaidGroupFrame(groupIndex)
             if self.player then
                 GameTooltip:SetText(self.player.name)
                 if self.player.leader then
-                    GameTooltip:AddLine("Raid Leader", .95, .78, .25)
+                    GameTooltip:AddLine(Raid.L.RAID_LEADER, .95, .78, .25)
                 elseif self.player.assistant then
-                    GameTooltip:AddLine("Raid Assistant", .55, .78, 1)
+                    GameTooltip:AddLine(Raid.L.RAID_ASSISTANT, .55, .78, 1)
                 end
                 if self.player.raidAssignment == "MAINTANK" then
-                    GameTooltip:AddLine("Main Tank", .35, .75, 1)
+                    GameTooltip:AddLine(Raid.L.MAIN_TANK, .35, .75, 1)
                 elseif self.player.raidAssignment == "MAINASSIST" then
-                    GameTooltip:AddLine("Main Assist", .35, .75, 1)
+                    GameTooltip:AddLine(Raid.L.MAIN_ASSIST, .35, .75, 1)
                 end
                 GameTooltip:AddLine(
                     "Drag onto another player to swap groups.",
@@ -976,7 +1019,7 @@ function Raid:CreateRaidGroupFrame(groupIndex)
                     "Right-click for player actions.",
                     MUTED[1], MUTED[2], MUTED[3], true)
             else
-                GameTooltip:SetText("Empty group position")
+                GameTooltip:SetText(Raid.L.EMPTY_GROUP_POSITION)
                 GameTooltip:AddLine(
                     "Drop a player here to move them into this group.",
                     MUTED[1], MUTED[2], MUTED[3], true)
@@ -1005,42 +1048,42 @@ function Raid:CreateRaidGroupQuickActions()
     panel:SetFrameLevel(self.frame:GetFrameLevel() + 8)
     local actions = {
         {
-            label = "READY CHECK",
+            label = self.L.ACTION_READY_CHECK,
             icon = "Interface\\RaidFrame\\ReadyCheck-Ready",
-            title = "Ready Check",
-            detail = "Start Blizzard's raid ready check.",
+            title = self.L.READY_CHECK,
+            detail = self.L.READY_CHECK_DESC,
             action = function() Raid:StartReadyCheck() end,
             rightAction = function()
                 Raid:ShowPinnedReadyCheckWindow()
             end,
         },
         {
-            label = "ROLE CHECK",
+            label = self.L.ACTION_ROLE_CHECK,
             icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",
-            title = "Role Check",
-            detail = "Ask the raid to confirm combat roles.",
+            title = self.L.ROLE_CHECK,
+            detail = self.L.ROLE_CHECK_DESC,
             action = function() Raid:StartRoleCheck() end,
         },
         {
-            label = "PULL 10",
+            label = self.L.ACTION_PULL_10,
             icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
-            title = "Pull Timer",
-            detail = "Start a 10-second pull countdown.",
+            title = self.L.PULL_TIMER,
+            detail = self.L.PULL_TIMER_DESC,
             action = function() Raid:StartPullCountdown(10) end,
         },
         {
-            label = "BREAK 5",
+            label = self.L.ACTION_BREAK_5,
             icon = "Interface\\Icons\\INV_Drink_05",
-            title = "Break Timer",
-            detail = "Announce and start a five-minute break.",
+            title = self.L.BREAK_TIMER,
+            detail = self.L.BREAK_TIMER_DESC,
             action = function() Raid:StartBreakTimer(5) end,
             rightAction = function(button)
                 ShowSelectionMenu(
                     button,
                     {
-                        { 5, "5 minutes" },
-                        { 10, "10 minutes" },
-                        { 15, "15 minutes" },
+                        { 5, self.L.MINUTES_5 },
+                        { 10, self.L.MINUTES_10 },
+                        { 15, self.L.MINUTES_15 },
                     },
                     5,
                     function(minutes)
@@ -1109,7 +1152,7 @@ function Raid:RefreshRaidGroups()
         end
         self.raidGroupsEmptyState:Show()
         self.assignmentContent:SetHeight(330)
-        self.assignmentTitle:SetText("RAID GROUPS")
+        self.assignmentTitle:SetText(self.L.RAID_GROUPS)
         self:RefreshFooterLayout()
         return
     end
@@ -1207,7 +1250,7 @@ function Raid:RefreshRaidGroups()
                 slot:SetAlpha(
                     unavailable and (player.manual and .72 or .48) or 1)
             else
-                slot.Text:SetText("Empty")
+                slot.Text:SetText(self.L.EMPTY)
                 slot.Text:SetTextColor(unpack(MUTED))
                 slot.ClassDot:Hide()
                 slot.Role:Hide()
@@ -1230,7 +1273,7 @@ function Raid:RefreshRaidGroups()
         group:Show()
     end
     self.assignmentContent:SetHeight(406)
-    self.assignmentTitle:SetText("RAID GROUP EDITOR")
+    self.assignmentTitle:SetText(self.L.RAID_GROUP_EDITOR)
     self:RefreshFooterLayout()
 end
 

@@ -6,11 +6,51 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
+local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
+local HealerReuse = { roles = { Raid.Role.HEALER }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
     key = "sunwell", name = "Sunwell Plateau", size = 25,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\sunwell",
+    guides = {
+        ["Kalecgos"] = {
+            Mechanic("Portal groups enter Spectral Realm in rotation, tank Sathrovarr, and leave before Spectral Exhaustion becomes dangerous."),
+            Mechanic("Decurse Curse of Boundless Agony with controlled timing and balance damage so dragon and demon reach low health together."),
+        },
+        ["Brutallus"] = {
+            Mechanic("Two tanks swap at the planned Meteor Slash count while both soak groups remain stacked separately behind the boss."),
+            Mechanic("Burn targets run to their assigned side without clipping others; dedicated healers follow each Burn until it expires."),
+        },
+        ["Felmyst"] = {
+            Mechanic("Mass-dispel Encapsulate quickly and keep north and south healers positioned to cover separated groups."),
+            Mechanic("During air phase, watch Felmyst's direction, avoid all three Demonic Vapor trails, and move out of the lethal breath lane."),
+        },
+        ["The Eredar Twins"] = {
+            Mechanic("A ranged tank holds Alythess while a physical tank holds Sacrolash; positioning controls Conflagration and Shadow Nova."),
+            Mechanic("Conflagration targets move away immediately, Shadow Image adds are controlled, and healers manage alternating shadow/fire stacks."),
+        },
+        ["M'uru"] = {
+            Mechanic("Side teams interrupt Shadowsword casters and kill Berserkers while the sentinel tank controls Void Sentinels and spawns."),
+            Mechanic("Use planned AoE on humanoids and void spawns without missing Darkness; enter Entropius with adds dead and cooldowns ready."),
+        },
+        ["Kil'jaeden"] = {
+            Mechanic("Spread for Fire Bloom, collapse behind Shield Orbs when Darkness is cast, and assign ranged players to kill Shield Orbs."),
+            Mechanic("Dragon controllers rotate shields for Darkness and use haste or breath abilities on schedule without wasting orb duration."),
+            Mechanic("Sinister Reflections are tanked and killed by class priority; move from Armageddon impacts while maintaining portal positioning."),
+        },
+    },
+    recommendations = {
+        Rec("dispel", { "PRIEST", "PALADIN", "SHAMAN" }, { "Discipline", "Holy", "Restoration" }, Reuse),
+        Rec("curse dispel", { "MAGE", "DRUID" }, { "Arcane", "Frost", "Restoration", "Balance" }, Reuse),
+        Rec("mass dispel", { "PRIEST" }, { "Discipline", "Holy", "Shadow" }, Reuse),
+        Rec("north healer", { "SHAMAN", "DRUID", "PRIEST", "PALADIN" }, { "Restoration", "Holy", "Discipline" }, HealerReuse),
+        Rec("south healer", { "SHAMAN", "DRUID", "PRIEST", "PALADIN" }, { "Restoration", "Holy", "Discipline" }, HealerReuse),
+        Rec("alythess ranged tank", { "WARLOCK" }, { "Destruction", "Demonology" }),
+        Rec("interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+        Rec("dragon", { "PRIEST", "PALADIN", "SHAMAN", "DRUID" }, { "Discipline", "Holy", "Restoration" }, { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true, encounter = "Kil'jaeden" }),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", { A.TANK.MAIN, A.TANK.OFF, A.TANK.THIRD }),

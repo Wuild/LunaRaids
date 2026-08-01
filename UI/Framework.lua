@@ -69,114 +69,119 @@ local READY_CHECK_FLASK = {
     [28538] = true,
 }
 
+local function SpellLabel(spellID, fallback)
+    local name = GetSpellInfo and GetSpellInfo(spellID)
+    return name or fallback
+end
+
 local READY_CHECK_COLUMNS = {
-    { key = "food", label = "Food", icon = 136000,
+    { key = "food", label = Raid.L.FOOD, icon = 136000,
         spells = READY_CHECK_FOOD, foodIcon = true },
-    { key = "flask", label = "Flask / Elixir", icon = 134877,
+    { key = "flask", label = Raid.L.FLASK_ELIXIR, icon = 134877,
         spells = READY_CHECK_FLASK },
-    { key = "scroll", label = "Scroll", icon = 134943,
+    { key = "scroll", label = Raid.L.SCROLL, icon = 134943,
         spells = {
             [33077] = true, [33082] = true, [33079] = true,
             [33078] = true, [33080] = true, [33081] = true,
             [12174] = true, [12179] = true, [12176] = true,
             [12178] = true, [12177] = true, [12175] = true,
         } },
-    { key = "motw", label = "Mark of the Wild", icon = 136078,
+    { key = "motw", label = SpellLabel(1126, "Mark of the Wild"), icon = 136078,
         spells = {
             [26991] = true, [21850] = true, [21849] = true,
             [1126] = true, [5232] = true, [5234] = true,
             [6756] = true, [8907] = true, [9884] = true,
             [9885] = true, [26990] = true,
         } },
-    { key = "int", label = "Arcane Intellect", icon = 135932,
+    { key = "int", label = SpellLabel(1459, "Arcane Intellect"), icon = 135932,
         spells = {
             [27126] = true, [10157] = true, [10156] = true,
             [1461] = true, [1460] = true, [1459] = true,
             [23028] = true, [27127] = true,
         } },
-    { key = "fort", label = "Power Word: Fortitude", icon = 135987,
+    { key = "fort", label = SpellLabel(1243, "Power Word: Fortitude"), icon = 135987,
         spells = {
             [1243] = true, [21562] = true, [21564] = true,
             [25392] = true, [1244] = true, [1245] = true,
             [2791] = true, [10937] = true, [10938] = true,
             [25389] = true,
         } },
-    { key = "spirit", label = "Divine Spirit", icon = 135946,
+    { key = "spirit", label = SpellLabel(14752, "Divine Spirit"), icon = 135946,
         spells = {
             [27681] = true, [32999] = true, [14752] = true,
             [14818] = true, [14819] = true, [27841] = true,
             [25312] = true,
         } },
-    { key = "ap", label = "Battle Shout", icon = 132333,
+    { key = "ap", label = SpellLabel(6673, "Battle Shout"), icon = 132333,
         spells = {
             [6673] = true, [5242] = true, [6192] = true,
             [11549] = true, [11550] = true, [11551] = true,
             [25289] = true, [2048] = true,
         } },
-    { key = "armor", label = "Inner Fire", icon = 135926,
+    { key = "armor", label = SpellLabel(588, "Inner Fire"), icon = 135926,
         spells = {
             [588] = true, [7128] = true, [602] = true,
             [1006] = true, [10951] = true, [10952] = true,
             [25431] = true,
         } },
-    { key = "shadow", label = "Shadow Protection", icon = 136121,
+    { key = "shadow", label = SpellLabel(976, "Shadow Protection"), icon = 136121,
         spells = {
             [25433] = true, [10958] = true, [976] = true,
             [10957] = true, [27683] = true, [39374] = true,
         } },
-    { key = "kings", label = "Blessing of Kings", icon = 135993,
+    { key = "kings", label = SpellLabel(20217, "Blessing of Kings"), icon = 135993,
         spells = {
             [20217] = true, [25898] = true,
         } },
-    { key = "might", label = "Blessing of Might", icon = 135908,
+    { key = "might", label = SpellLabel(19740, "Blessing of Might"), icon = 135908,
         spells = {
             [19740] = true, [19834] = true, [19835] = true,
             [19836] = true, [19837] = true, [19838] = true,
             [25291] = true, [27140] = true, [25782] = true,
             [25916] = true, [27141] = true,
         } },
-    { key = "wisdom", label = "Blessing of Wisdom", icon = 135970,
+    { key = "wisdom", label = SpellLabel(19742, "Blessing of Wisdom"), icon = 135970,
         spells = {
             [19742] = true, [19850] = true, [19852] = true,
             [19853] = true, [19854] = true, [25290] = true,
             [27142] = true, [25894] = true, [25918] = true,
             [27143] = true,
         } },
-    { key = "salvation", label = "Blessing of Salvation", icon = 135967,
+    { key = "salvation", label = SpellLabel(1038, "Blessing of Salvation"), icon = 135967,
         spells = {
             [1038] = true, [25895] = true,
         } },
-    { key = "light", label = "Blessing of Light",
+    { key = "light", label = SpellLabel(19977, "Blessing of Light"),
         icon = "Interface\\Icons\\Spell_Holy_GreaterBlessingofLight",
         spells = {
             [19977] = true, [19978] = true, [19979] = true,
             [27144] = true, [25890] = true, [27145] = true,
         } },
-    { key = "weapon", label = "Weapon Enhancement", icon = 135249,
+    { key = "weapon", label = Raid.L.WEAPON_ENHANCEMENT, icon = 135249,
         spells = {} },
-    { key = "durability", label = "Average durability", icon = 132281,
+    { key = "durability", label = Raid.L.AVERAGE_DURABILITY, icon = 132281,
         spells = {} },
 }
 local READY_CHECK_GRID_START = 198
 local READY_CHECK_COLUMN_WIDTH = 32
 local GEAR_INSPECT_SLOTS = {
-    { id = 1, token = "HeadSlot", label = "Head" },
-    { id = 2, token = "NeckSlot", label = "Neck" },
-    { id = 3, token = "ShoulderSlot", label = "Shoulder" },
-    { id = 15, token = "BackSlot", label = "Back" },
-    { id = 5, token = "ChestSlot", label = "Chest" },
-    { id = 9, token = "WristSlot", label = "Wrist" },
-    { id = 10, token = "HandsSlot", label = "Hands" },
-    { id = 6, token = "WaistSlot", label = "Waist" },
-    { id = 7, token = "LegsSlot", label = "Legs" },
-    { id = 8, token = "FeetSlot", label = "Feet" },
-    { id = 11, token = "Finger0Slot", label = "Ring 1" },
-    { id = 12, token = "Finger1Slot", label = "Ring 2" },
-    { id = 13, token = "Trinket0Slot", label = "Trinket 1" },
-    { id = 14, token = "Trinket1Slot", label = "Trinket 2" },
-    { id = 16, token = "MainHandSlot", label = "Main Hand" },
-    { id = 17, token = "SecondaryHandSlot", label = "Off Hand" },
-    { id = 18, token = "RangedSlot", label = "Ranged" },
+    { id = 1, token = "HeadSlot", label = Raid.L.SLOT_HEAD },
+    { id = 2, token = "NeckSlot", label = Raid.L.SLOT_NECK },
+    { id = 3, token = "ShoulderSlot", label = Raid.L.SLOT_SHOULDER },
+    { id = 15, token = "BackSlot", label = Raid.L.SLOT_BACK },
+    { id = 5, token = "ChestSlot", label = Raid.L.SLOT_CHEST },
+    { id = 9, token = "WristSlot", label = Raid.L.SLOT_WRIST },
+    { id = 10, token = "HandsSlot", label = Raid.L.SLOT_HANDS },
+    { id = 6, token = "WaistSlot", label = Raid.L.SLOT_WAIST },
+    { id = 7, token = "LegsSlot", label = Raid.L.SLOT_LEGS },
+    { id = 8, token = "FeetSlot", label = Raid.L.SLOT_FEET },
+    { id = 11, token = "Finger0Slot", label = Raid.L.SLOT_RING_1 },
+    { id = 12, token = "Finger1Slot", label = Raid.L.SLOT_RING_2 },
+    { id = 13, token = "Trinket0Slot", label = Raid.L.SLOT_TRINKET_1 },
+    { id = 14, token = "Trinket1Slot", label = Raid.L.SLOT_TRINKET_2 },
+    { id = 16, token = "MainHandSlot", label = Raid.L.SLOT_MAIN_HAND },
+    { id = 17, token = "SecondaryHandSlot", label = Raid.L.SLOT_OFF_HAND },
+    { id = 18, token = "RangedSlot", label = Raid.L.SLOT_RANGED },
 }
 local READY_CHECK_BY_SPELL = {}
 for _, column in ipairs(READY_CHECK_COLUMNS) do
@@ -828,6 +833,21 @@ local function ShowSelectionMenu(
     end)
     Raid.selectionMenu = menu
     menu:Show()
+end
+
+function Raid:ShowAnnouncementChannelMenu(owner, onSelect)
+    ShowSelectionMenu(owner, {
+        { "RAID_WARNING", self.L.RAID_WARNING },
+        { "RAID", self.L.RAID },
+        { "PARTY", self.L.PARTY },
+        { "SAY", self.L.SAY },
+    }, nil, function(channel)
+        if onSelect then
+            onSelect(channel)
+        else
+            self:AnnounceAssignments(channel)
+        end
+    end, 174)
 end
 
 local function ShowMultiSelectionMenu(

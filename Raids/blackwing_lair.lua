@@ -6,11 +6,54 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
+local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "VANILLA",
     key = "blackwing_lair", name = "Blackwing Lair", size = 40,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\blackwing_lair",
+    guides = {
+        ["Razorgore the Untamed"] = {
+            Mechanic("Orb controllers destroy eggs methodically while four teams control spawning dragonkin and orcs."),
+            Mechanic("After the last egg, tanks establish threat, face Razorgore away, and the raid avoids his frontal attacks."),
+        },
+        ["Vaelastrasz the Corrupt"] = {
+            Mechanic("Tanks stand in a fixed threat order; the active tank faces Vaelastrasz away from the raid."),
+            Mechanic("Burn Essence of the Red resources aggressively; Burning Adrenaline targets leave the group before exploding."),
+        },
+        ["Broodlord Lashlayer"] = {
+            Mechanic("Tank Broodlord in the corner with the raid behind him and rotate tanks as Mortal Strike pressure rises."),
+            Mechanic("Melee manage threat around Knock Away, while healers keep the current tank stable through Blast Wave."),
+        },
+        ["Firemaw"] = {
+            Mechanic("Use line of sight to drop Flame Buffet stacks; only the active tank remains exposed continuously."),
+            Mechanic("Tanks taunt through Wing Buffet and ranged step out to reset stacks before they become lethal."),
+        },
+        ["Ebonroc"] = {
+            Mechanic("Tanks rotate taunts so the tank afflicted by Shadow of Ebonroc is not being hit."),
+            Mechanic("Stay out of the frontal cone and keep the boss positioned consistently through Wing Buffet swaps."),
+        },
+        ["Flamegor"] = {
+            Mechanic("Tanks handle Wing Buffet swaps while keeping Flamegor faced away from the raid."),
+            Mechanic("Hunters maintain a Tranquilizing Shot rotation on Frenzy and healers anticipate missed shots."),
+        },
+        ["Chromaggus"] = {
+            Mechanic("Use line of sight for every breath and assign dispellers to remove each class-removable affliction."),
+            Mechanic("Hunters tranquilize Frenzy; anyone reaching multiple Brood Afflictions calls it before transformation."),
+        },
+        ["Nefarian"] = {
+            Mechanic("Phase 1 teams control and kill drakonids by color while conserving enough resources for Nefarian."),
+            Mechanic("Face Nefarian away, react to class calls, decurse or dispel quickly, and prepare AoE for skeletons at 20%."),
+        },
+    },
+    recommendations = {
+        Rec("tranq", { "HUNTER" }, { "Marksmanship", "Beast Mastery", "Survival" }),
+        Rec("decurse", { "MAGE", "DRUID" }, { "Arcane", "Frost", "Restoration", "Balance" }, Reuse),
+        Rec("dispel", { "PRIEST", "PALADIN", "SHAMAN" }, { "Discipline", "Holy", "Restoration" }, Reuse),
+        Rec("kite", { "HUNTER", "MAGE", "WARLOCK" }, { "Marksmanship", "Frost", "Affliction" }),
+        Rec("orb", { "ROGUE", "HUNTER", "MAGE" }, { "Combat", "Marksmanship", "Frost" }),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", {

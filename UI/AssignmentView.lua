@@ -1,5 +1,6 @@
 local _, Raid = ...
 local UI = Raid.UI
+local L = Raid.L
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -172,7 +173,7 @@ function Raid:RefreshAssignments()
     if activeTab == "ASSIGNMENTS" then
         if not self.autoAssignButton then
             self.autoAssignButton =
-                Button(self.assignmentContent, "AUTO ASSIGN", 132, 25)
+                Button(self.assignmentContent, L.AUTO_ASSIGN, 132, 25)
             AddButtonIcon(
                 self.autoAssignButton,
                 "Interface\\Icons\\Spell_Holy_MindVision")
@@ -181,7 +182,7 @@ function Raid:RefreshAssignments()
             StyleButton(self.autoAssignButton, "primary")
             self.autoAssignButton:HookScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                GameTooltip:SetText("Smart Auto Assign")
+                GameTooltip:SetText(L.SMART_AUTO_ASSIGN)
                 GameTooltip:AddLine(
                     "Fills empty slots using raid roles, class utility, "
                     .. "and GearScore. Existing assignments are kept.",
@@ -212,7 +213,7 @@ function Raid:RefreshAssignments()
         end
         markerHeader:ClearAllPoints()
         markerHeader:SetPoint("TOPLEFT", 2, -y)
-        markerHeader:SetText("BOSSES & ADDS")
+        markerHeader:SetText(L.BOSSES_ADDS)
         markerHeader:Show()
         y = y + 29
         for targetIndex, targetName in ipairs(encounterTargets) do
@@ -297,6 +298,7 @@ function Raid:RefreshAssignments()
             slot:SetPoint("TOPLEFT", 0, -y)
             slot.groupIndex, slot.slotIndex = groupIndex, slotIndex
             slot.healingSlotIndex = nil
+            slot.assignmentDefinition = assignmentSlot
             slot.HealingTarget:Hide()
             slot.Label:Show()
             local assignmentLabel = self:GetSlotLabel(assignmentSlot)
@@ -326,7 +328,7 @@ function Raid:RefreshAssignments()
                 slot.baseColor = { .035, .105, .095, .98 }
                 slot.baseBorder = { .12, .30, .27, 1 }
             else
-                slot.Player:SetText("Drop or click to suggest")
+                slot.Player:SetText(L.DROP_OR_CLICK_SUGGEST)
                 slot.Player:SetTextColor(unpack(MUTED))
                 slot.FilledBar:Hide()
                 slot.baseColor = { .038, .055, .075, .96 }
@@ -352,7 +354,7 @@ function Raid:RefreshAssignments()
         end
         healingHeader:ClearAllPoints()
         healingHeader:SetPoint("TOPLEFT", 4, -y)
-        healingHeader:SetText("HEALER ASSIGNMENTS")
+        healingHeader:SetText(L.HEALER_ASSIGNMENTS)
         healingHeader:SetTextColor(.48, .78, .96, 1)
         healingHeader:Show()
         y = y + 29
@@ -369,6 +371,9 @@ function Raid:RefreshAssignments()
             slot.groupIndex = nil
             slot.slotIndex = healerIndex
             slot.healingSlotIndex = healerIndex
+            local healingDefinition =
+                self:GetHealingSlotDefinition(healerIndex)
+            slot.assignmentDefinition = healingDefinition
             slot.Label:Hide()
             slot.HealingTarget:Show()
             slot.RoleIcon:SetTexCoord(unpack(ROLE_COORDS.HEALER))
@@ -386,8 +391,10 @@ function Raid:RefreshAssignments()
                         healingMarkerToken)
             end
             slot.HealingTarget.Text:SetText(
-                ("Healer %d -> %s"):format(
-                    healerIndex, healingTargetLabel))
+                ("%s -> %s"):format(
+                    healingDefinition and healingDefinition.label
+                        or ("Healer " .. healerIndex),
+                    healingTargetLabel))
             local assignment = self:GetHealingAssignment(healerIndex)
             totalSlots = totalSlots + 1
             if assignment then
@@ -398,7 +405,7 @@ function Raid:RefreshAssignments()
                 slot.baseColor = { .035, .105, .095, .98 }
                 slot.baseBorder = { .12, .30, .27, 1 }
             else
-                slot.Player:SetText("Drop or click to suggest")
+                slot.Player:SetText(L.DROP_OR_CLICK_SUGGEST)
                 slot.Player:SetTextColor(unpack(MUTED))
                 slot.FilledBar:Hide()
                 slot.baseColor = { .038, .055, .075, .96 }
@@ -425,7 +432,7 @@ function Raid:RefreshAssignments()
         end
         empty:ClearAllPoints()
         empty:SetPoint("TOPLEFT", 8, -12)
-        empty:SetText("Select a boss to configure its markers.")
+        empty:SetText(L.SELECT_BOSS_MARKERS)
         empty:Show()
         y = 42
     end
@@ -439,7 +446,7 @@ function Raid:RefreshAssignments()
     self.assignmentContent:SetHeight(math.max(1, y))
     if self.assignmentTitle then
         if activeTab == "MARKERS" then
-            self.assignmentTitle:SetText("BOSS & ADD MARKERS")
+            self.assignmentTitle:SetText(L.BOSS_ADD_MARKERS)
         else
             self.assignmentTitle:SetText(
                 ("ASSIGNMENTS  %d/%d"):format(
@@ -500,12 +507,12 @@ function Raid:CreateBossRailButton(index)
             self.selected and .70 or .48,
             self.selected and 1 or .64, 1)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(self.encounterName or "Boss")
+        GameTooltip:SetText(self.encounterName or L.BOSS)
         if self.currentBoss then
             GameTooltip:AddLine(
                 "Current boss", .22, .9, .55)
         end
-        GameTooltip:AddLine("Click to open this boss plan.", unpack(MUTED))
+        GameTooltip:AddLine(L.CLICK_OPEN_BOSS_PLAN, unpack(MUTED))
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", function(self)
@@ -574,7 +581,7 @@ function Raid:RefreshBossRail()
         self.frame.Title:SetText("LUNA RAIDS")
         if self.frame.Subtitle then
             self.frame.Subtitle:SetText(
-                raid.name:upper() .. "  ·  ACTIVE PLAN")
+                raid.name:upper() .. "  ·  " .. self.L.ACTIVE_PLAN)
         end
     end
     self.bossButtons = self.bossButtons or {}

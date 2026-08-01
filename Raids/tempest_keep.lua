@@ -6,11 +6,43 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
+local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
     key = "tempest_keep", name = "Tempest Keep", size = 25,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\tempest_keep",
+    guides = {
+        ["Al'ar"] = {
+            Mechanic("Platform tanks trade Al'ar at each movement and never stand directly below a platform when Flame Quills begins."),
+            Mechanic("In phase 2, tanks swap for Melt Armor, stack Embers for controlled AoE, and move away from Dive Bomb impact."),
+        },
+        ["Void Reaver"] = {
+            Mechanic("Ranged spread at maximum range and move sideways from incoming Arcane Orbs without running through other players."),
+            Mechanic("Tanks maintain a threat rotation through Knock Away while melee remain behind and healers cover Pounding."),
+        },
+        ["High Astromancer Solarian"] = {
+            Mechanic("Wrath of the Astromancer targets move to the assigned safe position before the debuff jumps or expires."),
+            Mechanic("Stack and AoE agents, interrupt priests immediately, then spread and stabilize for Solarian's voidwalker phase."),
+        },
+        ["Kael'thas Sunstrider"] = {
+            Mechanic("Assign every legendary weapon before the pull; loot and equip the correct weapon immediately after the weapon phase."),
+            Mechanic("Kill resurrected advisers in the planned order while using staff immunity, mace healing, shield protection, and dagger debuffs."),
+            Mechanic("Interrupt Fireball, break Shock Barrier before Pyroblast, kill Phoenix eggs, and spread vertically during Gravity Lapse."),
+        },
+    },
+    recommendations = {
+        Rec("crowd control", { "MAGE", "WARLOCK", "HUNTER", "PRIEST" }, { "Frost", "Affliction", "Survival", "Shadow" }),
+        Rec("ember tank", { "PALADIN", "WARRIOR", "DRUID" }, { "Protection", "Feral" }),
+        Rec("priest interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+        Rec("thaladred kiter", { "HUNTER", "MAGE", "WARLOCK" }, { "Marksmanship", "Frost", "Affliction" }),
+        Rec("capernian tank", { "WARLOCK" }, { "Destruction", "Demonology" }),
+        Rec("bow hunter tank", { "HUNTER" }, { "Marksmanship", "Beast Mastery" }),
+        Rec("aoe weapons tank", { "PALADIN" }, { "Protection" }),
+        Rec("interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+        Rec("mind control", { "PRIEST" }, { "Shadow", "Discipline", "Holy" }, Reuse),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", { A.TANK.MAIN, A.TANK.OFF, A.TANK.THIRD }),

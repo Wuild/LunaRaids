@@ -1,5 +1,6 @@
 local _, Raid = ...
 local UI = Raid.UI
+local L = Raid.L
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -41,19 +42,17 @@ function Raid:CreateSettingsView()
     view.Background:SetTexture(WHITE)
     view.Background:SetAllPoints()
     view.Background:SetVertexColor(.012, .022, .031, 1)
-    view.Title = Font(view, 15, "accent", "ADDON SETTINGS")
+    view.Title = Font(view, 15, "accent", L.SETTINGS_TITLE)
     view.Title:SetPoint("TOPLEFT", 20, -22)
     view.Title:Hide()
-    view.Subtitle = Font(
-        view, 10, "muted",
-        "Interface, communication, and automation")
+    view.Subtitle = Font(view, 10, "muted", L.SETTINGS_INTRO)
     view.Subtitle:SetPoint("TOPLEFT", 21, -50)
     view.Subtitle:Hide()
-    view.GeneralTab = Button(view, "GENERAL", 126, 28)
+    view.GeneralTab = Button(view, L.SETTINGS_GENERAL, 126, 28)
     view.GeneralTab:SetPoint("TOPLEFT", 8, -8)
-    view.AdminTab = Button(view, "RAID ADMIN", 126, 28)
+    view.AdminTab = Button(view, L.SETTINGS_RAID_ADMIN, 126, 28)
     view.AdminTab:SetPoint("LEFT", view.GeneralTab, "RIGHT", 8, 0)
-    view.CooldownTab = Button(view, "COOLDOWNS", 126, 28)
+    view.CooldownTab = Button(view, L.SETTINGS_COOLDOWNS, 126, 28)
     view.CooldownTab:SetPoint("LEFT", view.AdminTab, "RIGHT", 8, 0)
     view.GeneralTab:SetScript("OnClick", function()
         Raid.settingsTab = "GENERAL"
@@ -92,14 +91,14 @@ function Raid:CreateSettingsView()
     SetPixelHeight(view.Footer.TopLine, 1)
     view.Footer.TopLine:SetVertexColor(.12, .30, .40, 1)
     view.ResetAllSettings =
-        Button(view.Footer, "RESET ALL SETTINGS", 168, 28)
+        Button(view.Footer, L.RESET_ALL_SETTINGS, 168, 28)
     view.ResetAllSettings:SetPoint("RIGHT", -12, 0)
     StyleButton(view.ResetAllSettings, "danger")
     view.ResetAllSettings:SetScript("OnClick", function()
         StaticPopup_Show("LUNARAIDS_RESET_ALL_SETTINGS")
     end)
     AddButtonTooltip(
-        view.ResetAllSettings, "Reset All Settings",
+        view.ResetAllSettings, L.RESET_ALL_SETTINGS_TITLE,
         "Restore addon options and every movable window to defaults.")
     view.Scroll, view.Content = CreateScrollArea(view)
     view.Scroll:SetPoint("TOPLEFT", 8, -44)
@@ -110,12 +109,12 @@ function Raid:CreateSettingsView()
     general:SetPoint("TOPLEFT", 12, -8)
     general:SetPoint("TOPRIGHT", -12, -8)
     general:SetHeight(270)
-    SectionHeader(general, "GENERAL")
+    SectionHeader(general, L.GENERAL)
     local interfaceCard = Panel(general)
     interfaceCard:SetPoint("TOPLEFT", 0, -40)
     interfaceCard:SetPoint("TOPRIGHT", 0, -40)
     interfaceCard:SetHeight(230)
-    SectionHeader(interfaceCard, "INTERFACE & MESSAGES")
+    SectionHeader(interfaceCard, L.INTERFACE_MESSAGES)
     local function SettingLabel(parent, text, description, y)
         local label = Font(parent, 10, "text", text)
         label:SetPoint("TOPLEFT", 14, y)
@@ -168,8 +167,8 @@ function Raid:CreateSettingsView()
         return slider
     end
 
-    SettingLabel(interfaceCard, "Minimap launcher",
-        "Show the LibDBIcon button.", -36)
+    SettingLabel(interfaceCard, L.MINIMAP_LAUNCHER,
+        L.MINIMAP_LAUNCHER_DESC, -36)
     view.Minimap = Button(interfaceCard, "", 142, 28)
     view.Minimap:SetPoint("TOPRIGHT", -14, -39)
     view.Minimap:SetScript("OnClick", function()
@@ -177,8 +176,8 @@ function Raid:CreateSettingsView()
         Raid:RefreshMinimapButton()
         Raid:RefreshSettingsView()
     end)
-    SettingLabel(interfaceCard, "Announcement channel",
-        "Click to cycle the assignment channel.", -82)
+    SettingLabel(interfaceCard, L.ANNOUNCEMENT_CHANNEL,
+        L.ANNOUNCEMENT_CHANNEL_DESC, -82)
     view.Channel = Button(interfaceCard, "", 142, 28)
     view.Channel:SetPoint("TOPRIGHT", -14, -85)
     view.Channel:SetScript("OnClick", function()
@@ -194,8 +193,8 @@ function Raid:CreateSettingsView()
             order[(index % #order) + 1]
         Raid:RefreshSettingsView()
     end)
-    SettingLabel(interfaceCard, "Message interval",
-        "Delay between chat messages to avoid throttling.", -128)
+    SettingLabel(interfaceCard, L.MESSAGE_INTERVAL,
+        L.MESSAGE_INTERVAL_DESC, -128)
     view.DelayMinus = Button(interfaceCard, "-", 26, 28)
     view.DelayValue = Button(interfaceCard, "", 68, 28)
     view.DelayPlus = Button(interfaceCard, "+", 26, 28)
@@ -214,8 +213,8 @@ function Raid:CreateSettingsView()
             1.50, (Raid.db.messageDelay or .45) + .05)
         Raid:RefreshSettingsView()
     end)
-    SettingLabel(interfaceCard, "HUD scale",
-        "Resize cooldowns, quick actions, ready checks, and assignments.",
+    SettingLabel(interfaceCard, L.HUD_SCALE,
+        L.HUD_SCALE_DESC,
         -174)
     view.HUDScale = ScaleSlider(
         "LunaRaidsHUDScale", interfaceCard, -181,
@@ -224,13 +223,13 @@ function Raid:CreateSettingsView()
             Raid:ApplyInterfaceScale()
         end)
 
-    view.ResetWindow = Button(view, "RESET WINDOW", 138, 27)
+    view.ResetWindow = Button(view, L.RESET_WINDOW, 138, 27)
     view.ResetWindow:SetPoint(
         "BOTTOMLEFT", view, "BOTTOMLEFT", 116, 14)
     view.ResetWindow:SetScript(
         "OnClick", function() Raid:ResetWindowPosition() end)
-    AddButtonTooltip(view.ResetWindow, "Reset Window",
-        "Return LunaRaids to the center of the screen.")
+    AddButtonTooltip(view.ResetWindow, L.RESET_WINDOW_TITLE,
+        L.RESET_WINDOW_DESC)
     view.AutoMarker = Button(view, "", 174, 27)
     view.AutoMarker:SetPoint("BOTTOMLEFT", 264, 14)
     view.AutoMarker:SetScript("OnClick", function()
@@ -238,9 +237,7 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     AddButtonTooltip(
-        view.AutoMarker, "Auto Marker",
-        "Automatically apply the configured marks when matching "
-            .. "units for the current encounter are targeted.")
+        view.AutoMarker, L.AUTO_MARKER, L.AUTO_MARKER_TOOLTIP)
     view.QuickBar = Button(view, "", 174, 27)
     view.QuickBar:SetScript("OnClick", function()
         Raid.db.quickBar.hide = not Raid.db.quickBar.hide
@@ -248,34 +245,31 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     AddButtonTooltip(
-        view.QuickBar, "Quick Action Bar",
-        "Enable the standalone toolbar. Its visibility and permission "
-            .. "rules are configured below.")
+        view.QuickBar, L.QUICK_ACTION_BAR, L.QUICK_ACTION_BAR_TOOLTIP)
     local automation = Panel(view.Content)
     automation:SetPoint("TOPLEFT", general, "BOTTOMLEFT", 0, -10)
     automation:SetPoint("TOPRIGHT", general, "BOTTOMRIGHT", 0, -10)
     automation:SetHeight(416)
     SectionHeader(
-        automation, "AUTOMATION",
-        "Ready checks, raid markers, and quick-action behavior.")
+        automation, L.AUTOMATION, L.AUTOMATION_DESC)
     view.AutoMarker:SetParent(automation)
     view.AutoMarker:SetFrameLevel(automation:GetFrameLevel() + 1)
     view.QuickBar:SetParent(automation)
     view.QuickBar:SetFrameLevel(automation:GetFrameLevel() + 1)
     SettingLabel(
-        automation, "Encounter auto marker",
-        "Apply configured boss and add markers as units are targeted.",
+        automation, L.ENCOUNTER_AUTO_MARKER,
+        L.ENCOUNTER_AUTO_MARKER_DESC,
         -38)
     view.AutoMarker:ClearAllPoints()
     view.AutoMarker:SetPoint("TOPRIGHT", automation, -14, -42)
     SettingLabel(
-        automation, "Quick action bar",
-        "Standalone controls for ready checks, roles, and pull timers.",
+        automation, L.QUICK_ACTION_BAR,
+        L.QUICK_ACTION_BAR_DESC,
         -84)
     view.QuickBar:SetPoint("TOPRIGHT", automation, -14, -88)
     SettingLabel(
-        automation, "Ready-check results",
-        "Time the completed window remains open before fading.", -130)
+        automation, L.READY_CHECK_RESULTS_LABEL,
+        L.READY_CHECK_RESULTS_DESC, -130)
     view.ReadyHoldMinus = Button(automation, "-", 26, 28)
     view.ReadyHoldValue = Button(automation, "", 68, 28)
     view.ReadyHoldPlus = Button(automation, "+", 26, 28)
@@ -295,8 +289,8 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     SettingLabel(
-        automation, "Compact toolbar",
-        "Show action icons without text labels.", -176)
+        automation, L.COMPACT_TOOLBAR,
+        L.COMPACT_TOOLBAR_DESC, -176)
     view.QuickBarIcons = Button(automation, "", 174, 27)
     view.QuickBarIcons:SetPoint("TOPRIGHT", automation, -14, -180)
     view.QuickBarIcons:SetScript("OnClick", function()
@@ -305,17 +299,17 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     SettingLabel(
-        automation, "Toolbar visibility",
-        "Grouped modes require leader or assistant permissions.", -222)
+        automation, L.TOOLBAR_VISIBILITY,
+        L.TOOLBAR_VISIBILITY_DESC, -222)
     view.QuickBarVisibility = Button(automation, "", 174, 27)
     AddDropdownArrow(view.QuickBarVisibility)
     view.QuickBarVisibility:SetPoint(
         "TOPRIGHT", automation, -14, -226)
     view.QuickBarVisibility:SetScript("OnClick", function()
         ShowSelectionMenu(view.QuickBarVisibility, {
-            { "ALWAYS", "Always" },
-            { "GROUP", "Party or Raid" },
-            { "RAID", "Raid Only" },
+            { "ALWAYS", L.VISIBILITY_ALWAYS },
+            { "GROUP", L.VISIBILITY_GROUP },
+            { "RAID", L.VISIBILITY_RAID },
         }, Raid.db.quickBar.visibility or "GROUP", function(value)
             Raid.db.quickBar.visibility = value
             Raid:RefreshQuickActionBar()
@@ -323,8 +317,8 @@ function Raid:CreateSettingsView()
         end)
     end)
     SettingLabel(
-        automation, "Combat visibility",
-        "Hide the quick action bar while you are in combat.", -268)
+        automation, L.COMBAT_VISIBILITY,
+        L.COMBAT_VISIBILITY_DESC, -268)
     view.QuickBarCombat = Button(automation, "", 174, 27)
     view.QuickBarCombat:SetPoint("TOPRIGHT", automation, -14, -272)
     view.QuickBarCombat:SetScript("OnClick", function()
@@ -334,8 +328,8 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     SettingLabel(
-        automation, "Ready-check window",
-        "Automatically open LunaRaids results during ready checks.", -314)
+        automation, L.READY_CHECK_WINDOW,
+        L.READY_CHECK_WINDOW_DESC, -314)
     view.ReadyCheckWindow = Button(automation, "", 174, 27)
     view.ReadyCheckWindow:SetPoint(
         "TOPRIGHT", automation, -14, -318)
@@ -350,8 +344,8 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     SettingLabel(
-        automation, "Personal assignment panel",
-        "Show your current boss duties in a movable info frame.", -360)
+        automation, L.PERSONAL_ASSIGNMENT_PANEL,
+        L.PERSONAL_ASSIGNMENT_PANEL_DESC, -360)
     view.AssignmentInfo = Button(automation, "", 174, 27)
     view.AssignmentInfo:SetPoint(
         "TOPRIGHT", automation, -14, -364)
@@ -366,8 +360,8 @@ function Raid:CreateSettingsView()
     cooldowns:SetPoint("TOPRIGHT", -12, -8)
     cooldowns:SetHeight(804)
     SectionHeader(
-        cooldowns, "RAID COOLDOWNS",
-        "Choose the raid abilities displayed by the standalone cooldown HUD.",
+        cooldowns, L.RAID_COOLDOWNS,
+        L.RAID_COOLDOWNS_DESC,
         162)
     view.CooldownEnabled = Button(cooldowns, "", 142, 28)
     view.CooldownEnabled:SetPoint("TOPRIGHT", cooldowns, -10, -2)
@@ -378,13 +372,13 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     view.CooldownAppearanceTab =
-        Button(cooldowns, "APPEARANCE", 148, 28)
+        Button(cooldowns, L.APPEARANCE, 148, 28)
     view.CooldownAppearanceTab:SetPoint("TOPLEFT", 14, -42)
     view.CooldownAppearanceTab:SetScript("OnClick", function()
         Raid.cooldownSettingsSection = "APPEARANCE"
         Raid:RefreshSettingsView()
     end)
-    view.CooldownSpellsTab = Button(cooldowns, "SPELLS", 148, 28)
+    view.CooldownSpellsTab = Button(cooldowns, L.SPELLS, 148, 28)
     view.CooldownSpellsTab:SetPoint(
         "LEFT", view.CooldownAppearanceTab, "RIGHT", 6, 0)
     view.CooldownSpellsTab:SetScript("OnClick", function()
@@ -400,13 +394,12 @@ function Raid:CreateSettingsView()
     view.CooldownBody:EnableMouse(false)
     view.CooldownDisplayControls = {}
     local positionLabel, positionDetail = SettingLabel(
-        cooldowns, "HUD position",
-        "Move the HUD in-game, or return it to its default position.", -92)
+        cooldowns, L.HUD_POSITION, L.HUD_POSITION_DESC, -92)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         positionLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         positionDetail
-    view.CooldownReset = Button(cooldowns, "RESET POSITION", 142, 28)
+    view.CooldownReset = Button(cooldowns, L.RESET_POSITION, 142, 28)
     view.CooldownReset:SetPoint("TOPRIGHT", cooldowns, -14, -96)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         view.CooldownReset
@@ -421,8 +414,7 @@ function Raid:CreateSettingsView()
         end
     end)
     local layoutLabel, layoutDetail = SettingLabel(
-        cooldowns, "Layout",
-        "Show each ability as a category column or as a compact row.", -136)
+        cooldowns, L.LAYOUT, L.LAYOUT_DESC, -136)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         layoutLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -435,9 +427,9 @@ function Raid:CreateSettingsView()
     view.CooldownLayout:SetScript("OnClick", function()
         local settings = Raid:GetRaidCooldownSettings()
         ShowSelectionMenu(view.CooldownLayout, {
-            { "CATEGORIES", "Category columns" },
-            { "ROWS", "Ability rows" },
-            { "LIST", "Vertical player list" },
+            { "CATEGORIES", L.CATEGORY_COLUMNS },
+            { "ROWS", L.ABILITY_ROWS },
+            { "LIST", L.VERTICAL_PLAYER_LIST },
         }, settings.layout or "CATEGORIES", function(value)
             settings.layout = value
             Raid:RefreshRaidCooldowns()
@@ -445,8 +437,7 @@ function Raid:CreateSettingsView()
         end)
     end)
     local sortLabel, sortDetail = SettingLabel(
-        cooldowns, "Sort abilities",
-        "Order by the configured spell list, class, or ability name.", -180)
+        cooldowns, L.SORT_ABILITIES, L.SORT_ABILITIES_DESC, -180)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         sortLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -459,9 +450,9 @@ function Raid:CreateSettingsView()
     view.CooldownSort:SetScript("OnClick", function()
         local settings = Raid:GetRaidCooldownSettings()
         ShowSelectionMenu(view.CooldownSort, {
-            { "SPELL", "Configured order" },
-            { "CLASS", "Class" },
-            { "NAME", "Ability name" },
+            { "SPELL", L.CONFIGURED_ORDER },
+            { "CLASS", L.CLASS },
+            { "NAME", L.ABILITY_NAME },
         }, settings.sortMode or "SPELL", function(value)
             settings.sortMode = value
             Raid:RefreshRaidCooldowns()
@@ -469,8 +460,7 @@ function Raid:CreateSettingsView()
         end)
     end)
     local colorLabel, colorDetail = SettingLabel(
-        cooldowns, "Ready-bar colors",
-        "Use each player's class color, or choose one shared color.", -224)
+        cooldowns, L.READY_BAR_COLORS, L.READY_BAR_COLORS_DESC, -224)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         colorLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -485,7 +475,7 @@ function Raid:CreateSettingsView()
         Raid:RefreshRaidCooldowns()
         Raid:RefreshSettingsView()
     end)
-    view.CooldownReadyColor = Button(cooldowns, "READY", 92, 28)
+    view.CooldownReadyColor = Button(cooldowns, L.READY_UPPER, 92, 28)
     view.CooldownReadyColor:SetPoint("TOPLEFT", cooldowns, 14, -270)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         view.CooldownReadyColor
@@ -493,7 +483,7 @@ function Raid:CreateSettingsView()
         Raid:OpenRaidCooldownColorPicker("readyColor")
     end)
     view.CooldownCooldownColor =
-        Button(cooldowns, "COOLDOWN", 112, 28)
+        Button(cooldowns, L.COOLDOWN_UPPER, 112, 28)
     view.CooldownCooldownColor:SetPoint(
         "LEFT", view.CooldownReadyColor, "RIGHT", 7, 0)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -502,8 +492,8 @@ function Raid:CreateSettingsView()
         Raid:OpenRaidCooldownColorPicker("cooldownColor")
     end)
     local scaleLabel, scaleDetail = SettingLabel(
-        cooldowns, "HUD scale",
-        "Scale the complete cooldown display without changing its layout.",
+        cooldowns, L.HUD_SCALE,
+        L.COOLDOWN_HUD_SCALE_DESC,
         -314)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         scaleLabel
@@ -527,8 +517,7 @@ function Raid:CreateSettingsView()
         end)
     end)
     local alphaLabel, alphaDetail = SettingLabel(
-        cooldowns, "Progress-bar opacity",
-        "Adjust the colored cooldown bars without fading the HUD.", -358)
+        cooldowns, L.PROGRESS_OPACITY, L.PROGRESS_OPACITY_DESC, -358)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         alphaLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -550,8 +539,7 @@ function Raid:CreateSettingsView()
         end)
     end)
     local lockLabel, lockDetail = SettingLabel(
-        cooldowns, "Lock HUD",
-        "Prevent accidental movement after positioning the display.", -402)
+        cooldowns, L.LOCK_HUD, L.LOCK_HUD_DESC, -402)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         lockLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -566,8 +554,7 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     local rowNameLabel, rowNameDetail = SettingLabel(
-        cooldowns, "Ability-row names",
-        "Show the spell name beside its icon in Ability Rows layout.", -446)
+        cooldowns, L.ABILITY_ROW_NAMES, L.ABILITY_ROW_NAMES_DESC, -446)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         rowNameLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -583,8 +570,7 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     local rowTotalLabel, rowTotalDetail = SettingLabel(
-        cooldowns, "Ability-row totals",
-        "Show the number of ready players and total available.", -490)
+        cooldowns, L.ABILITY_ROW_TOTALS, L.ABILITY_ROW_TOTALS_DESC, -490)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         rowTotalLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -600,8 +586,8 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     local visibilityLabel, visibilityDetail = SettingLabel(
-        cooldowns, "HUD visibility",
-        "Choose whether cooldowns appear solo, in groups, or only in raids.",
+        cooldowns, L.HUD_VISIBILITY,
+        L.COOLDOWN_VISIBILITY_DESC,
         -534)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         visibilityLabel
@@ -616,9 +602,9 @@ function Raid:CreateSettingsView()
     view.CooldownVisibility:SetScript("OnClick", function()
         local settings = Raid:GetRaidCooldownSettings()
         ShowSelectionMenu(view.CooldownVisibility, {
-            { "ALWAYS", "Always" },
-            { "GROUP", "Party & raid" },
-            { "RAID", "Raid only" },
+            { "ALWAYS", L.VISIBILITY_ALWAYS },
+            { "GROUP", L.PARTY_RAID },
+            { "RAID", L.VISIBILITY_RAID },
         }, settings.visibility or "GROUP", function(value)
             settings.visibility = value
             Raid:RefreshRaidCooldowns()
@@ -626,8 +612,7 @@ function Raid:CreateSettingsView()
         end)
     end)
     local rowSpacingLabel, rowSpacingDetail = SettingLabel(
-        cooldowns, "Row spacing",
-        "Vertical space between cooldown rows.", -578)
+        cooldowns, L.ROW_SPACING, L.ROW_SPACING_DESC, -578)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         rowSpacingLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -641,8 +626,7 @@ function Raid:CreateSettingsView()
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         view.CooldownRowSpacing
     local columnSpacingLabel, columnSpacingDetail = SettingLabel(
-        cooldowns, "Column spacing",
-        "Horizontal space between abilities and players.", -622)
+        cooldowns, L.COLUMN_SPACING, L.COLUMN_SPACING_DESC, -622)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         columnSpacingLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -656,8 +640,7 @@ function Raid:CreateSettingsView()
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         view.CooldownColumnSpacing
     local textSizeLabel, textSizeDetail = SettingLabel(
-        cooldowns, "Progress-bar text size",
-        "Resize player names and status text inside cooldown bars.", -666)
+        cooldowns, L.PROGRESS_TEXT_SIZE, L.PROGRESS_TEXT_SIZE_DESC, -666)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         textSizeLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -670,8 +653,7 @@ function Raid:CreateSettingsView()
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         view.CooldownTextSize
     local whisperLabel, whisperDetail = SettingLabel(
-        cooldowns, "Cooldown whispers",
-        "Allow clicking players to whisper cooldown requests.", -710)
+        cooldowns, L.COOLDOWN_WHISPERS, L.COOLDOWN_WHISPERS_DESC, -710)
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         whisperLabel
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
@@ -684,6 +666,106 @@ function Raid:CreateSettingsView()
         local settings = Raid:GetRaidCooldownSettings()
         settings.whisperEnabled = not settings.whisperEnabled
         Raid:RefreshSettingsView()
+    end)
+    local mechanicsHUD = Panel(view.Content)
+    mechanicsHUD:SetPoint("TOPLEFT", automation, "BOTTOMLEFT", 0, -10)
+    mechanicsHUD:SetPoint("TOPRIGHT", automation, "BOTTOMRIGHT", 0, -10)
+    mechanicsHUD:SetHeight(344)
+    SectionHeader(mechanicsHUD, L.MECHANICS_HUD_SECTION,
+        L.MECHANICS_HUD_SECTION_DESC)
+    SettingLabel(mechanicsHUD, L.MECHANICS_HUD_ENABLED,
+        L.MECHANICS_HUD_ENABLED_DESC, -48)
+    view.MechanicsEnabled = Button(mechanicsHUD, "", 174, 27)
+    view.MechanicsEnabled:SetPoint("TOPRIGHT", mechanicsHUD, -14, -52)
+    view.MechanicsEnabled:SetScript("OnClick", function()
+        Raid.db.mechanicsHUD.enabled = not Raid.db.mechanicsHUD.enabled
+        Raid:RefreshMechanicsHUD()
+        Raid:RefreshSettingsView()
+    end)
+    SettingLabel(mechanicsHUD, L.MECHANICS_HUD_VISIBILITY,
+        L.MECHANICS_HUD_VISIBILITY_DESC, -94)
+    view.MechanicsVisibility = Button(mechanicsHUD, "", 174, 27)
+    AddDropdownArrow(view.MechanicsVisibility)
+    view.MechanicsVisibility:SetPoint("TOPRIGHT", mechanicsHUD, -14, -98)
+    view.MechanicsVisibility:SetScript("OnClick", function()
+        ShowSelectionMenu(view.MechanicsVisibility, {
+            { "ALWAYS", L.VISIBILITY_ALWAYS },
+            { "GROUP", L.VISIBILITY_GROUP },
+            { "RAID", L.VISIBILITY_RAID },
+        }, Raid.db.mechanicsHUD.visibility or "GROUP", function(value)
+            Raid.db.mechanicsHUD.visibility = value
+            Raid:RefreshMechanicsHUD()
+            Raid:RefreshSettingsView()
+        end)
+    end)
+    SettingLabel(mechanicsHUD, L.MECHANICS_HUD_COMBAT_ONLY,
+        L.MECHANICS_HUD_COMBAT_ONLY_DESC, -140)
+    view.MechanicsCombat = Button(mechanicsHUD, "", 174, 27)
+    view.MechanicsCombat:SetPoint("TOPRIGHT", mechanicsHUD, -14, -144)
+    view.MechanicsCombat:SetScript("OnClick", function()
+        Raid.db.mechanicsHUD.combatOnly = not Raid.db.mechanicsHUD.combatOnly
+        Raid:RefreshMechanicsHUD()
+        Raid:RefreshSettingsView()
+    end)
+    SettingLabel(mechanicsHUD, L.MECHANICS_HUD_LINES,
+        L.MECHANICS_HUD_LINES_DESC, -186)
+    view.MechanicsMinus = Button(mechanicsHUD, "-", 26, 27)
+    view.MechanicsValue = Button(mechanicsHUD, "", 68, 27)
+    view.MechanicsPlus = Button(mechanicsHUD, "+", 26, 27)
+    view.MechanicsPlus:SetPoint("TOPRIGHT", mechanicsHUD, -14, -190)
+    view.MechanicsValue:SetPoint("RIGHT", view.MechanicsPlus, "LEFT", -4, 0)
+    view.MechanicsMinus:SetPoint("RIGHT", view.MechanicsValue, "LEFT", -4, 0)
+    view.MechanicsMinus:SetScript("OnClick", function()
+        Raid.db.mechanicsHUD.maxLines = math.max(1,
+            (Raid.db.mechanicsHUD.maxLines or 6) - 1)
+        Raid:RefreshMechanicsHUD()
+        Raid:RefreshSettingsView()
+    end)
+    view.MechanicsPlus:SetScript("OnClick", function()
+        Raid.db.mechanicsHUD.maxLines = math.min(10,
+            (Raid.db.mechanicsHUD.maxLines or 6) + 1)
+        Raid:RefreshMechanicsHUD()
+        Raid:RefreshSettingsView()
+    end)
+    SettingLabel(mechanicsHUD, L.MECHANICS_HUD_CONTROLS,
+        L.MECHANICS_HUD_CONTROLS_DESC, -232)
+    view.MechanicsLock = Button(mechanicsHUD, "", 116, 27)
+    view.MechanicsTitle = Button(mechanicsHUD, "", 116, 27)
+    view.MechanicsReset = Button(mechanicsHUD, L.RESET, 86, 27)
+    view.MechanicsReset:SetPoint("TOPRIGHT", mechanicsHUD, -14, -236)
+    view.MechanicsTitle:SetPoint("RIGHT", view.MechanicsReset, "LEFT", -5, 0)
+    view.MechanicsLock:SetPoint("RIGHT", view.MechanicsTitle, "LEFT", -5, 0)
+    view.MechanicsLock:SetScript("OnClick", function()
+        Raid.db.mechanicsHUD.locked = not Raid.db.mechanicsHUD.locked
+        Raid:RefreshSettingsView()
+    end)
+    view.MechanicsTitle:SetScript("OnClick", function()
+        Raid.db.mechanicsHUD.showTitle = Raid.db.mechanicsHUD.showTitle == false
+        Raid:RefreshMechanicsHUD()
+        Raid:RefreshSettingsView()
+    end)
+    view.MechanicsReset:SetScript("OnClick", function()
+        local settings = Raid.db.mechanicsHUD
+        settings.point, settings.x, settings.y = "CENTER", 330, 120
+        if Raid.mechanicsHUDFrame then
+            Raid.mechanicsHUDFrame:ClearAllPoints()
+            Raid.mechanicsHUDFrame:SetPoint("CENTER", UIParent, "CENTER", 330, 120)
+        end
+    end)
+    SettingLabel(mechanicsHUD, L.MECHANICS_HUD_OPACITY,
+        L.MECHANICS_HUD_OPACITY_DESC, -278)
+    view.MechanicsOpacity = Button(mechanicsHUD, "", 174, 27)
+    AddDropdownArrow(view.MechanicsOpacity)
+    view.MechanicsOpacity:SetPoint("TOPRIGHT", mechanicsHUD, -14, -282)
+    view.MechanicsOpacity:SetScript("OnClick", function()
+        ShowSelectionMenu(view.MechanicsOpacity, {
+            { .6, "60%" }, { .75, "75%" },
+            { .9, "90%" }, { 1, "100%" },
+        }, Raid.db.mechanicsHUD.opacity or .9, function(value)
+            Raid.db.mechanicsHUD.opacity = value
+            Raid:RefreshMechanicsHUD()
+            Raid:RefreshSettingsView()
+        end)
     end)
     local cooldownDefinitions = Raid.GetRaidCooldownDefinitions
         and Raid:GetRaidCooldownDefinitions() or {}
@@ -722,7 +804,7 @@ function Raid:CreateSettingsView()
         end)
         view.CooldownClassButtons[index] = button
     end
-    view.CooldownEnableAll = Button(cooldowns, "ENABLE SHOWN", 132, 27)
+    view.CooldownEnableAll = Button(cooldowns, L.ENABLE_SHOWN, 132, 27)
     view.CooldownEnableAll:SetPoint("BOTTOMLEFT", cooldowns, 14, 8)
     view.CooldownEnableAll:SetScript("OnClick", function()
         local settings = Raid:GetRaidCooldownSettings()
@@ -737,7 +819,7 @@ function Raid:CreateSettingsView()
         Raid:RefreshRaidCooldowns()
         Raid:RefreshSettingsView()
     end)
-    view.CooldownDisableAll = Button(cooldowns, "DISABLE SHOWN", 132, 27)
+    view.CooldownDisableAll = Button(cooldowns, L.DISABLE_SHOWN, 132, 27)
     view.CooldownDisableAll:SetPoint(
         "LEFT", view.CooldownEnableAll, "RIGHT", 6, 0)
     view.CooldownDisableAll:SetScript("OnClick", function()
@@ -948,9 +1030,10 @@ function Raid:CreateSettingsView()
     view.AdminPanel = admin
     view.GeneralPanel = general
     view.AutomationPanel = automation
+    view.MechanicsHUDPanel = mechanicsHUD
     view.CooldownPanel = cooldowns
 
-    view.Back = Button(view, "BACK", 86, 28)
+    view.Back = Button(view, L.BACK, 86, 28)
     view.Back:SetPoint("BOTTOMLEFT", 20, 14)
     view.Back:SetScript(
         "OnClick", function() Raid:ExitSettingsView() end)
@@ -968,19 +1051,20 @@ function Raid:RefreshSettingsView()
     local cooldownTab = self.settingsTab == "COOLDOWNS"
     view.Subtitle:SetText(
         adminTab
-            and "Invites, assistant promotion, and loot rules"
+            and L.SETTINGS_SUBTITLE_ADMIN
             or cooldownTab
-                and "Raid cooldown visibility and tracked abilities"
-            or "Interface, communication, and toolbar behavior")
+                and L.SETTINGS_SUBTITLE_COOLDOWNS
+            or L.SETTINGS_SUBTITLE_GENERAL)
     view.GeneralPanel:SetShown(not adminTab and not cooldownTab)
     view.AutomationPanel:SetShown(not adminTab and not cooldownTab)
+    view.MechanicsHUDPanel:SetShown(not adminTab and not cooldownTab)
     view.AdminPanel:SetShown(adminTab)
     view.CooldownPanel:SetShown(cooldownTab)
     view.ResetWindow:Hide()
     view.Back:Hide()
     view.Content:SetWidth(math.max(1, view:GetWidth() - 28))
     view.Content:SetHeight(
-        adminTab and 496 or cooldownTab and 820 or 704)
+        adminTab and 496 or cooldownTab and 820 or 1060)
     if view.Scroll.UpdateScrollbar then
         view.Scroll:UpdateScrollbar()
     end
@@ -990,6 +1074,33 @@ function Raid:RefreshSettingsView()
     StyleButton(view.AdminTab, adminTab and "primary" or nil)
     StyleButton(
         view.CooldownTab, cooldownTab and "primary" or nil)
+    local mechanicsSettings = self.db.mechanicsHUD
+    view.MechanicsEnabled.Text:SetText(
+        mechanicsSettings.enabled and L.MECHANICS_ON or L.MECHANICS_OFF)
+    StyleButton(view.MechanicsEnabled,
+        mechanicsSettings.enabled and "positive" or "danger")
+    local mechanicsVisibility = {
+        ALWAYS = L.VISIBILITY_ALWAYS,
+        GROUP = L.VISIBILITY_GROUP,
+        RAID = L.VISIBILITY_RAID,
+    }
+    view.MechanicsVisibility.Text:SetText(
+        mechanicsVisibility[mechanicsSettings.visibility]
+            or L.VISIBILITY_GROUP)
+    view.MechanicsCombat.Text:SetText(
+        mechanicsSettings.combatOnly and L.COMBAT_ONLY_ON
+            or L.COMBAT_ONLY_OFF)
+    StyleButton(view.MechanicsCombat,
+        mechanicsSettings.combatOnly and "positive" or nil)
+    view.MechanicsValue.Text:SetText(tostring(mechanicsSettings.maxLines or 6))
+    view.MechanicsLock.Text:SetText(
+        mechanicsSettings.locked and L.LOCKED or L.UNLOCKED)
+    StyleButton(view.MechanicsLock,
+        mechanicsSettings.locked and "positive" or nil)
+    view.MechanicsTitle.Text:SetText(
+        mechanicsSettings.showTitle == false and L.TITLE_OFF or L.TITLE_ON)
+    view.MechanicsOpacity.Text:SetText(("%d%%"):format(
+        math.floor((mechanicsSettings.opacity or .92) * 100 + .5)))
     local cooldownSettings = self:GetRaidCooldownSettings()
     local cooldownSection =
         self.cooldownSettingsSection or "APPEARANCE"
@@ -1023,28 +1134,28 @@ function Raid:RefreshSettingsView()
     view.CooldownEnableAll:SetShown(spellSection)
     view.CooldownDisableAll:SetShown(spellSection)
     view.CooldownEnabled.Text:SetText(
-        cooldownSettings.enabled and "COOLDOWNS: ON"
-            or "COOLDOWNS: OFF")
+        cooldownSettings.enabled and L.COOLDOWNS_ON
+            or L.COOLDOWNS_OFF)
     StyleButton(
         view.CooldownEnabled,
         cooldownSettings.enabled and "positive" or "danger")
     local layoutLabels = {
-        CATEGORIES = "CATEGORY COLUMNS",
-        ROWS = "ABILITY ROWS",
-        LIST = "VERTICAL PLAYER LIST",
+        CATEGORIES = L.CATEGORY_COLUMNS_UPPER,
+        ROWS = L.ABILITY_ROWS_UPPER,
+        LIST = L.VERTICAL_PLAYER_LIST_UPPER,
     }
     view.CooldownLayout.Text:SetText(
-        layoutLabels[cooldownSettings.layout] or "CATEGORY COLUMNS")
+        layoutLabels[cooldownSettings.layout] or L.CATEGORY_COLUMNS_UPPER)
     local sortLabels = {
-        SPELL = "CONFIGURED ORDER",
-        CLASS = "CLASS",
-        NAME = "ABILITY NAME",
+        SPELL = L.CONFIGURED_ORDER_UPPER,
+        CLASS = L.CLASS_UPPER,
+        NAME = L.ABILITY_NAME_UPPER,
     }
     view.CooldownSort.Text:SetText(
-        sortLabels[cooldownSettings.sortMode] or "CONFIGURED ORDER")
+        sortLabels[cooldownSettings.sortMode] or L.CONFIGURED_ORDER_UPPER)
     view.CooldownClassColors.Text:SetText(
         cooldownSettings.classColors
-            and "CLASS COLORS: ON" or "CLASS COLORS: OFF")
+            and L.CLASS_COLORS_ON or L.CLASS_COLORS_OFF)
     StyleButton(
         view.CooldownClassColors,
         cooldownSettings.classColors and "positive" or nil)
@@ -1073,36 +1184,36 @@ function Raid:RefreshSettingsView()
             math.floor(
                 (cooldownSettings.hudOpacity or .82) * 100 + .5)))
     view.CooldownLock.Text:SetText(
-        cooldownSettings.locked and "HUD: LOCKED" or "HUD: UNLOCKED")
+        cooldownSettings.locked and L.HUD_LOCKED or L.HUD_UNLOCKED)
     StyleButton(
         view.CooldownLock,
         cooldownSettings.locked and "positive" or nil)
     view.CooldownRowNames.Text:SetText(
         cooldownSettings.showAbilityName
-            and "SPELL NAMES: ON" or "SPELL NAMES: OFF")
+            and L.SPELL_NAMES_ON or L.SPELL_NAMES_OFF)
     StyleButton(
         view.CooldownRowNames,
         cooldownSettings.showAbilityName and "positive" or nil)
     view.CooldownRowTotals.Text:SetText(
         cooldownSettings.showAbilityTotal
-            and "TOTALS: ON" or "TOTALS: OFF")
+            and L.TOTALS_ON or L.TOTALS_OFF)
     StyleButton(
         view.CooldownRowTotals,
         cooldownSettings.showAbilityTotal and "positive" or nil)
     view.CooldownWhispers.Text:SetText(
         cooldownSettings.whisperEnabled
-            and "WHISPERS: ON" or "WHISPERS: OFF")
+            and L.WHISPERS_ON or L.WHISPERS_OFF)
     StyleButton(
         view.CooldownWhispers,
         cooldownSettings.whisperEnabled and "positive" or nil)
     local cooldownVisibilityLabels = {
-        ALWAYS = "ALWAYS",
-        GROUP = "PARTY & RAID",
-        RAID = "RAID ONLY",
+        ALWAYS = L.VISIBILITY_ALWAYS,
+        GROUP = L.PARTY_RAID,
+        RAID = L.VISIBILITY_RAID,
     }
     view.CooldownVisibility.Text:SetText(
         cooldownVisibilityLabels[cooldownSettings.visibility]
-            or "PARTY & RAID")
+            or L.PARTY_RAID)
     local visibleSpellIndex = 0
     for _, button in ipairs(view.CooldownSpellButtons or {}) do
         local enabled =
@@ -1125,7 +1236,7 @@ function Raid:RefreshSettingsView()
             button.definition[2] .. "  |cff71818c"
                 .. button.definition[3] .. " · "
                 .. tostring(button.definition[5]) .. "s|r")
-        button.State:SetText(enabled and "ON" or "OFF")
+        button.State:SetText(enabled and L.ON or L.OFF)
         button.State:SetTextColor(
             enabled and .18 or .75,
             enabled and .9 or .25,
@@ -1133,61 +1244,64 @@ function Raid:RefreshSettingsView()
         StyleButton(button, enabled and "positive" or nil)
     end
     view.Minimap.Text:SetText(
-        self.db.minimap.hide and "HIDDEN" or "SHOWN")
+        self.db.minimap.hide and L.HIDDEN or L.SHOWN)
     StyleButton(
         view.Minimap,
         self.db.minimap.hide and "danger" or "positive")
     local labels = {
-        AUTO = "AUTOMATIC", RAID_WARNING = "RAID WARNING",
-        RAID = "RAID", PARTY = "PARTY", SAY = "SAY",
+        AUTO = L.AUTOMATIC, RAID_WARNING = L.RAID_WARNING,
+        RAID = L.RAID, PARTY = L.PARTY, SAY = L.SAY,
     }
     view.Channel.Text:SetText(
         labels[self.db.announcementChannel or "AUTO"])
     view.DelayValue.Text:SetText(
-        ("%.2f SEC"):format(self.db.messageDelay or .45))
+        Raid:Localize("SECONDS_SHORT", self.db.messageDelay or .45))
     view.ReadyHoldValue.Text:SetText(
-        ("%d SEC"):format(self.db.readyCheck.holdDuration or 15))
+        Raid:Localize(
+            "SECONDS_WHOLE", self.db.readyCheck.holdDuration or 15))
     local autoMarkerEnabled = self:IsAutoMarkerEnabled()
     view.AutoMarker.Text:SetText(
-        autoMarkerEnabled and "AUTO MARK: ON" or "AUTO MARK: OFF")
+        autoMarkerEnabled and L.AUTO_MARK_ON or L.AUTO_MARK_OFF)
     StyleButton(
         view.AutoMarker,
         autoMarkerEnabled and "positive" or "danger")
     local quickBarShown = not self.db.quickBar.hide
     view.QuickBar.Text:SetText(
-        quickBarShown and "TOOLBAR: ENABLED" or "TOOLBAR: DISABLED")
+        quickBarShown and L.TOOLBAR_ENABLED or L.TOOLBAR_DISABLED)
     StyleButton(
         view.QuickBar,
         quickBarShown and "positive" or "danger")
     local iconOnly = self.db.quickBar.iconOnly
     view.QuickBarIcons.Text:SetText(
-        iconOnly and "ICONS ONLY: ON" or "ICONS ONLY: OFF")
+        iconOnly and L.ICONS_ONLY_ON or L.ICONS_ONLY_OFF)
     StyleButton(
         view.QuickBarIcons, iconOnly and "positive" or "danger")
     local visibilityLabels = {
-        ALWAYS = "ALWAYS", GROUP = "PARTY OR RAID", RAID = "RAID ONLY",
+        ALWAYS = L.VISIBILITY_ALWAYS,
+        GROUP = L.VISIBILITY_GROUP,
+        RAID = L.VISIBILITY_RAID,
     }
     view.QuickBarVisibility.Text:SetText(
         visibilityLabels[self.db.quickBar.visibility or "GROUP"]
-            or "PARTY OR RAID")
+            or L.VISIBILITY_GROUP)
     local hideInCombat = self.db.quickBar.hideInCombat ~= false
     view.QuickBarCombat.Text:SetText(
-        hideInCombat and "HIDE IN COMBAT: ON"
-            or "HIDE IN COMBAT: OFF")
+        hideInCombat and L.HIDE_IN_COMBAT_ON
+            or L.HIDE_IN_COMBAT_OFF)
     StyleButton(
         view.QuickBarCombat,
         hideInCombat and "positive" or "danger")
     local showReadyWindow = self.db.readyCheck.showWindow ~= false
     view.ReadyCheckWindow.Text:SetText(
-        showReadyWindow and "RESULTS WINDOW: ON"
-            or "RESULTS WINDOW: OFF")
+        showReadyWindow and L.RESULTS_WINDOW_ON
+            or L.RESULTS_WINDOW_OFF)
     StyleButton(
         view.ReadyCheckWindow,
         showReadyWindow and "positive" or "danger")
     local showAssignmentInfo = not self.db.assignmentInfo.hide
     view.AssignmentInfo.Text:SetText(
-        showAssignmentInfo and "ASSIGNMENTS: ON"
-            or "ASSIGNMENTS: OFF")
+        showAssignmentInfo and L.ASSIGNMENTS_ON
+            or L.ASSIGNMENTS_OFF)
     StyleButton(
         view.AssignmentInfo,
         showAssignmentInfo and "positive" or "danger")
@@ -1271,7 +1385,7 @@ function Raid:ShowSettingsView()
     if self.workspaceRail then self.workspaceRail:Show() end
     if self.bossSettingsPanel then self.bossSettingsPanel:Hide() end
     if self.manualPlayerPanel then self.manualPlayerPanel:Hide() end
-    self.frame.Title:SetText("SETTINGS")
+    self.frame.Title:SetText(L.SETTINGS)
     self.frame.Subtitle:SetText(
         "INTERFACE, COMMUNICATION, AND RAID ADMINISTRATION")
     self.settingsTab = self.settingsTab or "GENERAL"
@@ -1301,13 +1415,13 @@ function Raid:CreateNewRaidWizard()
     wizard:SetFrameLevel(self.assignmentPanel:GetFrameLevel() + 20)
     wizard:SetBackdropColor(.018, .030, .043, 1)
     wizard:EnableMouse(true)
-    wizard.Title = Font(wizard, 15, "accent", "START A RAID")
+    wizard.Title = Font(wizard, 15, "accent", L.START_A_RAID)
     wizard.Title:SetPoint("TOPLEFT", 20, -22)
     wizard.Subtitle = Font(wizard, 10, "muted", "")
     wizard.Subtitle:SetPoint("TOPLEFT", 21, -50)
     wizard.Subtitle:SetPoint("RIGHT", -20, 0)
     wizard.Subtitle:SetJustifyH("LEFT")
-    wizard.Back = Button(wizard, "BACK", 86, 26)
+    wizard.Back = Button(wizard, L.BACK, 86, 26)
     wizard.Back:SetPoint("BOTTOMLEFT", 20, 14)
     wizard.Back:SetScript("OnClick", function()
         wizard.step = "EXPANSION"
@@ -1329,6 +1443,17 @@ function Raid:WizardButton(index)
         button.Text:SetPoint("LEFT", 12, 0)
         button.Text:SetPoint("RIGHT", -10, 0)
         button.Text:SetJustifyH("LEFT")
+        button.Logo = button:CreateTexture(nil, "ARTWORK")
+        button.Logo:SetPoint("LEFT", 8, 0)
+        button.Logo:SetSize(34, 34)
+        button.Logo:SetTexCoord(0, 1, 0, 1)
+        button.Logo:Hide()
+        button.Description = Font(button, 9, "muted", "")
+        button.Description:SetJustifyH("CENTER")
+        button.Description:Hide()
+        button.Meta = Font(button, 8, "accent", "")
+        button.Meta:SetJustifyH("CENTER")
+        button.Meta:Hide()
         button.Delete = Button(button, "X", 26, 26)
         button.Delete:SetPoint("RIGHT", -4, 0)
         button.Delete:SetFrameLevel(button:GetFrameLevel() + 3)
@@ -1342,26 +1467,76 @@ function Raid:WizardButton(index)
     return button
 end
 
+function Raid:LayoutNewRaidWizardButtons()
+    local wizard = self.newRaidWizard
+    if not wizard then return end
+    local availableWidth = math.max(1, wizard:GetWidth() - 40)
+    local columns = availableWidth >= 510 and 3
+        or availableWidth >= 340 and 2 or 1
+    local gap = 7
+    local cardWidth = math.floor(
+        (availableWidth - ((columns - 1) * gap)) / columns)
+    local cardCount = 0
+    for _, button in ipairs(wizard.Buttons or {}) do
+        if button:IsShown() and button.WizardCard then
+            cardCount = cardCount + 1
+        end
+    end
+    local cardRows = math.ceil(cardCount / columns)
+    for _, button in ipairs(wizard.Buttons or {}) do
+        if button:IsShown() then
+            button:ClearAllPoints()
+            if button.WizardCard then
+                local ordinal = button.WizardOrder or 0
+                local column = ordinal % columns
+                local row = math.floor(ordinal / columns)
+                button:SetSize(cardWidth, 106)
+                button:SetPoint("TOPLEFT",
+                    20 + (column * (cardWidth + gap)),
+                    -78 - (row * 113))
+            else
+                local top = wizard.step == "EXPANSION"
+                    and (-78 - (cardRows * 113) - 18) or -78
+                button:SetSize(availableWidth, 42)
+                button:SetPoint("TOPLEFT", 20,
+                    top - ((button.WizardRow or 0) * 47))
+            end
+        end
+    end
+end
+
 function Raid:RefreshNewRaidWizard()
     local wizard = self:CreateNewRaidWizard()
-    if not wizard:IsShown() then return end
     for _, button in ipairs(wizard.Buttons) do
         button:Hide()
         button.Delete:Hide()
+        button.Logo:Hide()
+        button.Description:Hide()
+        button.Meta:Hide()
+        button.Logo:ClearAllPoints()
+        button.Logo:SetPoint("LEFT", 8, 0)
         button.Text:ClearAllPoints()
         button.Text:SetPoint("LEFT", 12, 0)
         button.Text:SetPoint("RIGHT", -10, 0)
+        button.Text:SetJustifyH("LEFT")
+        button.WizardCard = nil
+        button.WizardOrder = nil
+        button.WizardRow = nil
     end
     local entries = {}
     if wizard.step == "RAID" then
-        wizard.Subtitle:SetText("Select a raid  -  Back returns to expansions")
+        wizard.Subtitle:SetText(L.SELECT_RAID_HINT)
         wizard.Back:Show()
         for _, raid in ipairs(self.raids) do
             if raid.expansion == wizard.expansion then
                 local raidKey = raid.key
                 local raidExpansion = raid.expansion
                 entries[#entries + 1] = {
-                    label = raid.name .. "  (" .. raid.size .. " player)",
+                    label = raid.name .. "  "
+                        .. Raid:Localize("PLAYER_COUNT", raid.size),
+                    logo = raid.icon,
+                    logoWidth = 34,
+                    logoHeight = 34,
                     action = function()
                         self.db.newRaidExpansion = raidExpansion
                         if self:BeginRaid(raidKey) then
@@ -1378,8 +1553,33 @@ function Raid:RefreshNewRaidWizard()
         wizard.Back:Hide()
         for _, expansion in ipairs(self.expansions) do
             local expansionKey = expansion.key
+            local raidCount, bossCount = 0, 0
+            local sizes = {}
+            for _, raid in ipairs(self.raids) do
+                if raid.expansion == expansionKey then
+                    raidCount = raidCount + 1
+                    bossCount = bossCount
+                        + math.max(0, #(raid.encounters or {}) - 1)
+                    sizes[raid.size or 25] = true
+                end
+            end
+            local playerSizes = {}
+            for playerCount in pairs(sizes) do
+                playerSizes[#playerSizes + 1] = playerCount
+            end
+            table.sort(playerSizes)
+            for index, playerCount in ipairs(playerSizes) do
+                playerSizes[index] = tostring(playerCount)
+            end
             entries[#entries + 1] = {
-                label = "EXPANSION  -  " .. expansion.name,
+                label = expansion.name,
+                logo = expansion.logo,
+                logoWidth = 94,
+                logoHeight = 46,
+                card = true,
+                description = raidCount .. " raids  |  "
+                    .. bossCount .. " bosses",
+                meta = table.concat(playerSizes, "/") .. " player plans",
                 action = function()
                     wizard.expansion = expansionKey
                     self.db.newRaidExpansion = expansionKey
@@ -1400,8 +1600,11 @@ function Raid:RefreshNewRaidWizard()
             local savedID, data = entry.id, entry.data
             local raid = self.raidByKey[data.raidKey]
             entries[#entries + 1] = {
-                label = "SAVED  -  " .. data.name
+                label = L.SAVED .. "  -  " .. data.name
                     .. (raid and "  [" .. raid.name .. "]" or ""),
+                logo = raid and raid.icon,
+                logoWidth = 34,
+                logoHeight = 34,
                 action = function()
                     if self:LoadSavedRaid(savedID) then
                         self:EnterBossUI()
@@ -1412,16 +1615,55 @@ function Raid:RefreshNewRaidWizard()
             }
         end
     end
+    local cardIndex, rowIndex = 0, 0
     for index, entry in ipairs(entries) do
         local button = self:WizardButton(index)
-        button:SetPoint("TOPLEFT", 20, -78 - ((index - 1) * 47))
+        if entry.card then
+            button.WizardCard = true
+            button.WizardOrder = cardIndex
+            cardIndex = cardIndex + 1
+        else
+            button.WizardRow = rowIndex
+            rowIndex = rowIndex + 1
+        end
         button.Text:SetText(entry.label)
         button:SetScript("OnClick", entry.action)
+        if entry.logo then
+            button.Logo:SetTexture(entry.logo)
+            button.Logo:SetSize(
+                entry.logoWidth or 34, entry.logoHeight or 34)
+            button.Logo:Show()
+            button.Text:ClearAllPoints()
+            if entry.card then
+                button.Logo:ClearAllPoints()
+                button.Logo:SetPoint("TOP", 0, -5)
+                button.Text:SetPoint("TOPLEFT", 8, -55)
+                button.Text:SetPoint("TOPRIGHT", -8, -55)
+                button.Text:SetJustifyH("CENTER")
+                button.Description:SetText(entry.description or "")
+                button.Description:ClearAllPoints()
+                button.Description:SetPoint("TOPLEFT", 7, -73)
+                button.Description:SetPoint("TOPRIGHT", -7, -73)
+                button.Description:Show()
+                button.Meta:SetText(entry.meta or "")
+                button.Meta:ClearAllPoints()
+                button.Meta:SetPoint("TOPLEFT", 7, -89)
+                button.Meta:SetPoint("TOPRIGHT", -7, -89)
+                button.Meta:Show()
+            else
+                button.Text:SetPoint(
+                    "LEFT", 14 + (entry.logoWidth or 34), 0)
+                button.Text:SetPoint("RIGHT", -10, 0)
+                button.Text:SetJustifyH("LEFT")
+            end
+        end
         if entry.deleteID then
             local deleteID = entry.deleteID
             local deleteName = entry.deleteName
             button.Text:ClearAllPoints()
-            button.Text:SetPoint("LEFT", 12, 0)
+            button.Text:SetPoint(
+                "LEFT", entry.logo and 14 + (entry.logoWidth or 34)
+                    or 12, 0)
             button.Text:SetPoint("RIGHT", -40, 0)
             button.Delete:SetScript("OnClick", function()
                 Raid.pendingDeleteSavedRaidID = deleteID
@@ -1437,6 +1679,7 @@ function Raid:RefreshNewRaidWizard()
         end
         button:Show()
     end
+    self:LayoutNewRaidWizardButtons()
 end
 
 function Raid:SetRaidWorkspaceVisible(visible)
@@ -1502,7 +1745,7 @@ function Raid:RequestNewRaid()
             "LUNARAIDS_NEW_RAID_SAVE", raid.name)
         local editBox = self:GetPopupEditBox(popup)
         if editBox then
-            editBox:SetText(raid.name .. " Plan")
+            editBox:SetText(Raid:Localize("RAID_PLAN_NAME", raid.name))
             editBox:HighlightText()
             editBox:SetFocus()
         end
@@ -1530,7 +1773,12 @@ function Raid:ShowNewRaidWizard(clearCurrentRaid)
     self.activeBossTab = "ASSIGNMENTS"
     self:SetRaidWorkspaceVisible(true)
     self:SetRaidPickerMode(true)
-    self:UpdateRoster()
+    wizard:Show()
+    self:RefreshNewRaidWizard()
+    self.frame.Title:SetText("LUNA RAIDS")
+    if self.frame.Subtitle then
+        self.frame.Subtitle:SetText(L.CREATE_OR_LOAD_RAID_PLAN)
+    end
     self:RefreshWorkspaceNavigation()
     for _, button in ipairs(self.assignmentActionButtons or {}) do
         button:Hide()
@@ -1542,11 +1790,5 @@ function Raid:ShowNewRaidWizard(clearCurrentRaid)
     end
     self:RefreshFooterLayout()
     self:UpdateWindowLayout()
-    self.frame.Title:SetText("LUNA RAIDS")
-    if self.frame.Subtitle then
-        self.frame.Subtitle:SetText("CREATE OR LOAD A RAID PLAN")
-    end
-    wizard:Show()
-    self:RefreshNewRaidWizard()
 end
 

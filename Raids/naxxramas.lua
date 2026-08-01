@@ -6,11 +6,85 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
+local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "VANILLA",
     key = "naxxramas", name = "Naxxramas", size = 40,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\naxxramas",
+    guides = {
+        ["Anub'Rekhan"] = {
+            Mechanic("Tank Anub'Rekhan near the outer wall and kite the perimeter during Locust Swarm without crossing the raid."),
+            Mechanic("Off-tanks collect Crypt Guards; kill and control corpses or scarabs while ranged avoid Impale lines."),
+        },
+        ["Grand Widow Faerlina"] = {
+            Mechanic("Off-tanks hold the worshippers away from Faerlina while the raid burns or controls followers."),
+            Mechanic("Use a worshipper at each Frenzy to remove it; dispel poison and spread for Rain of Fire."),
+        },
+        ["Maexxna"] = {
+            Mechanic("Assign ranged players to destroy Web Wraps immediately and cleanse poison from the tank."),
+            Mechanic("Top everyone before Web Spray; save tank cooldowns and burst healing for the enrage below 30%."),
+        },
+        ["Noth the Plaguebringer"] = {
+            Mechanic("Decurse Curse of the Plaguebringer immediately and tank adds away from Noth."),
+            Mechanic("During balcony phases, group and kill Plagued Warriors, then re-establish boss threat on return."),
+        },
+        ["Heigan the Unclean"] = {
+            Mechanic("Melee and the tank follow the safe platform pattern while ranged and healers avoid mana burns on the platform."),
+            Mechanic("During the dance phase everyone follows the eruption zones together; cleanse disease promptly afterward."),
+        },
+        ["Loatheb"] = {
+            Mechanic("Set a strict healer rotation around the healing lockout and time large heals immediately when each window opens."),
+            Mechanic("Groups rotate through spores without killing them early; use consumables and personal mitigation between heals."),
+        },
+        ["Instructor Razuvious"] = {
+            Mechanic("Priests mind-control Understudies and rotate Bone Barrier while using Taunt to tank Razuvious."),
+            Mechanic("Backups control loose Understudies; healers keep the active controlled add alive through Unbalancing Strike."),
+        },
+        ["Gothik the Harvester"] = {
+            Mechanic("Split the raid between living and dead sides and balance kills so neither side is overwhelmed."),
+            Mechanic("Control dangerous trainees and riders, then regroup and tank Gothik after the gate opens."),
+        },
+        ["The Four Horsemen"] = {
+            Mechanic("Four corner teams rotate or swap before marks stack too high; never drag a horseman toward another corner."),
+            Mechanic("Back corners maintain ranged threat and healing while the front pair execute the planned tank rotation."),
+        },
+        ["Patchwerk"] = {
+            Mechanic("Main and Hateful Strike tanks establish the top threat positions and remain stacked in melee range."),
+            Mechanic("Dedicated healers spam assigned tanks; DPS delay briefly for threat, then burn before the enrage."),
+        },
+        ["Grobbulus"] = {
+            Mechanic("Kite Grobbulus slowly around the room and keep the raid behind him to control Slime Spray adds."),
+            Mechanic("Mutating Injection targets move to the outer wall before dispel or expiration and leave clouds behind the group."),
+        },
+        ["Gluth"] = {
+            Mechanic("Tanks swap before Mortal Wound becomes unhealable while hunters keep Tranquilizing Shot ready."),
+            Mechanic("Kiting teams slow Zombie Chow around the room; burn them during Decimate before they reach Gluth."),
+        },
+        ["Thaddius"] = {
+            Mechanic("Split evenly for Feugen and Stalagg and kill both within seconds while tanks handle platform swaps."),
+            Mechanic("After the jump, move instantly to the correct polarity side and switch sides without crossing through others."),
+        },
+        ["Sapphiron"] = {
+            Mechanic("Spread around Sapphiron's sides, avoid Blizzard, and decurse Life Drain while sustaining frost aura damage."),
+            Mechanic("During air phases spread for Icebolt, then hide behind an ice block before Frost Breath."),
+        },
+        ["Kel'Thuzad"] = {
+            Mechanic("Phase 1 groups control incoming undead without entering the center; save cooldowns for Kel'Thuzad."),
+            Mechanic("Spread for Frost Blast and mana detonation, interrupt Frostbolt, and free mind-controlled players safely."),
+            Mechanic("Off-tanks pick up both Guardians in the final phase while damage remains focused on the boss."),
+        },
+    },
+    recommendations = {
+        Rec("mind control", { "PRIEST" }, { "Shadow", "Discipline", "Holy" }, Reuse),
+        Rec("understudy controller", { "PRIEST" }, { "Shadow", "Discipline", "Holy" }, Reuse),
+        Rec("zombie chow kiter", { "HUNTER", "MAGE", "WARLOCK" }, { "Marksmanship", "Frost", "Affliction" }),
+        Rec("crowd control", { "MAGE", "WARLOCK", "HUNTER", "PRIEST" }, { "Frost", "Affliction", "Survival", "Shadow" }),
+        Rec("decurse", { "MAGE", "DRUID" }, { "Arcane", "Frost", "Restoration", "Balance" }, Reuse),
+        Rec("dispel", { "PRIEST", "PALADIN", "SHAMAN" }, { "Discipline", "Holy", "Restoration" }, Reuse),
+        Rec("interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", {

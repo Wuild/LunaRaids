@@ -108,7 +108,7 @@ function Raid:AddManualPlayer(name, class, role, spec, subgroup)
     name = strtrim(name or "")
     name = name:match("^[^-]+") or name
     if name == "" then
-        self:Print("Enter a character name.")
+        self:Print(self.L.ENTER_CHARACTER_NAME)
         return
     end
     class = classNames[class] and class or "WARRIOR"
@@ -197,7 +197,7 @@ function Raid:SetPlayerRole(player, role)
     then
         local ok = pcall(UnitSetRole, player.unit, actualRole)
         if not ok then
-            self:Print("The client rejected the Blizzard role change.")
+            self:Print(self.L.ROLE_CHANGE_REJECTED)
             return
         end
         changedBlizzardRole = true
@@ -225,6 +225,13 @@ function Raid:SetVirtualPlayerGroup(player, subgroup)
     if not player then return end
     subgroup = math.max(1, math.min(8, tonumber(subgroup) or 1))
     player.subgroup = subgroup
+    if player.simulated and self.db.simulationSession
+        and player.name
+    then
+        self.db.simulationSession.groups =
+            self.db.simulationSession.groups or {}
+        self.db.simulationSession.groups[player.name:lower()] = subgroup
+    end
     if player.manual then
         local raid = self:GetRaid()
         local saved = self.db.manualPlayers[raid.key]
@@ -261,7 +268,7 @@ function Raid:MoveRosterPlayer(player, subgroup, target)
     local targetGroup = target and target.subgroup or subgroup
     if sourceIndex or targetIndex then
         if not (IsInRaid and IsInRaid()) then
-            self:Print("Live raid groups can only be changed while in a raid.")
+            self:Print(self.L.GROUP_EDIT_REQUIRES_RAID)
             return
         end
         if (sourceIndex and targetIndex
@@ -269,7 +276,7 @@ function Raid:MoveRosterPlayer(player, subgroup, target)
             or (not (sourceIndex and targetIndex)
                 and type(SetRaidSubgroup) ~= "function")
         then
-            self:Print("This client does not support raid group editing.")
+            self:Print(self.L.GROUP_EDIT_UNSUPPORTED)
             return
         end
         local ok
@@ -281,7 +288,7 @@ function Raid:MoveRosterPlayer(player, subgroup, target)
             ok = pcall(SetRaidSubgroup, targetIndex, sourceGroup)
         end
         if not ok then
-            self:Print("The client rejected the raid group change.")
+            self:Print(self.L.GROUP_CHANGE_REJECTED)
             return
         end
     end
@@ -299,7 +306,7 @@ end
 
 function Raid:StartRoleCheck()
     if not self:IsLocalRaidEditor() then
-        self:Print("You must be raid leader or assistant to start a role check.")
+        self:Print(self.L.ROLE_CHECK_REQUIRES_LEADERSHIP)
         return
     end
     if self.simulation.enabled then
@@ -310,25 +317,24 @@ function Raid:StartRoleCheck()
                 ChatTypeInfo and ChatTypeInfo.RAID_WARNING
                     or { r = 1, g = .2, b = .2 })
         end
-        self:Print("[SIM] Role check requested.")
+        self:Print(self.L.SIM_ROLE_CHECK_REQUESTED)
         return
     end
     local rolePoll = C_PartyInfo
         and C_PartyInfo.InitiateRolePoll or InitiateRolePoll
     if type(rolePoll) ~= "function" then
-        self:Print("This client does not support Blizzard role checks.")
+        self:Print(self.L.ROLE_CHECK_UNSUPPORTED)
         return
     end
     local ok = pcall(rolePoll)
     if not ok then
-        self:Print("The client rejected the role check.")
+        self:Print(self.L.ROLE_CHECK_REJECTED)
     end
 end
 
 function Raid:StartReadyCheck()
     if not self:IsLocalRaidEditor() then
-        self:Print(
-            "You must be raid leader or assistant to start a ready check.")
+        self:Print(self.L.READY_CHECK_REQUIRES_LEADERSHIP)
         return
     end
     if self.simulation.enabled then
@@ -349,30 +355,28 @@ function Raid:StartReadyCheck()
     local readyCheck = C_PartyInfo
         and C_PartyInfo.DoReadyCheck or DoReadyCheck
     if type(readyCheck) ~= "function" then
-        self:Print("This client does not support ready checks.")
+        self:Print(self.L.READY_CHECK_UNSUPPORTED)
         return
     end
     self.pendingReadyCheckCaller =
         GetUnitName("player", true) or UnitName("player")
     local ok = pcall(readyCheck)
     if not ok then
-        self:Print("The client rejected the ready check.")
+        self:Print(self.L.READY_CHECK_REJECTED)
     end
 end
 
 function Raid:StartPullCountdown(seconds)
     seconds = math.max(1, math.min(30, tonumber(seconds) or 10))
     if not self:IsLocalRaidEditor() then
-        self:Print(
-            "You must be raid leader or assistant to start a pull timer.")
+        self:Print(self.L.PULL_TIMER_REQUIRES_LEADERSHIP)
         return
     end
     if _G.DBM and type(_G.DBM.CreatePullTimer) == "function" then
         local ok = pcall(_G.DBM.CreatePullTimer, _G.DBM, seconds)
         if ok then
             if self.simulation.enabled then
-                self:Print(("[SIM] DBM pull timer: %d seconds."):format(
-                    seconds))
+                self:Print(self:Localize("SIM_PULL_TIMER", seconds))
             end
             return
         end
@@ -400,15 +404,14 @@ function Raid:StartPullCountdown(seconds)
             "RAID_WARNING")
         if ok then return end
     end
-    self:Print("The client rejected the pull timer.")
+    self:Print(self.L.PULL_TIMER_REJECTED)
 end
 
 function Raid:StartBreakTimer(minutes)
     minutes = math.max(1, math.min(
         60, math.floor(tonumber(minutes) or 5)))
     if not self:IsLocalRaidEditor() then
-        self:Print(
-            "You must be raid leader or assistant to start a break timer.")
+        self:Print(self.L.BREAK_TIMER_REQUIRES_LEADERSHIP)
         return
     end
     local seconds = minutes * 60
@@ -426,7 +429,7 @@ function Raid:StartBreakTimer(minutes)
                 ChatTypeInfo and ChatTypeInfo.RAID_WARNING
                     or { r = 1, g = .28, b = 0 })
         end
-        self:Print(("[SIM] Break timer: %d minutes."):format(minutes))
+        self:Print(self:Localize("SIM_BREAK_TIMER", minutes))
         return
     end
     local channel = IsInRaid and IsInRaid()
@@ -654,6 +657,7 @@ function Raid:BuildSimulatedRoster(size)
             race = character[2],
             role = role,
             reportedRole = role,
+            spec = character[4],
             subgroup = previousGroups[name:lower()]
                 or math.floor((index - 1) / 5) + 1,
             leader = false,
@@ -674,8 +678,7 @@ end
 function Raid:StartSimulation(size)
     size = tonumber(size)
     if size ~= 10 and size ~= 25 and size ~= 40 then
-        self:Print(
-            "Usage: /lr sim 10, /lr sim 25, /lr sim 40, or /lr sim clear")
+        self:Print(self.L.SIM_USAGE)
         return
     end
     if not self.simulation.enabled then
@@ -698,6 +701,18 @@ function Raid:StartSimulation(size)
     if self.messageFrame then self.messageFrame:Hide() end
     self.roster, self.simulation.roster =
         self:BuildSimulatedRoster(size)
+    local groups = {}
+    for _, player in ipairs(self.simulation.roster or {}) do
+        if player.name then
+            groups[player.name:lower()] = player.subgroup
+        end
+    end
+    self.db.simulationSession = {
+        size = size,
+        selection = Copy(self.simulation.selection),
+        plans = self.simulation.plans,
+        groups = groups,
+    }
     if self.SeedSimulatedRaidCooldowns then
         self:SeedSimulatedRaidCooldowns()
     end
@@ -709,13 +724,14 @@ function Raid:StartSimulation(size)
     if self.BroadcastSimulationRoster then
         self:BroadcastSimulationRoster()
     end
-    self:Print(
-        ("Simulation enabled: %d-player target; added %d simulated players."):format(
-            size, #self.simulation.roster))
+    self:Print(self:Localize(
+        "SIMULATION_ENABLED", size, #self.simulation.roster))
 end
 
 function Raid:StopSimulation(silent)
     if not self.simulation.enabled then
+        self.db.simulationSession = nil
+        self.db.simulationRestore = nil
         if self.ClearSimulatedRaidCooldowns then
             self:ClearSimulatedRaidCooldowns()
         end
@@ -725,7 +741,7 @@ function Raid:StopSimulation(silent)
         end
         self:UpdateRoster()
         if not silent then
-            self:Print("Simulated players cleared; live roster retained.")
+            self:Print(self.L.SIM_PLAYERS_CLEARED)
         end
         return
     end
@@ -754,6 +770,7 @@ function Raid:StopSimulation(silent)
         self.simulation.selection = nil
     end
     self.db.simulationRestore = nil
+    self.db.simulationSession = nil
     self.selectedPlayer = nil
     self:UpdateRoster()
     if self.RefreshRaidCooldowns then
@@ -761,7 +778,7 @@ function Raid:StopSimulation(silent)
     end
     if self.frame then self:RefreshAll() end
     if not silent then
-        self:Print("Simulation cleared; live roster restored.")
+        self:Print(self.L.SIMULATION_CLEARED)
     end
 end
 
@@ -796,6 +813,40 @@ function Raid:UpdateRoster(suppressRosterRefresh)
     if not suppressRosterRefresh and self.RefreshRoster then
         self:RefreshRoster()
     end
+end
+
+function Raid:RestoreSimulationSession()
+    local session = self.db and self.db.simulationSession
+    local size = session and tonumber(session.size)
+    if size ~= 10 and size ~= 25 and size ~= 40 then
+        if session then self.db.simulationSession = nil end
+        return false
+    end
+    self.simulation.enabled = true
+    self.simulation.size = size
+    self.simulation.selection = Copy(
+        session.selection or self.db.simulationRestore or {})
+    self.simulation.plans = Copy(session.plans or {})
+    self.simulation.roster = {}
+    for name, subgroup in pairs(session.groups or {}) do
+        self.simulation.roster[#self.simulation.roster + 1] = {
+            name = name, subgroup = subgroup,
+        }
+    end
+    self.roster, self.simulation.roster =
+        self:BuildSimulatedRoster(size)
+    session.plans = self.simulation.plans
+    session.selection = Copy(self.simulation.selection)
+    session.groups = {}
+    for _, player in ipairs(self.simulation.roster or {}) do
+        if player.name then
+            session.groups[player.name:lower()] = player.subgroup
+        end
+    end
+    if self.SeedSimulatedRaidCooldowns then
+        self:SeedSimulatedRaidCooldowns()
+    end
+    return true
 end
 
 function Raid:RefreshLoginRoster()

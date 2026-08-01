@@ -6,11 +6,43 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
+local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
     key = "hyjal", name = "Battle for Mount Hyjal", size = 25,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\hyjal",
+    guides = {
+        ["Rage Winterchill"] = {
+            Mechanic("Spread to limit Icebolt overlap, dispel Frost Nova quickly, and move out of Death and Decay immediately."),
+            Mechanic("Tanks gather remaining wave mobs before the boss arrives; healers keep range while avoiding Frost Armor slows."),
+        },
+        ["Anetheron"] = {
+            Mechanic("The infernal tank collects each Infernal away from the raid while ranged destroy it before the next summon."),
+            Mechanic("Use Fear Ward or Tremor Totem for Carrion Swarm positioning and apply healing reduction awareness after the cone."),
+        },
+        ["Kaz'rogal"] = {
+            Mechanic("Mana users conserve resources and use consumables early; Mark of Kaz'rogal becomes lethal at low mana."),
+            Mechanic("Players about to explode move away from the raid while physical damage maintains pressure during later marks."),
+        },
+        ["Azgalor"] = {
+            Mechanic("Healers stand outside Howl of Azgalor silence range while the tank keeps Azgalor faced away."),
+            Mechanic("Doom targets move to the Doomguard tank before death; control each Doomguard without cleaving the raid."),
+        },
+        ["Archimonde"] = {
+            Mechanic("Decurse Grip of the Legion instantly, break Air Burst falls with Tears of the Goddess, and never stand in Doomfire."),
+            Mechanic("Fear protection and Tremor Totems cover every Fear; players avoid deaths because each Soul Charge punishes the raid."),
+        },
+    },
+    recommendations = {
+        Rec("wave tank", { "PALADIN", "WARRIOR", "DRUID" }, { "Protection", "Feral" }),
+        Rec("decurse", { "MAGE", "DRUID" }, { "Arcane", "Frost", "Restoration", "Balance" }, Reuse),
+        Rec("dispel", { "PRIEST", "PALADIN", "SHAMAN" }, { "Discipline", "Holy", "Restoration" }, Reuse),
+        Rec("infernal tank", { "PALADIN", "WARRIOR", "DRUID" }, { "Protection", "Feral" }),
+        Rec("doomguard tank", { "PALADIN", "WARRIOR", "DRUID" }, { "Protection", "Feral" }),
+        Rec("fear ward", { "PRIEST" }, { "Discipline", "Holy", "Shadow" }, Reuse),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", { A.TANK.MAIN, A.TANK.OFF, "Wave Tank 1", "Wave Tank 2" }),

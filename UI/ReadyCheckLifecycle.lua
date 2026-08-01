@@ -70,7 +70,7 @@ function Raid:HandleReadyCheckFinished()
     end
     if not frame or not frame:IsShown() then return end
     frame.endTime = nil
-    frame.Title:SetText("READY CHECK COMPLETE")
+    frame.Title:SetText(Raid.L.READY_CHECK_COMPLETE)
     self:RefreshReadyCheckWindow()
     if frame.dismissPinned then return end
     frame.dismissPending = true

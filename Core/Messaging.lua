@@ -66,9 +66,10 @@ function Raid:GetGroupChannel()
     return "SAY"
 end
 
-function Raid:AnnounceAssignments()
+function Raid:AnnounceAssignments(channelOverride)
     if not self:RequireRaidEditor() then return end
     wipe(self.messageQueue)
+    local channel = channelOverride or self:GetGroupChannel()
     local encounter = self:GetEncounter()
     local plan = self:GetPlan(false) or {}
     local count = 0
@@ -91,8 +92,7 @@ function Raid:AnnounceAssignments()
                 count = count + 1
             end
         end
-        self:QueueEntryLines(
-            self:GetGroupChannel(), nil, prefix, entries)
+        self:QueueEntryLines(channel, nil, prefix, entries)
     end
     local healingTargets = self:GetHealingTargets()
     local healingEntries = {}
@@ -113,12 +113,11 @@ function Raid:AnnounceAssignments()
     end
     if #healingEntries > 0 then
         self:QueueEntryLines(
-            self:GetGroupChannel(), nil,
-            "Healing: ", healingEntries)
+            channel, nil, "Healing: ", healingEntries)
     end
     if count == 0 then
         wipe(self.messageQueue)
-        self:Print("Assign at least one player before announcing.")
+        self:Print(self.L.ASSIGN_BEFORE_ANNOUNCING)
         return
     end
     self:StartMessageQueue()
@@ -168,7 +167,7 @@ function Raid:WhisperAssignments()
         count = count + 1
     end
     if count == 0 then
-        self:Print("Assign at least one player before whispering.")
+        self:Print(self.L.ASSIGN_BEFORE_WHISPERING)
         return
     end
     self:StartMessageQueue()

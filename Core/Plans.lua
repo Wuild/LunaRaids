@@ -383,7 +383,7 @@ function Raid:SaveBossPreset(name)
 	end
 	name = strtrim(name or "")
 	if name == "" then
-		self:Print("Enter a name for the boss assignment preset.")
+		self:Print(self.L.ENTER_PRESET_NAME)
 		return false
 	end
 	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
@@ -414,8 +414,8 @@ function Raid:SaveBossPreset(name)
 	if self.RefreshBossSettingsPanel then
 		self:RefreshBossSettingsPanel()
 	end
-	self:Print("Saved \"" .. name .. "\" for "
-	.. self:GetEncounter().name .. ".")
+	self:Print(self:Localize(
+		"PRESET_SAVED", name, self:GetEncounter().name))
 	return true
 end
 
@@ -430,7 +430,7 @@ function Raid:LoadBossPreset(presetID)
 	local selected = self:GetSelectedBossPreset()
 	local preset = selected and selected.settings
 	if not preset then
-		self:Print("No custom assignment setup has been saved for this boss.")
+		self:Print(self.L.NO_CUSTOM_PRESET)
 		return false
 	end
 	self.db.bossOverrides[raid.key] =
@@ -440,8 +440,8 @@ function Raid:LoadBossPreset(presetID)
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
-	self:Print("Applied \"" .. selected.name .. "\" to "
-	.. self:GetEncounter().name .. ".")
+	self:Print(self:Localize(
+		"PRESET_APPLIED", selected.name, self:GetEncounter().name))
 	return true
 end
 
@@ -464,8 +464,8 @@ function Raid:DeleteBossPreset(presetID)
 	if self.RefreshBossSettingsPanel then
 		self:RefreshBossSettingsPanel()
 	end
-	self:Print("Deleted \"" .. preset.name .. "\" from "
-	.. self:GetEncounter().name .. ".")
+	self:Print(self:Localize(
+		"PRESET_DELETED", preset.name, self:GetEncounter().name))
 	return true
 end
 
@@ -595,8 +595,22 @@ function Raid:PropagateOverviewAssignments()
 			end
 		end
 		local used = {}
-		for _, assignment in pairs(plan) do
-			if type(assignment) == "table" and assignment.name then
+		for groupIndex, group in ipairs(encounter.groups or {}) do
+			for slotIndex, slot in ipairs(self:GetEncounterGroupSlots(
+				groupIndex, encounter, raid.key, encounterIndex))
+			do
+				local assignment = plan[
+					SemanticSlotKey(slot, groupIndex, slotIndex)]
+				if assignment and assignment.name and not slot.allowReuse then
+					used[assignment.name:lower()] = true
+				end
+			end
+		end
+		for key, assignment in pairs(plan) do
+			if type(key) == "string"
+			and key:match("^S:healer%.raid%.%d+$")
+			and type(assignment) == "table" and assignment.name
+			then
 				used[assignment.name:lower()] = true
 			end
 		end
@@ -609,7 +623,9 @@ function Raid:PropagateOverviewAssignments()
 			if not player or not player.name then
 				return false
 			end
-			if used[player.name:lower()] then
+			if used[player.name:lower()]
+			and not (type(slot) == "table" and slot.allowReuse)
+			then
 				return false
 			end
 			if type(slot) == "table" and slot.allowedClasses then
@@ -618,12 +634,48 @@ function Raid:PropagateOverviewAssignments()
 			return true
 		end
 		local function NextPlayer(role, preferred, slot)
+			local hasRecommendations = type(slot) == "table" and (
+				next(slot.recommendedClasses or {}) ~= nil
+				or next(slot.recommendedSpecs or {}) ~= nil
+				or next(slot.recommendedRoles or {}) ~= nil)
 			if preferred and preferred.name
 			and IsCompatible(preferred, role, slot)
+			and not hasRecommendations
 			then
 				return preferred
 			end
 			local pool = pools[role] or {}
+			if type(slot) == "table" and slot.recommendedRoles
+			and next(slot.recommendedRoles) ~= nil
+			then
+				pool = {}
+				for recommendedRole in pairs(slot.recommendedRoles) do
+					for _, player in ipairs(pools[recommendedRole] or {}) do
+						pool[#pool + 1] = player
+					end
+				end
+			end
+			if hasRecommendations then
+				local best, bestScore
+				for poolIndex, player in ipairs(pool) do
+					if IsCompatible(player, role, slot) then
+						local spec = tostring(player.spec or ""):lower()
+						local classes = slot.recommendedClasses or {}
+						local classBonus = tonumber(classes[player.class]) or 0
+						local score = (tonumber(player.gearScore) or 0)
+							+ classBonus
+						if next(classes) == nil or classBonus > 0 then
+							score = score + (tonumber(
+								(slot.recommendedSpecs or {})[spec]) or 0)
+						end
+						score = score - (poolIndex / 1000)
+						if not bestScore or score > bestScore then
+							best, bestScore = player, score
+						end
+					end
+				end
+				return best
+			end
 			if type(slot) == "table" and slot.allowedClasses then
 				for _, player in ipairs(pool) do
 					if IsCompatible(player, role, slot) then
@@ -654,7 +706,9 @@ function Raid:PropagateOverviewAssignments()
 				class = player.class,
 				propagated = true,
 			}
-			used[player.name:lower()] = true
+			if type(slot) ~= "table" or not slot.allowReuse then
+				used[player.name:lower()] = true
+			end
 			propagated = propagated + 1
 		end
 		for groupIndex, group in ipairs(encounter.groups or {}) do
@@ -777,19 +831,29 @@ local function AssignmentClassBonus(class, text)
 	return bonus
 end
 
+local function AssignmentRecommendationBonus(player, slot)
+	if type(slot) ~= "table" then return 0 end
+	local classes = slot.recommendedClasses or {}
+	local classBonus = tonumber(classes[player.class]) or 0
+	local bonus = classBonus
+	local spec = tostring(player.spec or ""):lower()
+	if spec ~= "" and spec ~= "unknown"
+	and (next(classes) == nil or classBonus > 0)
+	then
+		bonus = bonus + (slot.recommendedSpecs
+			and tonumber(slot.recommendedSpecs[spec]) or 0)
+	end
+	return bonus
+end
+
 function Raid:GetAssignedPlayerNames()
 	local used, plan = {}, self:GetPlan(false) or {}
-	for _, assignment in pairs(plan) do
-		if type(assignment) == "table" and assignment.name then
-			used[assignment.name:lower()] = true
-		end
-	end
 	local encounter = self:GetEncounter()
 	for groupIndex, group in ipairs(encounter.groups or {}) do
-		for slotIndex = 1, #self:GetEncounterGroupSlots(
-			groupIndex, encounter) do
+		for slotIndex, slot in ipairs(self:GetEncounterGroupSlots(
+			groupIndex, encounter)) do
 			local assignment = plan[self:SlotKey(groupIndex, slotIndex)]
-			if assignment and assignment.name then
+			if assignment and assignment.name and not slot.allowReuse then
 				used[assignment.name:lower()] = true
 			end
 		end
@@ -809,14 +873,21 @@ function Raid:SuggestPlayer(group, slot, used, healingSlot)
 	local bestPlayer, bestScore
 	for rosterIndex, player in ipairs(self.roster or {}) do
 		local playerRole = player.role or player.reportedRole or "NONE"
+		local roleAllowed = playerRole == wantedRole
+			or type(slot) == "table"
+				and slot.recommendedRoles
+				and slot.recommendedRoles[playerRole]
 		local classAllowed = type(slot) ~= "table"
 		or not slot.allowedClasses
 		or slot.allowedClasses[player.class]
-		if player.name and playerRole == wantedRole
+		local available = not used[player.name and player.name:lower() or ""]
+			or type(slot) == "table" and slot.allowReuse
+		if player.name and roleAllowed
 		and classAllowed
-		and not used[player.name:lower()]
+		and available
 		then
-			local score = AssignmentClassBonus(player.class, text)
+			local score = AssignmentRecommendationBonus(player, slot)
+			+ AssignmentClassBonus(player.class, text)
 			+ (tonumber(player.gearScore) or 0)
 			- (rosterIndex / 1000)
 			if not bestScore or score > bestScore then
@@ -835,9 +906,10 @@ function Raid:SuggestAssignment(groupIndex, slotIndex, healingSlotIndex)
 	local used = self:GetAssignedPlayerNames()
 	local player
 	if healingSlotIndex then
+		local definition = self:GetHealingSlotDefinition(healingSlotIndex)
 		player = self:SuggestPlayer(
 			{ name = "Healing", role = self.Role.HEALER },
-			self.Assignment:Healer(
+			definition or self.Assignment:Healer(
 				self.AssignmentTarget.RAID, healingSlotIndex, "Healer"),
 			used, true)
 		if player then
@@ -855,7 +927,7 @@ function Raid:SuggestAssignment(groupIndex, slotIndex, healingSlotIndex)
 		end
 	end
 	if not player then
-		self:Print("No unused raid member is available.")
+		self:Print(self.L.NO_UNUSED_RAID_MEMBER)
 	end
 	return player
 end
@@ -892,7 +964,9 @@ function Raid:AutoAssignEncounter()
 						plan[key] = {
 							name = player.name, class = player.class,
 						}
-						used[player.name:lower()] = true
+						if type(label) ~= "table" or not label.allowReuse then
+							used[player.name:lower()] = true
+						end
 						assigned = assigned + 1
 					end
 				end
@@ -903,9 +977,10 @@ function Raid:AutoAssignEncounter()
 		for slotIndex = 1, self:GetHealingSlotCount() do
 			local key = self:HealingPlayerKey(slotIndex)
 			if not plan[key] then
+				local definition = self:GetHealingSlotDefinition(slotIndex)
 				local player = self:SuggestPlayer(
 					{ name = "Healing", role = self.Role.HEALER },
-					self.Assignment:Healer(
+					definition or self.Assignment:Healer(
 						self.AssignmentTarget.RAID, slotIndex, "Healer"),
 					used, true)
 				if player then
@@ -921,18 +996,26 @@ function Raid:AutoAssignEncounter()
 	if encounter.name == "Raid Overview" then
 		assigned = assigned + self:PropagateOverviewAssignments()
 	end
-	if self.SendPlanSnapshot and assigned > 0 then
-		self:SendPlanSnapshot()
+	if assigned > 0 then
+		if encounter.name == "Raid Overview"
+		and self.SendRaidPlanSnapshots
+		then
+			self:SendRaidPlanSnapshots()
+		elseif self.SendPlanSnapshot then
+			self:SendPlanSnapshot()
+		end
 	end
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
 	if encounter.name == "Raid Overview" then
-		self:Print(("Auto assigned %d slot%s across the raid."):format(
-			assigned, assigned == 1 and "" or "s"))
+		self:Print(self:Localize(
+			assigned == 1 and "AUTO_ASSIGNED_RAID_ONE"
+				or "AUTO_ASSIGNED_RAID_MANY", assigned))
 	else
-		self:Print(("Auto assigned %d player%s."):format(
-			assigned, assigned == 1 and "" or "s"))
+		self:Print(self:Localize(
+			assigned == 1 and "AUTO_ASSIGNED_ONE"
+				or "AUTO_ASSIGNED_MANY", assigned))
 	end
 end
 
@@ -973,6 +1056,16 @@ function Raid:GetHealingSlotCount()
 		end
 	end
 	return self:GetRaidComposition(self:GetRaid().key).healers
+end
+
+function Raid:GetHealingSlotDefinition(slotIndex)
+	local encounter = self:GetEncounter()
+	if encounter.name == "Raid Overview" then return nil end
+	for _, group in ipairs(encounter.groups or {}) do
+		if group.role == self.Role.HEALER then
+			return group.slots and group.slots[slotIndex] or nil
+		end
+	end
 end
 
 function Raid:GetHealingTargetLabel(target)
@@ -1029,6 +1122,29 @@ function Raid:GetHealingTargetIndex(slotIndex)
 	local plan = self:GetPlan(false)
 	local index = plan
 	and tonumber(plan[self:HealingTargetKey(slotIndex)])
+	if not index then
+		local definition = self:GetHealingSlotDefinition(slotIndex)
+		if definition and definition.targetLabel then
+			for targetIndex, target in ipairs(targets) do
+				if target.name == definition.targetLabel then
+					index = targetIndex
+					break
+				end
+			end
+		elseif definition
+			and definition.target == self.AssignmentTarget.MAIN_TANK
+		then
+			index = 1
+		elseif definition
+			and definition.target == self.AssignmentTarget.OFF_TANK
+		then
+			index = math.min(2, math.max(1, #targets - 1))
+		elseif definition
+			and definition.target == self.AssignmentTarget.TANKS
+		then
+			index = math.min(slotIndex, math.max(1, #targets - 1))
+		end
+	end
 	return math.max(1, math.min(index or #targets, #targets))
 end
 
@@ -1337,11 +1453,11 @@ end
 
 function Raid:CompleteRaid()
 	if not self.db.raidLocked then
-		self:Print("There is no active raid to complete.")
+		self:Print(self.L.NO_ACTIVE_RAID)
 		return false
 	end
 	if not self:CanStartRaid() then
-		self:Print("Only the raid leader can complete the active raid.")
+		self:Print(self.L.ONLY_LEADER_COMPLETE)
 		return false
 	end
 	local raid = self:GetRaid()
@@ -1358,13 +1474,14 @@ function Raid:CompleteRaid()
 	if self.RefreshPersonalAssignments then
 		self:RefreshPersonalAssignments()
 	end
+	if self.RefreshMechanicsHUD then self:RefreshMechanicsHUD() end
 	if self.RefreshQuickActionBar then
 		self:RefreshQuickActionBar()
 	end
 	if self.ShowNewRaidWizard then
 		self:ShowNewRaidWizard()
 	end
-	self:Print(raid.name .. " raid completed.")
+	self:Print(self:Localize("RAID_COMPLETED", raid.name))
 	return true
 end
 
@@ -1405,7 +1522,7 @@ end
 
 function Raid:BeginRaid(raidKey)
 	if not self:CanStartRaid() then
-		self:Print("Only the raid leader can start a raid plan.")
+		self:Print(self.L.ONLY_LEADER_START)
 		return false
 	end
 	local raid = self.raidByKey[raidKey]
@@ -1449,7 +1566,7 @@ function Raid:BeginRaid(raidKey)
 	if self.SendPlanSnapshot then
 		self:SendPlanSnapshot()
 	end
-	self:Print(raid.name .. " plan started.")
+	self:Print(self:Localize("PLAN_STARTED", raid.name))
 	return true
 end
 
@@ -1522,7 +1639,7 @@ function Raid:SaveCurrentRaid(name)
 		manualPlayers = savedPlayers,
 	}
 	self.db.activeSavedRaid = id
-	self:Print("Saved raid plan: " .. name .. ".")
+	self:Print(self:Localize("RAID_PLAN_SAVED", name))
 	if self.RefreshNewRaidWizard then
 		self:RefreshNewRaidWizard()
 	end
@@ -1530,7 +1647,7 @@ end
 
 function Raid:LoadSavedRaid(id)
 	if not self:CanStartRaid() then
-		self:Print("Only the raid leader can load and start a saved raid.")
+		self:Print(self.L.ONLY_LEADER_LOAD)
 		return false
 	end
 	local saved = self.db.savedRaids[id]
@@ -1575,7 +1692,7 @@ function Raid:LoadSavedRaid(id)
 	if self.SendPlanSnapshot then
 		self:SendPlanSnapshot()
 	end
-	self:Print("Loaded saved raid plan: " .. saved.name .. ".")
+	self:Print(self:Localize("RAID_PLAN_LOADED", saved.name))
 	return true
 end
 
@@ -1592,13 +1709,13 @@ function Raid:DeleteSavedRaid(id)
 	if self.RefreshNewRaidWizard then
 		self:RefreshNewRaidWizard()
 	end
-	self:Print("Deleted saved raid plan: " .. name .. ".")
+	self:Print(self:Localize("RAID_PLAN_DELETED", name))
 	return true
 end
 
 function Raid:SetRaid(key)
 	if self.db.raidLocked and not self.raidSelectionUnlocked then
-		self:Print("Use New Raid to change raids.")
+		self:Print(self.L.USE_NEW_RAID_CHANGE_RAID)
 		return
 	end
 	if not self.raidByKey[key] then
@@ -1619,7 +1736,7 @@ end
 
 function Raid:SetExpansion(key)
 	if self.db.raidLocked and not self.raidSelectionUnlocked then
-		self:Print("Use New Raid to change expansions.")
+		self:Print(self.L.USE_NEW_RAID_CHANGE_EXPANSION)
 		return
 	end
 	local valid
@@ -1695,6 +1812,7 @@ function Raid:SetCurrentBoss(index, fromSync)
 	if self.RefreshPersonalAssignments then
 		self:RefreshPersonalAssignments()
 	end
+	if self.RefreshMechanicsHUD then self:RefreshMechanicsHUD() end
 	if self.RefreshBossRail then
 		self:RefreshBossRail()
 	end

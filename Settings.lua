@@ -91,9 +91,7 @@ function Raid:HandleAutoInviteWhisper(_, message, sender)
     if invite then
         local ok = pcall(invite, sender)
         if ok then
-            self:Print(
-                "Invite requested for " .. sender
-                    .. " from keyword whisper.")
+            self:Print(self:Localize("INVITE_REQUESTED", sender))
         end
     end
 end
@@ -137,19 +135,18 @@ end
 function Raid:ApplyLootRules(force, replaceMaster)
     local settings = self.db and self.db.raidAdmin
     if not settings or not settings.manageLoot then
-        if force then self:Print("Enable loot rules before applying them.") end
+        if force then self:Print(self.L.ENABLE_LOOT_RULES) end
         return false
     end
     if InCombatLockdown and InCombatLockdown() then
         if force then
-            self:Print("Loot rules will be checked again after combat.")
+            self:Print(self.L.LOOT_RULES_AFTER_COMBAT)
         end
         return false
     end
     if not IsInRaid() or not UnitIsGroupLeader("player") then
         if force then
-            self:Print(
-                "Loot rules require an active raid and raid leadership.")
+            self:Print(self.L.LOOT_RULES_REQUIRE_LEADER)
         end
         return false
     end
@@ -215,9 +212,7 @@ function Raid:ApplyLootRules(force, replaceMaster)
         end
         if not ok then
             if force then
-                self:Print(
-                    "None of the configured master looters are currently "
-                        .. "in the raid; master looter was not changed.")
+                self:Print(self.L.MASTER_LOOTER_NOT_PRESENT)
             end
             return false
         end
@@ -235,7 +230,7 @@ function Raid:ApplyLootRules(force, replaceMaster)
             C_Timer.After(2, applyThreshold)
         end
     end
-    if force and ok then self:Print("Loot rules applied.") end
+    if force and ok then self:Print(self.L.LOOT_RULES_APPLIED) end
     return ok
 end
 
@@ -325,6 +320,7 @@ function Raid:AuditLootRules()
     if self.RefreshQuickActionBar then
         self:RefreshQuickActionBar()
     end
+    if self.RefreshMechanicsHUD then self:RefreshMechanicsHUD() end
     if InCombatLockdown and InCombatLockdown() then return end
     if self.restoreMainWindowAfterCombat then
         self.restoreMainWindowAfterCombat = nil
@@ -345,6 +341,7 @@ function Raid:HandleCombatStarted()
     if self.RefreshQuickActionBar then
         self:RefreshQuickActionBar()
     end
+    if self.RefreshMechanicsHUD then self:RefreshMechanicsHUD() end
 end
 
 function Raid:ResetWindowPosition()

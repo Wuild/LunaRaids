@@ -484,7 +484,7 @@ function Raid:RefreshGearInspectView(queueScan)
             :format(
                 inspected, #(self.roster or {}),
                 addonReported, locallyInspected))
-    self.assignmentTitle:SetText("GEAR INSPECT")
+    self.assignmentTitle:SetText(self.L.GEAR_INSPECT)
 end
 
 function Raid:CreateAboutView()
@@ -531,7 +531,7 @@ function Raid:CreateAboutView()
     SetPixelHeight(view.Divider, 1)
     view.Divider:SetVertexColor(.12, .28, .38, .9)
 
-    view.GitHubLabel = Font(view, 9, "muted", "SOURCE CODE")
+    view.GitHubLabel = Font(view, 9, "muted", Raid.L.SOURCE_CODE)
     view.GitHubLabel:SetPoint("TOPLEFT", 0, -192)
     view.GitHub = EditField(
         view, 520, "https://github.com/Wuild/LunaRaids")
@@ -542,7 +542,7 @@ function Raid:CreateAboutView()
         self:HighlightText()
     end)
 
-    view.PatreonLabel = Font(view, 9, "muted", "SUPPORT DEVELOPMENT")
+    view.PatreonLabel = Font(view, 9, "muted", Raid.L.SUPPORT_DEVELOPMENT)
     view.PatreonLabel:SetPoint("TOPLEFT", 0, -264)
     view.Patreon = EditField(
         view, 520, "https://www.patreon.com/wuild")

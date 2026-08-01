@@ -1,5 +1,6 @@
 local _, Raid = ...
 local UI = Raid.UI
+local L = Raid.L
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -68,7 +69,7 @@ function Raid:CreateReadyCheckWindow()
     frame.Icon:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
     PixelSetSize(frame.Icon, 21, 21)
     frame.Icon:SetPoint("TOPLEFT", 10, -7)
-    frame.Title = Font(frame, 12, "text", "READY CHECK")
+    frame.Title = Font(frame, 12, "text", L.READY_CHECK_TITLE)
     frame.Title:SetPoint("LEFT", frame.Icon, "RIGHT", 7, 0)
     frame.Timer = Font(frame, 10, "accent", "")
     frame.Timer:SetPoint("LEFT", frame.Title, "RIGHT", 7, 0)
@@ -92,9 +93,7 @@ function Raid:CreateReadyCheckWindow()
     frame.Summary = Font(frame, 10, "muted", "")
     frame.Summary:SetPoint("TOPRIGHT", -48, -12)
     frame.Summary:SetJustifyH("RIGHT")
-    frame.Hint = Font(
-        frame, 9, "muted",
-        "Right-click to dismiss")
+    frame.Hint = Font(frame, 9, "muted", L.RIGHT_CLICK_DISMISS)
     frame.Hint:Hide()
     frame.HeaderY = -37
     frame.HeaderGridOffset = 7
@@ -105,7 +104,7 @@ function Raid:CreateReadyCheckWindow()
     frame.HeaderBackground:SetPoint("TOPRIGHT", -7, -36)
     frame.HeaderBackground:SetHeight(24)
     frame.HeaderBackground:SetVertexColor(.035, .105, .145, .98)
-    frame.HeaderLabel = Font(frame, 9, "accent", "PLAYER / STATUS")
+    frame.HeaderLabel = Font(frame, 9, "accent", L.PLAYER_STATUS)
     frame.HeaderLabel:SetPoint("TOPLEFT", 14, -43)
     frame.Headers = {}
     for index, column in ipairs(READY_CHECK_COLUMNS) do
@@ -230,19 +229,20 @@ function Raid:CreateReadyCheckRow(index, frame)
                 and self.DurabilityPercent
             then
                 GameTooltip:AddLine(
-                    ("%d%% average equipped durability.")
-                        :format(self.DurabilityPercent),
+                    Raid:Localize(
+                        "DURABILITY_AVERAGE", self.DurabilityPercent),
                     .90, .90, .90)
                 if self.BrokenItems and self.BrokenItems > 0 then
                     GameTooltip:AddLine(
-                        ("%d broken item%s."):format(
-                            self.BrokenItems,
-                            self.BrokenItems == 1 and "" or "s"),
+                        Raid:Localize(
+                            self.BrokenItems == 1 and "BROKEN_ITEM"
+                                or "BROKEN_ITEMS",
+                            self.BrokenItems),
                         1, .28, .28)
                 end
             elseif self.Column.key == "durability" then
                 GameTooltip:AddLine(
-                    "No compatible addon reported this player's durability.",
+                    L.NO_DURABILITY_DATA,
                     MUTED[1], MUTED[2], MUTED[3], true)
             elseif self.Details and #self.Details > 0 then
                 for _, detail in ipairs(self.Details) do
@@ -250,15 +250,15 @@ function Raid:CreateReadyCheckRow(index, frame)
                     if type(name) ~= "string"
                         or issecretvalue and issecretvalue(name)
                     then
-                        name = "Detected buff"
+                        name = L.DETECTED_BUFF
                     end
                     GameTooltip:AddLine(name, .90, .90, .90)
                 end
             elseif self.Present then
                 GameTooltip:AddLine(
-                    "Reported by LunaRaids peer", unpack(MUTED))
+                    L.REPORTED_BY_PEER, unpack(MUTED))
             else
-                GameTooltip:AddLine("Not detected", 1, .35, .35)
+                GameTooltip:AddLine(L.NOT_DETECTED, 1, .35, .35)
             end
             GameTooltip:Show()
         end)
@@ -374,9 +374,7 @@ function Raid:RefreshReadyCheckWindow(frame)
         frame.Summary:Hide()
     else
         frame.Summary:SetText(
-            ("|cff55dd77%d ready|r  ·  |cffffcc44%d waiting|r"
-                .. "  ·  |cffff5555%d not ready|r"):format(
-                ready, waiting, declined))
+            Raid:Localize("READY_SUMMARY", ready, waiting, declined))
         frame.Summary:Show()
     end
     if frame.Hint then
@@ -518,8 +516,8 @@ function Raid:RefreshReadyCheckWindow(frame)
                                     detail.name, .90, .90, .90)
                             else
                                 GameTooltip:AddLine(
-                                    self.Present and "Detected"
-                                        or "Not detected",
+                                    self.Present and L.DETECTED
+                                        or L.NOT_DETECTED,
                                     self.Present and .35 or 1,
                                     self.Present and .85 or .35,
                                     self.Present and .45 or .35)
@@ -590,42 +588,42 @@ function Raid:CreateRaidStatusView()
     frame.Actions = {}
     local actionEntries = {
         {
-            label = "READY CHECK",
+            label = L.ACTION_READY_CHECK,
             icon = "Interface\\RaidFrame\\ReadyCheck-Ready",
-            title = "Ready Check",
-            detail = "Start Blizzard's raid ready check.",
+            title = L.READY_CHECK,
+            detail = L.READY_CHECK_DESC,
             run = function() Raid:StartReadyCheck() end,
             rightRun = function()
                 Raid:ShowPinnedReadyCheckWindow()
             end,
         },
         {
-            label = "ROLE CHECK",
+            label = L.ACTION_ROLE_CHECK,
             icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",
-            title = "Role Check",
-            detail = "Ask the raid to confirm combat roles.",
+            title = L.ROLE_CHECK,
+            detail = L.ROLE_CHECK_DESC,
             run = function() Raid:StartRoleCheck() end,
         },
         {
-            label = "PULL 10",
+            label = L.ACTION_PULL_10,
             icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
-            title = "Pull Timer",
-            detail = "Start a 10-second pull countdown.",
+            title = L.PULL_TIMER,
+            detail = L.PULL_TIMER_DESC,
             run = function() Raid:StartPullCountdown(10) end,
         },
         {
-            label = "BREAK 5",
+            label = L.ACTION_BREAK_5,
             icon = "Interface\\Icons\\INV_Drink_05",
-            title = "Break Timer",
-            detail = "Announce and start a five-minute break.",
+            title = L.BREAK_TIMER,
+            detail = L.BREAK_TIMER_DESC,
             run = function() Raid:StartBreakTimer(5) end,
             rightRun = function(button)
                 ShowSelectionMenu(
                     button,
                     {
-                        { 5, "5 minutes" },
-                        { 10, "10 minutes" },
-                        { 15, "15 minutes" },
+                        { 5, L.MINUTES_5 },
+                        { 10, L.MINUTES_10 },
+                        { 15, L.MINUTES_15 },
                     },
                     5,
                     function(minutes)
@@ -633,8 +631,7 @@ function Raid:CreateRaidStatusView()
                     end,
                     156)
             end,
-            rightDetail =
-                "\nRight-click to choose 5, 10, or 15 minutes.",
+            rightDetail = L.RIGHT_CLICK_BREAK,
         },
     }
     local previous
@@ -659,7 +656,7 @@ function Raid:CreateRaidStatusView()
             button, entry.title,
             entry.detail .. (rightRun
                 and (entry.rightDetail
-                    or "\nRight-click to pin the latest results.")
+                    or L.RIGHT_CLICK_PIN_RESULTS_SHORT)
                 or ""))
         if index == 1 then StyleButton(button, "primary") end
         frame.Actions[index] = button
@@ -677,7 +674,7 @@ function Raid:CreateRaidStatusView()
     frame.HeaderBackground:SetPoint("TOPRIGHT", 0, 0)
     frame.HeaderBackground:SetHeight(24)
     frame.HeaderBackground:SetVertexColor(.035, .105, .145, .98)
-    frame.HeaderLabel = Font(frame, 9, "accent", "PLAYER")
+    frame.HeaderLabel = Font(frame, 9, "accent", L.PLAYER)
     frame.HeaderLabel:SetPoint("TOPLEFT", 7, -7)
     frame.Headers = {}
     for index, column in ipairs(READY_CHECK_COLUMNS) do
@@ -738,7 +735,7 @@ function Raid:RefreshRaidStatusView()
         button:SetEnabled(canEdit)
         button:SetAlpha(canEdit and 1 or .4)
     end
-    self.assignmentTitle:SetText("RAID STATUS")
+    self.assignmentTitle:SetText(L.RAID_STATUS)
     self:RefreshWorkspaceNavigation()
     self:BroadcastReadyCheckStatus()
     self:RequestGroupDurability()
@@ -774,9 +771,9 @@ function Raid:ShowReadyCheckWindow(timeout, simulated, caller)
         end
     end
     frame.Title:SetText(
-        simulated and "READY CHECK · SIMULATION"
-            or callerName and ("READY CHECK · " .. callerName)
-            or "READY CHECK")
+        simulated and L.READY_CHECK_SIMULATION
+            or callerName and Raid:Localize("READY_CHECK_CALLER", callerName)
+            or L.READY_CHECK_TITLE)
     frame.FadeOut:Stop()
     frame.dismissPinned = nil
     frame.dismissPending = nil
@@ -801,7 +798,7 @@ function Raid:ShowPinnedReadyCheckWindow()
     if not self.readyCheckStatus then
         self.readyCheckStatus = {}
         self.readyCheckPeerData = {}
-        frame.Title:SetText("READY CHECK RESULTS")
+        frame.Title:SetText(L.READY_CHECK_RESULTS)
     end
     frame:Show()
     self:RefreshReadyCheckWindow()

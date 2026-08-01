@@ -6,11 +6,50 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
+local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
+local HealerReuse = { roles = { Raid.Role.HEALER }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
     key = "zulaman", name = "Zul'Aman", size = 10,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\zulaman",
+    guides = {
+        ["Akil'zon"] = {
+            Mechanic("Stay loosely spread between storms, then collapse directly under the lifted player before Electrical Storm damage begins."),
+            Mechanic("Ranged kill Soaring Eagles while the group remains close enough to stack quickly for the next storm."),
+        },
+        ["Nalorakk"] = {
+            Mechanic("Tanks alternate troll and bear forms so Mangle and Lacerating Slash do not remain on the same target."),
+            Mechanic("Ranged spread for Surge; healers prepare raid recovery from Deafening Roar and heavy bear-form bleeds."),
+        },
+        ["Jan'alai"] = {
+            Mechanic("Control one hatcher and allow planned egg waves; the hatchling tank stacks adds for controlled AoE."),
+            Mechanic("During Fire Bombs, stop movement until bomb positions are visible, then step into a clear gap before detonation."),
+        },
+        ["Halazzi"] = {
+            Mechanic("The off-tank picks up Spirit Lynx immediately at every split while damage follows the planned boss or lynx priority."),
+            Mechanic("Kill Corrupted Lightning Totems immediately and dispel Flame Shock before the final rapid split cycles."),
+        },
+        ["Hex Lord Malacrass"] = {
+            Mechanic("Choose crowd control from the actual add roster, kill uncontrolled priority adds, and maintain control through the boss burn."),
+            Mechanic("Interrupt dangerous stolen abilities, purge removable buffs, and use healing cooldowns for every Spirit Bolts channel."),
+        },
+        ["Zul'jin"] = {
+            Mechanic("Bear: dispel Creeping Paralysis; eagle: stop unnecessary casts and avoid tornadoes; lynx: focus-heal Claw Rage targets."),
+            Mechanic("Dragonhawk: spread and avoid fire columns; throughout the fight clear Grievous Throw by healing targets above its threshold."),
+        },
+    },
+    recommendations = {
+        Rec("dispel", { "PRIEST", "PALADIN", "SHAMAN" }, { "Discipline", "Holy", "Restoration" }, Reuse),
+        Rec("interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+        Rec("hatcher", { "HUNTER", "MAGE", "WARLOCK" }, { "Marksmanship", "Frost", "Affliction" }),
+        Rec("add control", { "MAGE", "HUNTER", "WARLOCK", "PRIEST" }, { "Frost", "Survival", "Affliction", "Shadow" }),
+        Rec("hex", { "MAGE", "DRUID" }, { "Arcane", "Frost", "Restoration", "Balance" }, Reuse),
+        Rec("claw rage healer", { "PALADIN", "PRIEST", "DRUID", "SHAMAN" }, { "Holy", "Discipline", "Restoration" }, HealerReuse),
+        Rec("lynx rush healer", { "SHAMAN", "DRUID", "PRIEST", "PALADIN" }, { "Restoration", "Holy", "Discipline" }, HealerReuse),
+        Rec("flame breath", { "HUNTER", "MAGE", "WARLOCK" }, { "Marksmanship", "Frost", "Affliction" }),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", { A.TANK.MAIN, A.TANK.OFF }),

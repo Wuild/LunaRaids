@@ -51,12 +51,12 @@ function Raid:ShowRoleMenu(player, anchor)
         menu:SetClampedToScreen(true)
         menu.buttons = {}
         local roles = {
-            { "Tank", "TANK" },
-            { "Healer", "HEALER" },
-            { "Damage", "DAMAGER" },
-            { "Clear Role", "AUTO" },
-            { "Start Role Check", "POLL" },
-            { "Remove Planned", "REMOVE" },
+            { Raid.L.TANK, "TANK" },
+            { Raid.L.HEALER, "HEALER" },
+            { Raid.L.DAMAGE, "DAMAGER" },
+            { Raid.L.CLEAR_ROLE, "AUTO" },
+            { Raid.L.START_ROLE_CHECK, "POLL" },
+            { Raid.L.REMOVE_PLANNED, "REMOVE" },
         }
         for index, entry in ipairs(roles) do
             local choice = Button(menu, entry[1], 140, 21)
@@ -147,7 +147,7 @@ function Raid:ShowRaidPlayerMenu(player, anchor)
         menu.rows = {}
         local actions = {
             {
-                key = "WHISPER", label = "Whisper",
+                key = "WHISPER", label = Raid.L.WHISPER_TITLE,
                 run = function(subject)
                     if ChatFrame_SendTell then
                         ChatFrame_SendTell(subject.name)
@@ -155,7 +155,7 @@ function Raid:ShowRaidPlayerMenu(player, anchor)
                 end,
             },
             {
-                key = "TARGET", label = "Target",
+                key = "TARGET", label = Raid.L.TARGET,
                 live = true,
                 run = function(subject)
                     if subject.unit and TargetUnit then
@@ -164,7 +164,7 @@ function Raid:ShowRaidPlayerMenu(player, anchor)
                 end,
             },
             {
-                key = "INSPECT", label = "Inspect",
+                key = "INSPECT", label = Raid.L.INSPECT,
                 live = true,
                 run = function(subject)
                     if subject.unit and InspectUnit then
@@ -173,21 +173,21 @@ function Raid:ShowRaidPlayerMenu(player, anchor)
                 end,
             },
             {
-                key = "ROLE", label = "Change Role",
+                key = "ROLE", label = Raid.L.CHANGE_ROLE,
                 editor = true,
                 run = function(subject, source)
                     Raid:ShowRoleMenu(subject, source)
                 end,
             },
             {
-                key = "PROMOTE", label = "Promote to Assistant",
+                key = "PROMOTE", label = Raid.L.PROMOTE_ASSISTANT,
                 leader = true,
                 run = function(subject)
                     Raid:PromoteRosterPlayer(subject)
                 end,
             },
             {
-                key = "DEMOTE", label = "Demote Assistant",
+                key = "DEMOTE", label = Raid.L.DEMOTE_ASSISTANT,
                 leader = true,
                 assistant = true,
                 run = function(subject)
@@ -195,21 +195,21 @@ function Raid:ShowRaidPlayerMenu(player, anchor)
                 end,
             },
             {
-                key = "LEADER", label = "Make Raid Leader",
+                key = "LEADER", label = Raid.L.MAKE_RAID_LEADER,
                 leader = true,
                 run = function(subject)
                     Raid:TransferRaidLeader(subject)
                 end,
             },
             {
-                key = "MASTER_LOOTER", label = "Set Master Looter",
+                key = "MASTER_LOOTER", label = Raid.L.SET_MASTER_LOOTER,
                 leader = true,
                 run = function(subject)
                     Raid:SetMasterLooterPlayer(subject)
                 end,
             },
             {
-                key = "REMOVE", label = "Remove from Raid",
+                key = "REMOVE", label = Raid.L.REMOVE_FROM_RAID,
                 editor = true,
                 destructive = true,
                 run = function(subject)
@@ -290,7 +290,7 @@ function Raid:ShowRaidPlayerMenu(player, anchor)
             y = y - 24
             visible = visible + 1
             if action.key == "REMOVE" and player.manual then
-                row.Text:SetText("Remove Planned Player")
+                row.Text:SetText(self.L.REMOVE_PLANNED_PLAYER)
             else
                 row.Text:SetText(action.label)
             end
@@ -310,13 +310,13 @@ function Raid:CreateManualPlayerPanel()
     panel:SetPoint("CENTER")
     panel:SetFrameStrata("HIGH")
     panel:SetFrameLevel(self.frame:GetFrameLevel() + 30)
-    panel.Title = Font(panel, 14, "accent", "ADD PLANNED PLAYER")
+    panel.Title = Font(panel, 14, "accent", Raid.L.ADD_PLANNED_PLAYER:upper())
     panel.Title:SetPoint("TOPLEFT", 16, -16)
     panel.Close = CreateFrame(
         "Button", nil, panel, "UIPanelCloseButton")
     panel.Close:SetPoint("TOPRIGHT", -3, -3)
     panel.Close:SetScript("OnClick", function() panel:Hide() end)
-    local nameLabel = Font(panel, 9, "muted", "CHARACTER NAME")
+    local nameLabel = Font(panel, 9, "muted", Raid.L.CHARACTER_NAME)
     nameLabel:SetPoint("TOPLEFT", 18, -54)
     panel.NameInput =
         CreateFrame("EditBox", nil, panel, "InputBoxTemplate")
@@ -330,7 +330,7 @@ function Raid:CreateManualPlayerPanel()
     PixelSetSize(panel.SpecInput, 180, 27)
     panel.SpecInput:SetPoint("TOPLEFT", 220, -70)
     panel.SpecInput:SetAutoFocus(false)
-    local classLabel = Font(panel, 9, "muted", "CLASS")
+    local classLabel = Font(panel, 9, "muted", Raid.L.CLASS_UPPER)
     classLabel:SetPoint("TOPLEFT", 18, -112)
     panel.ClassButtons = {}
     local classes = {
@@ -355,12 +355,12 @@ function Raid:CreateManualPlayerPanel()
             "OnLeave", function() Raid:RefreshManualPlayerPanel() end)
         panel.ClassButtons[index] = button
     end
-    local roleLabel = Font(panel, 9, "muted", "ROLE")
+    local roleLabel = Font(panel, 9, "muted", Raid.L.ROLE)
     roleLabel:SetPoint("TOPLEFT", 18, -224)
     panel.RoleButtons = {}
     for index, entry in ipairs({
-        { "TANK", "Tank" }, { "HEALER", "Healer" },
-        { "DAMAGER", "Damage" },
+        { "TANK", Raid.L.TANK }, { "HEALER", Raid.L.HEALER },
+        { "DAMAGER", Raid.L.DAMAGE },
     }) do
         local button = Button(panel, entry[2], 120, 27)
         button:SetPoint("TOPLEFT", 18 + ((index - 1) * 128), -241)
@@ -373,7 +373,7 @@ function Raid:CreateManualPlayerPanel()
             "OnLeave", function() Raid:RefreshManualPlayerPanel() end)
         panel.RoleButtons[index] = button
     end
-    panel.Add = Button(panel, "ADD TO ROSTER", 150, 30)
+    panel.Add = Button(panel, Raid.L.ADD_TO_ROSTER, 150, 30)
     StyleButton(panel.Add, "primary")
     panel.Add:SetPoint("BOTTOMRIGHT", -16, 14)
     panel.Add:SetScript("OnClick", function()
@@ -497,15 +497,17 @@ end
 
 UI.ShortPlayerName = ShortPlayerName
 
-function Raid:GetPersonalAssignmentEntries()
+function Raid:GetPersonalAssignmentEntries(raid, encounterIndex)
     if not self.db.raidLocked then return {} end
     local playerName = UnitName and UnitName("player")
     if not playerName then return {} end
     local ownName = ShortPlayerName(playerName)
-    local raid = self:GetRaid()
-    local encounterIndex = self:GetCurrentBossIndex(raid)
+    raid = raid or self:GetRaid()
+    encounterIndex = tonumber(encounterIndex)
+        or self:GetCurrentBossIndex(raid)
     if not encounterIndex then return {} end
     local encounter = raid.encounters[encounterIndex]
+    if not encounter then return {} end
     local plans = self.simulation.enabled
         and self.simulation.plans or self.db.plans
     local plan = plans[raid.key]
@@ -646,7 +648,7 @@ function Raid:GetPersonalAssignmentEntries()
                 end
             end
             entries[#entries + 1] = {
-                label = "Healing: "
+                label = self.L.HEALING_PREFIX
                     .. (targetName
                         and ("%s (%s)"):format(target.name, targetName)
                         or target and target.name or "Unknown target"),
@@ -662,36 +664,6 @@ function Raid:GetPersonalAssignmentEntries()
         end
     end
     return entries
-end
-
-function Raid:FindLiveUnitByName(name)
-    local wanted = ShortPlayerName(name)
-    if wanted == "" then return nil end
-    for _, unit in ipairs({
-        "player", "target", "focus", "mouseover",
-        "boss1", "boss2", "boss3", "boss4", "boss5",
-    }) do
-        if UnitExists(unit)
-            and ShortPlayerName(UnitName(unit)) == wanted
-        then
-            return unit
-        end
-    end
-    local count = IsInRaid and IsInRaid()
-        and (GetNumGroupMembers and GetNumGroupMembers() or 0) or 0
-    for index = 1, count do
-        local unit = "raid" .. index
-        if ShortPlayerName(UnitName(unit)) == wanted then return unit end
-    end
-    for index = 1, 40 do
-        local unit = "nameplate" .. index
-        if UnitExists(unit)
-            and ShortPlayerName(UnitName(unit)) == wanted
-        then
-            return unit
-        end
-    end
-    return nil
 end
 
 function Raid:CreatePersonalAssignmentFrame()
@@ -725,7 +697,7 @@ function Raid:CreatePersonalAssignmentFrame()
         local point, _, _, x, y = self:GetPoint(1)
         saved.point, saved.x, saved.y = point, x, y
     end)
-    frame.Title = Font(frame, 11, "accent", "YOUR ASSIGNMENTS")
+    frame.Title = Font(frame, 11, "accent", self.L.YOUR_ASSIGNMENTS)
     frame.Title:SetPoint("TOPLEFT", 10, -9)
     frame.Encounter = Font(frame, 9, "muted", "")
     frame.Encounter:SetPoint("TOPRIGHT", -10, -10)
@@ -761,6 +733,86 @@ function Raid:CreatePersonalAssignmentFrame()
     return frame
 end
 
+local function PersonalAssignmentPresentation(raid, entry)
+    local markerToken = entry.markerToken or ""
+    local marker = raid:FormatMarkerTokensForLocalDisplay(markerToken)
+    local text = (marker ~= "" and marker .. "  " or "")
+        .. entry.label
+    local metadata = {}
+    if entry.targetName then
+        metadata[#metadata + 1] = "TARGET: " .. entry.targetName
+    end
+    if entry.targetRole then
+        metadata[#metadata + 1] = tostring(entry.targetRole)
+    end
+    if entry.targetClass then
+        local classColor = RAID_CLASS_COLORS
+            and RAID_CLASS_COLORS[entry.targetClass]
+        local className = LOCALIZED_CLASS_NAMES_MALE
+            and LOCALIZED_CLASS_NAMES_MALE[entry.targetClass]
+            or entry.targetClass
+        if classColor then
+            className = ("|cff%02x%02x%02x%s|r"):format(
+                math.floor(classColor.r * 255 + .5),
+                math.floor(classColor.g * 255 + .5),
+                math.floor(classColor.b * 255 + .5),
+                className)
+        end
+        metadata[#metadata + 1] = className
+    end
+    return text, table.concat(metadata, "  ·  ")
+end
+
+local function EnsurePersonalAssignmentRow(frame, index)
+    local row = frame.Rows[index]
+    if row then return row end
+    row = Button(frame, "", 340, 32)
+    row.Text:ClearAllPoints()
+    row.Text:SetPoint("TOPLEFT", 9, -4)
+    row.Text:SetPoint("TOPRIGHT", -9, -4)
+    row.Text:SetJustifyH("LEFT")
+    row.Meta = Font(row, 9, "muted", "")
+    row.Meta:SetPoint("BOTTOMLEFT", 9, 4)
+    row.Meta:SetPoint("BOTTOMRIGHT", -9, 4)
+    row.Meta:SetJustifyH("LEFT")
+    row:EnableMouse(false)
+    frame.Rows[index] = row
+    return row
+end
+
+function Raid:RefreshPersonalAssignmentPresentationInCombat()
+    local frame = self.personalAssignmentFrame
+    if not frame then return end
+    local raid = self:GetRaid()
+    local encounterIndex = self:GetCurrentBossIndex(raid)
+    local encounter = encounterIndex and raid.encounters[encounterIndex]
+    frame.Encounter:SetText(
+        encounter and encounter.name:upper() or "")
+    frame.currentRaidKey = raid.key
+    frame.currentEncounterIndex = encounterIndex
+    local entries = self:GetPersonalAssignmentEntries(raid, encounterIndex)
+    if self.db.assignmentInfo.hide or #entries == 0 then
+        frame:Hide()
+        return
+    end
+    for index, entry in ipairs(entries) do
+        local row = EnsurePersonalAssignmentRow(frame, index)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", 10, -31 - ((index - 1) * 34))
+        row:SetPoint("TOPRIGHT", -10, -31 - ((index - 1) * 34))
+        local text, metadata = PersonalAssignmentPresentation(self, entry)
+        row.Text:SetText(text)
+        row.Meta:SetText(metadata)
+        row:SetAlpha(1)
+        row:Show()
+    end
+    for index = #entries + 1, #frame.Rows do
+        frame.Rows[index]:Hide()
+    end
+    frame:SetHeight(48 + (#entries * 34))
+    frame:Show()
+end
+
 function Raid:RefreshPersonalAssignments()
     if not IsInGroup or not IsInGroup() then
         self.personalAssignmentsRefreshPending =
@@ -779,6 +831,7 @@ function Raid:RefreshPersonalAssignments()
     end
     if InCombatLockdown and InCombatLockdown() then
         self.personalAssignmentsRefreshPending = true
+        self:RefreshPersonalAssignmentPresentationInCombat()
         return
     end
     if self.receivingSnapshots
@@ -791,104 +844,28 @@ function Raid:RefreshPersonalAssignments()
     local frame = self:CreatePersonalAssignmentFrame()
     frame:SetAlpha(1)
     frame:EnableMouse(true)
-    local entries = self:GetPersonalAssignmentEntries()
+    local raid = self:GetRaid()
+    local encounterIndex = self:GetCurrentBossIndex(raid)
+    local entries = self:GetPersonalAssignmentEntries(raid, encounterIndex)
     if self.db.assignmentInfo.hide or #entries == 0 then
         frame:Hide()
         return
     end
-    local raid = self:GetRaid()
-    local encounterIndex = self:GetCurrentBossIndex(raid)
+    local encounter = encounterIndex and raid.encounters[encounterIndex]
     frame.Encounter:SetText(
-        encounterIndex and raid.encounters[encounterIndex].name:upper()
-            or "")
+        encounter and encounter.name:upper() or "")
+    frame.currentRaidKey = raid.key
+    frame.currentEncounterIndex = encounterIndex
     for index, entry in ipairs(entries) do
-        local row = frame.Rows[index]
-        if not row then
-            row = Button(
-                frame, "", 340, 32, "SecureUnitButtonTemplate")
-            row.Text:ClearAllPoints()
-            row.Text:SetPoint("TOPLEFT", 9, -4)
-            row.Text:SetPoint("TOPRIGHT", -9, -4)
-            row.Text:SetJustifyH("LEFT")
-            row.Meta = Font(row, 9, "muted", "")
-            row.Meta:SetPoint("BOTTOMLEFT", 9, 4)
-            row.Meta:SetPoint("BOTTOMRIGHT", -9, 4)
-            row.Meta:SetJustifyH("LEFT")
-            row:RegisterForClicks("AnyUp")
-            frame.Rows[index] = row
-        end
+        local row = EnsurePersonalAssignmentRow(frame, index)
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", 10, -31 - ((index - 1) * 34))
         row:SetPoint("TOPRIGHT", -10, -31 - ((index - 1) * 34))
-        row.targetName = entry.targetName
-        local targetUnit = entry.targetName
-            and self:FindLiveUnitByName(entry.targetName)
-        local canTargetByName = entry.targetName
-            and (entry.targetRole == "BOSS"
-                or entry.targetRole == "ADD")
-        local targetMacro
-        if canTargetByName then
-            local safeTargetName = tostring(entry.targetName)
-                :gsub("[\r\n]", " ")
-            targetMacro = "/targetexact " .. safeTargetName
-        end
-        local canUpdateSecureTarget =
-            not InCombatLockdown or not InCombatLockdown()
-        if canUpdateSecureTarget then
-            row:SetAttribute("type", nil)
-            row:SetAttribute(
-                "type1",
-                targetUnit and "target"
-                    or targetMacro and "macro"
-                    or nil)
-            row:SetAttribute("macrotext1", targetMacro)
-            row:SetAttribute("unit", targetUnit)
-            row:SetAttribute("toggleForVehicle", false)
-            row.unit = targetUnit
-            row.secureTargetName =
-                (targetUnit or targetMacro) and entry.targetName or nil
-        end
-        local targetReady = (targetUnit or targetMacro)
-            and row.secureTargetName == entry.targetName
-        local markerToken = entry.markerToken or ""
-        if targetUnit and GetRaidTargetIndex then
-            local liveMarker = GetRaidTargetIndex(targetUnit)
-            if liveMarker then
-                markerToken = self:GetMarkerChatToken(liveMarker)
-            end
-        end
-        local marker =
-            self:FormatMarkerTokensForLocalDisplay(markerToken)
-        row.Text:SetText(
-            (marker ~= "" and marker .. "  " or "")
-                .. entry.label
-                .. (entry.targetName
-                    and "  |cff55bbff[Target]|r" or ""))
-        local metadata = {}
-        if entry.targetName then
-            metadata[#metadata + 1] = "TARGET: " .. entry.targetName
-        end
-        if entry.targetRole then
-            metadata[#metadata + 1] = tostring(entry.targetRole)
-        end
-        if entry.targetClass then
-            local classColor = RAID_CLASS_COLORS
-                and RAID_CLASS_COLORS[entry.targetClass]
-            local className = LOCALIZED_CLASS_NAMES_MALE
-                and LOCALIZED_CLASS_NAMES_MALE[entry.targetClass]
-                or entry.targetClass
-            if classColor then
-                className = ("|cff%02x%02x%02x%s|r"):format(
-                    math.floor(classColor.r * 255 + .5),
-                    math.floor(classColor.g * 255 + .5),
-                    math.floor(classColor.b * 255 + .5),
-                    className)
-            end
-            metadata[#metadata + 1] = className
-        end
-        row.Meta:SetText(table.concat(metadata, "  ·  "))
-        row:SetEnabled(targetReady and true or false)
-        row:SetAlpha(targetReady and 1 or .82)
+        local text, metadata = PersonalAssignmentPresentation(
+            self, entry)
+        row.Text:SetText(text)
+        row.Meta:SetText(metadata)
+        row:SetAlpha(1)
         row:Show()
     end
     for index = #entries + 1, #frame.Rows do
@@ -1041,10 +1018,10 @@ function Raid:CreateRosterButton(index)
                 .65, .65, .65, .55, .55, .55)
         end
         if self.player.leader then
-            GameTooltip:AddLine("Raid Leader", .20, .72, 1)
+            GameTooltip:AddLine(Raid.L.RAID_LEADER, .20, .72, 1)
         end
         if self.player.simulated then
-            GameTooltip:AddLine("Simulated player", .75, .60, .25)
+            GameTooltip:AddLine(Raid.L.SIMULATED_PLAYER, .75, .60, .25)
         elseif self.player.manual then
             GameTooltip:AddLine(
                 "Planned player - not currently in the raid",

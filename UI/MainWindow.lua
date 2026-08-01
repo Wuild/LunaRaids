@@ -1,5 +1,6 @@
 local _, Raid = ...
 local UI = Raid.UI
+local L = Raid.L
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -62,7 +63,8 @@ function Raid:PromptSaveRaid()
             editBox:HighlightText()
         end
     else
-        self:SaveCurrentRaid(self:GetRaid().name .. " Plan")
+        self:SaveCurrentRaid(self:Localize(
+            "RAID_PLAN_NAME", self:GetRaid().name))
     end
 end
 
@@ -74,7 +76,7 @@ function Raid:RefreshRaidIdentityHeader()
     end
     local raid = self:GetRaid()
     self.assignmentRaidTitle:SetText(
-        raid and raid.name:upper() or "NO RAID SELECTED")
+        raid and raid.name:upper() or self.L.NO_RAID_SELECTED)
     self.assignmentRaidIcon:SetTexture(
         raid and raid.icon
             or "Interface\\Icons\\INV_BannerPVP_02")
@@ -168,7 +170,7 @@ function Raid:RefreshAll()
     then
         self.frame.Title:SetText("LUNA RAIDS")
         if self.frame.Subtitle then
-            self.frame.Subtitle:SetText("CREATE OR LOAD A RAID PLAN")
+            self.frame.Subtitle:SetText(L.CREATE_OR_LOAD_RAID_PLAN)
         end
     end
 end
@@ -221,6 +223,7 @@ function Raid:ApplyInterfaceScale()
     if self.RefreshRaidCooldowns then
         self:RefreshRaidCooldowns()
     end
+    if self.RefreshMechanicsHUD then self:RefreshMechanicsHUD() end
 end
 
 function Raid:UpdateWindowLayout()
@@ -266,11 +269,7 @@ function Raid:UpdateWindowLayout()
         tab:SetWidth(tabWidth)
     end
     if self.newRaidWizard then
-        local wizardWidth = math.max(
-            1, self.newRaidWizard:GetWidth() - 40)
-        for _, button in ipairs(self.newRaidWizard.Buttons or {}) do
-            button:SetWidth(wizardWidth)
-        end
+        self:LayoutNewRaidWizardButtons()
     end
     if self.settingsView and self.settingsView.Content then
         self.settingsView.Content:SetWidth(math.max(
@@ -402,9 +401,9 @@ function Raid:CreateUI()
     frame.BrandIcon:SetTexture("Interface\\Icons\\INV_BannerPVP_02")
     PixelSetSize(frame.BrandIcon, 30, 30)
     frame.BrandIcon:SetPoint("TOPLEFT", 12, -7)
-    frame.Title = Font(frame, 15, "text", "LUNA RAID LEADER")
+    frame.Title = Font(frame, 15, "text", L.LUNA_RAID_LEADER)
     frame.Title:SetPoint("LEFT", frame.BrandIcon, "RIGHT", 10, 4)
-    frame.Subtitle = Font(frame, 9, "muted", "TACTICAL RAID PLANNER")
+    frame.Subtitle = Font(frame, 9, "muted", L.TACTICAL_RAID_PLANNER)
     frame.Subtitle:SetPoint("TOPLEFT", frame.Title, "BOTTOMLEFT", 0, -1)
     frame.WindowBg = frame:CreateTexture(nil, "BACKGROUND")
     frame.WindowBg:SetTexture(WHITE)
@@ -474,44 +473,38 @@ function Raid:CreateUI()
     local workspaceEntries = {
         {
             key = "ASSIGNMENTS",
-            title = "Raid Assignments",
-            description =
-                "Open boss markers, assignments, and mechanics.",
+            title = L.RAID_ASSIGNMENTS,
+            description = L.WORKSPACE_ASSIGNMENTS_DESC,
             icon = "Interface\\Icons\\INV_Misc_Note_05",
         },
         {
             key = "GROUPS",
-            title = "Raid Groups",
-            description =
-                "Arrange the raid's eight Blizzard groups.",
+            title = L.RAID_GROUPS_TITLE,
+            description = L.WORKSPACE_GROUPS_DESC,
             icon = "Interface\\Icons\\INV_Misc_GroupLooking",
         },
         {
             key = "STATUS",
-            title = "Raid Status",
-            description =
-                "View ready-check results, buffs, and consumables.",
+            title = L.RAID_STATUS_TITLE,
+            description = L.WORKSPACE_STATUS_DESC,
             icon = "Interface\\RaidFrame\\ReadyCheck-Ready",
         },
         {
             key = "GEAR",
-            title = "Gear Inspect",
-            description =
-                "Inspect the current raid's equipped items and item levels.",
+            title = L.GEAR_INSPECT_TITLE,
+            description = L.WORKSPACE_GEAR_DESC,
             icon = "Interface\\Icons\\INV_Chest_Plate04",
         },
         {
             key = "SETTINGS",
-            title = "LunaRaids Settings",
-            description =
-                "Configure interface, communication, and automation.",
+            title = L.LUNARAIDS_SETTINGS,
+            description = L.WORKSPACE_SETTINGS_DESC,
             icon = "Interface\\Buttons\\UI-OptionsButton",
         },
         {
             key = "ABOUT",
-            title = "About LunaRaids",
-            description =
-                "View project credits, source code, and support links.",
+            title = L.ABOUT_LUNARAIDS_TITLE,
+            description = L.WORKSPACE_ABOUT_DESC,
             icon = "Interface\\Icons\\INV_Misc_QuestionMark",
         },
     }
@@ -557,7 +550,7 @@ function Raid:CreateUI()
     rosterIcon:SetTexture("Interface\\Icons\\INV_Misc_GroupLooking")
     PixelSetSize(rosterIcon, 22, 22)
     rosterIcon:SetPoint("TOPLEFT", 10, -9)
-    local rosterTitle = Font(rosterPanel, 12, "accent", "RAID ROSTER")
+    local rosterTitle = Font(rosterPanel, 12, "accent", L.RAID_ROSTER)
     rosterTitle:SetPoint("LEFT", rosterIcon, "RIGHT", 7, 0)
     self.rosterCount = Font(rosterPanel, 9, "muted", "0 players")
     self.rosterCount:SetPoint("TOPRIGHT", -42, -13)
@@ -568,7 +561,7 @@ function Raid:CreateUI()
         "OnClick", function() Raid:ShowManualPlayerPanel() end)
     addPlanned:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Add Planned Player")
+        GameTooltip:SetText(L.ADD_PLANNED_PLAYER)
         GameTooltip:AddLine(
             "Add someone before they join the live raid.",
             MUTED[1], MUTED[2], MUTED[3], true)
@@ -617,11 +610,11 @@ function Raid:CreateUI()
     PixelSetSize(self.assignmentRaidIcon, 28, 28)
     self.assignmentRaidIcon:SetPoint("TOPLEFT", 9, -7)
     self.assignmentRaidTitle =
-        Font(assignmentPanel, 12, "accent", "NO RAID SELECTED")
+        Font(assignmentPanel, 12, "accent", L.NO_RAID_SELECTED)
     self.assignmentRaidTitle:SetPoint(
         "TOPLEFT", self.assignmentRaidIcon, "TOPRIGHT", 8, -1)
     self.assignmentTitle =
-        Font(assignmentPanel, 9, "muted", "ASSIGNMENTS")
+        Font(assignmentPanel, 9, "muted", L.ASSIGNMENTS)
     self.assignmentTitle:SetPoint(
         "TOPLEFT", self.assignmentRaidTitle, "BOTTOMLEFT", 0, -1)
     self.bossSettingsButton = Button(assignmentPanel, "", 29, 29)
@@ -636,7 +629,7 @@ function Raid:CreateUI()
         "OnClick", function() Raid:ToggleBossSettings() end)
     self.bossSettingsButton:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Boss Assignment Setup")
+        GameTooltip:SetText(L.BOSS_ASSIGNMENT_SETUP)
         GameTooltip:AddLine(
             "Change assignment counts for this boss only.",
             MUTED[1], MUTED[2], MUTED[3], true)
@@ -645,23 +638,23 @@ function Raid:CreateUI()
     self.bossSettingsButton:HookScript(
         "OnLeave", function() GameTooltip:Hide() end)
     self.setCurrentBossButton =
-        Button(assignmentPanel, "SET CURRENT BOSS", 142, 29)
+        Button(assignmentPanel, L.SET_CURRENT_BOSS, 142, 29)
     self.setCurrentBossButton:SetPoint(
         "RIGHT", self.bossSettingsButton, "LEFT", -6, 0)
     self.setCurrentBossButton:SetScript("OnClick", function()
         Raid:SetCurrentBoss(Raid.db.activeEncounter)
     end)
     AddButtonTooltip(
-        self.setCurrentBossButton, "Set Current Boss",
-        "Show this boss's assignments in each player's Your Assignments panel.")
+        self.setCurrentBossButton, L.SET_CURRENT_BOSS_TITLE,
+        L.SET_CURRENT_BOSS_DESC)
     self.activeBossTab = self.activeBossTab or "ASSIGNMENTS"
     self.bossTabs = {}
     local tabEntries = {
-        { key = "MARKERS", label = "MARKERS",
+        { key = "MARKERS", label = L.MARKERS,
             icon = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8" },
-        { key = "ASSIGNMENTS", label = "ASSIGNMENTS",
+        { key = "ASSIGNMENTS", label = L.ASSIGNMENTS,
             icon = "Interface\\Icons\\INV_Misc_Note_05" },
-        { key = "MECHANICS", label = "MECHANICS",
+        { key = "MECHANICS", label = L.MECHANICS,
             icon = "Interface\\Icons\\INV_Misc_Book_09" },
     }
     local previousTab
@@ -714,7 +707,7 @@ function Raid:CreateUI()
     self.assignmentScroll:SetPoint("BOTTOMRIGHT", -6, 8)
     self.assignmentContent:SetWidth(ASSIGNMENT_ROW_WIDTH)
 
-    local newRaid = Button(frame, "NEW RAID", 100, 30)
+    local newRaid = Button(frame, L.NEW_RAID, 100, 30)
     newRaid:SetPoint("BOTTOMLEFT", 12, 14)
     AddButtonIcon(
         newRaid, "Interface\\Icons\\INV_Misc_GroupLooking", 16)
@@ -724,7 +717,7 @@ function Raid:CreateUI()
     AddButtonTooltip(
         newRaid, "New Raid",
         "Open raid setup to create a new plan or load a saved raid.")
-    local clear = Button(frame, "CLEAR BOSS", 104, 30)
+    local clear = Button(frame, L.CLEAR_BOSS, 104, 30)
     clear:SetPoint("LEFT", newRaid, "RIGHT", 5, 0)
     AddButtonIcon(
         clear, "Interface\\Buttons\\UI-GroupLoot-Pass-Up", 16)
@@ -732,7 +725,7 @@ function Raid:CreateUI()
     AddButtonTooltip(
         clear, "Clear Boss",
         "Remove every player, healing target, and marker assignment from the current boss.")
-    local saveRaid = Button(frame, "SAVE RAID", 110, 30)
+    local saveRaid = Button(frame, L.SAVE_RAID, 110, 30)
     saveRaid:SetPoint("LEFT", clear, "RIGHT", 5, 0)
     AddButtonIcon(
         saveRaid, "Interface\\Icons\\INV_Misc_Note_01", 16)
@@ -740,7 +733,7 @@ function Raid:CreateUI()
     AddButtonTooltip(
         saveRaid, "Save Raid",
         "Save the complete raid plan so it can be loaded before a future raid.")
-    local whisper = Button(frame, "WHISPER", 114, 30)
+    local whisper = Button(frame, L.WHISPER, 114, 30)
     whisper:SetPoint("BOTTOMRIGHT", -163, 14)
     StyleButton(whisper, "positive")
     AddButtonIcon(whisper, "Interface\\Icons\\INV_Letter_15", 16)
@@ -748,15 +741,22 @@ function Raid:CreateUI()
     AddButtonTooltip(
         whisper, "Whisper Roles",
         "Whisper each selected player their assignments for the current boss.")
-    local announce = Button(frame, "ANNOUNCE", 134, 30)
+    local announce = Button(frame, L.ANNOUNCE, 134, 30)
     announce:SetPoint("BOTTOMRIGHT", -24, 14)
     StyleButton(announce, "primary")
     AddButtonIcon(
         announce, "Interface\\Icons\\Ability_Warrior_BattleShout", 16)
-    announce:SetScript("OnClick", function() Raid:AnnounceAssignments() end)
+    announce:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    announce:SetScript("OnClick", function(self, mouseButton)
+        if mouseButton == "RightButton" then
+            Raid:ShowAnnouncementChannelMenu(self)
+        else
+            Raid:AnnounceAssignments()
+        end
+    end)
     AddButtonTooltip(
         announce, "Announce Assignments",
-        "Post the current boss assignments and markers in Raid Warning.")
+        L.ANNOUNCE_ASSIGNMENTS_DESC .. L.ANNOUNCE_CHANNEL_PICKER_DESC)
     self.workspaceFrames = {
         self.bossRail, rosterPanel, assignmentPanel,
     }
@@ -881,7 +881,7 @@ end
 function Raid:InitializeDataBroker()
     if self.dataBroker then return end
     if not LibStub then
-        self:Print("LibStub is unavailable; minimap launcher disabled.")
+        self:Print(self.L.MINIMAP_LIB_UNAVAILABLE)
         return
     end
     local dataBroker = LibStub:GetLibrary(

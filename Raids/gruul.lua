@@ -6,11 +6,31 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
     key = "gruul", name = "Gruul's Lair", size = 25,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\gruul",
+    guides = {
+        ["High King Maulgar"] = {
+            Mechanic("Krosh's mage tank steals Spell Shield on every cast; dedicated healing must account for unavoidable fire damage."),
+            Mechanic("Purge Kiggler's Lightning Shield, keep his ranged tank outside Arcane Shock range, and fear or control Olm's summon."),
+        },
+        ["Gruul the Dragonkiller"] = {
+            Mechanic("The Hateful Strike tank stays second on threat and at high health; other melee must not overtake that threat position."),
+            Mechanic("After Ground Slam, spread before Shatter based on the movement debuff and avoid Cave In without collapsing onto others."),
+        },
+    },
+    recommendations = {
+        Rec("krosh", { "MAGE" }, { "Fire", "Arcane" }),
+        Rec("kiggler", { "HUNTER" }, { "Marksmanship", "Beast Mastery" }),
+        Rec("olm", { "WARLOCK" }, { "Demonology", "Affliction" }),
+        Rec("blindeye interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+        Rec("olm interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+        Rec("felhunter", { "WARLOCK" }, { "Demonology", "Affliction" }),
+        Rec("hateful strike tank", { "WARRIOR", "DRUID" }, { "Protection", "Feral" }),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", { A.TANK.MAIN, A.TANK.OFF, "Add Tank 1", "Add Tank 2" }),
@@ -30,6 +50,18 @@ local raid = Raid:RegisterRaid({
                     "kiggler_tank", "Kiggler Ranged Tank",
                     { "HUNTER", "DRUID" }),
                 A:Tank("blindeye", "Blindeye Tank"),
+            }),
+            Group("Healing", {
+                A:Healer(A.Target.TANKS, nil,
+                    "Maulgar Tank Healer", "Maulgar Tank"),
+                A:Healer(A.Target.TANKS, nil,
+                    "Krosh Tank Healer", "Krosh Mage Tank"),
+                A:Healer(A.Target.TANKS, nil,
+                    "Olm Tank Healer", "Olm Felhunter Controller"),
+                A:Healer(A.Target.TANKS, nil,
+                    "Kiggler Tank Healer", "Kiggler Ranged Tank"),
+                A:Healer(A.Target.TANKS, nil,
+                    "Blindeye Tank Healer", "Blindeye Tank"),
             }),
             Group("Interrupts", { "Blindeye Interrupt 1", "Blindeye Interrupt 2", "Olm Interrupt" }),
             Group("Utility", {
@@ -61,7 +93,14 @@ local raid = Raid:RegisterRaid({
         }),
         Encounter("Gruul the Dragonkiller", {
             Group("Tanks", { A.TANK.MAIN, "Hateful Strike Tank" }),
-            Group("Healing", { A:Healer(A.Target.MAIN_TANK, 1), A:Healer(A.Target.MAIN_TANK, 2), A.HEALER.OFF_TANK, A:Healer(A.Target.RAID, 1), A:Healer(A.Target.RAID, 2) }),
+            Group("Healing", {
+                A:Healer(A.Target.MAIN_TANK, 1),
+                A:Healer(A.Target.MAIN_TANK, 2),
+                A:Healer(A.Target.TANKS, nil,
+                    "Hateful Strike Tank Healer", "Hateful Strike Tank"),
+                A:Healer(A.Target.RAID, 1),
+                A:Healer(A.Target.RAID, 2),
+            }),
             Group("Utility", { "Shatter Position Caller" }),
         }, nil, nil, {
             icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\gruul",

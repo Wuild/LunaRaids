@@ -2,6 +2,9 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
     <Script file="Data.lua"/>
+    <Script file="Locales\enUS.lua"/>
+    <Script file="Locales\deDE.lua"/>
+    <Script file="Locales\Locale.lua"/>
 
     <!-- Raid definitions -->
     <Script file="Raids\karazhan.lua"/>
@@ -20,6 +23,8 @@
     <Script file="Raids\aq20.lua"/>
     <Script file="Raids\aq40.lua"/>
     <Script file="Raids\naxxramas.lua"/>
+    <Script file="Raids\post_tbc_guides.lua"/>
+    <Script file="Raids\post_tbc.lua"/>
 
     <!-- Core services -->
     <Script file="Core\Bootstrap.lua"/>
@@ -38,6 +43,7 @@
     <Script file="UI\Assignments.lua"/>
     <Script file="UI\GearInspect.lua"/>
     <Script file="UI\AssignmentView.lua"/>
+    <Script file="UI\MechanicsHUD.lua"/>
     <Script file="UI\ReadyCheckService.lua"/>
     <Script file="UI\ReadyCheckView.lua"/>
     <Script file="UI\ReadyCheckLifecycle.lua"/>

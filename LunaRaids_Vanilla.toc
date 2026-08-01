@@ -1,6 +1,6 @@
 ## Interface: 11504
 ## Title: LunaRaids
-## Notes: Vanilla and TBC raid assignments, announcements and role whispers.
+## Notes: Vanilla through Mists raid assignments, announcements and role whispers.
 ## IconTexture: Interface\Icons\INV_BannerPVP_02
 ## Author: Wuild
 ## Version: @project-version@

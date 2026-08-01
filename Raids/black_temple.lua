@@ -6,11 +6,64 @@ local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
+local Rec = Raid.Recommendation
+local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
     key = "black_temple", name = "Black Temple", size = 25,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\black_temple",
+    guides = {
+        ["High Warlord Naj'entus"] = {
+            Mechanic("Remove Impaling Spine immediately and loot it; heal the raid to full before using a spine to break Tidal Shield."),
+            Mechanic("Spread to reduce Needle Spine splash and use defensive or healing cooldowns for every shield burst."),
+        },
+        ["Supremus"] = {
+            Mechanic("Tank phase: two tanks maintain the top threat positions and melee avoid Molten Flame and frontal damage."),
+            Mechanic("Kite phase: fixated players run away without crossing the raid while everyone avoids volcano eruptions."),
+        },
+        ["Shade of Akama"] = {
+            Mechanic("Assigned teams kill channelers and sorcerers evenly while tanks collect defenders and elementals."),
+            Mechanic("When Akama engages, finish remaining adds and burn the Shade before Akama's health is exhausted."),
+        },
+        ["Teron Gorefiend"] = {
+            Mechanic("Shadow of Death targets move to the assigned location and use ghost abilities to kill constructs before they reach the raid."),
+            Mechanic("Dispel Incinerate, spread for Crushing Shadows, and keep threat stable through rapid damage windows."),
+        },
+        ["Gurtogg Bloodboil"] = {
+            Mechanic("Three groups rotate through Bloodboil at maximum range so each group receives only its assigned stacks."),
+            Mechanic("During Fel Rage, the target uses mitigation while healers focus them; tanks reset threat and debuffs before phase return."),
+        },
+        ["Reliquary of Souls"] = {
+            Mechanic("Essence of Suffering: healing is disabled, tanks rotate Fixate, and players manage health and threat carefully."),
+            Mechanic("Essence of Desire: interrupt Spirit Shock and stop attacks into Deaden or reflected damage; dispel Rune Shield."),
+            Mechanic("Essence of Anger: tanks swap around Soul Scream resources and the raid burns before stacking raid damage wins."),
+        },
+        ["Mother Shahraz"] = {
+            Mechanic("Wear the required shadow resistance and spread in assigned positions so Saber Lash remains split by the tanks."),
+            Mechanic("Fatal Attraction targets move together to the designated safe area, then separate only after all explosions finish."),
+        },
+        ["The Illidari Council"] = {
+            Mechanic("Keep all four council members separated; interrupt Malande's heals and reflect or interrupt Divine Wrath."),
+            Mechanic("A mage tanks Zerevor and spellsteals Dampen Magic; the raid moves from Flamestrike, Blizzard, and Consecration."),
+        },
+        ["Illidan Stormrage"] = {
+            Mechanic("Shear must be blocked or avoided by the active tank; parasites are moved out and killed before they duplicate."),
+            Mechanic("Flame tanks hold both Flames of Azzinoth near their glaives without crossing beams or allowing enraged separation."),
+            Mechanic("The fire-resistance warlock tanks demon form at range; spread for Shadow Blast and use cages during the final enrage."),
+        },
+    },
+    recommendations = {
+        Rec("shadow resistance", { "PRIEST", "PALADIN" }, { "Shadow", "Discipline", "Holy" }, Reuse),
+        Rec("interrupt", { "ROGUE", "SHAMAN", "MAGE" }, { "Combat", "Enhancement", "Elemental" }),
+        Rec("dispel", { "PRIEST", "PALADIN", "SHAMAN" }, { "Discipline", "Holy", "Restoration" }, Reuse),
+        Rec("reflect", { "MAGE" }, { "Fire", "Frost", "Arcane" }),
+        Rec("zerevor tank", { "MAGE" }, { "Fire", "Frost", "Arcane" }),
+        Rec("zerevor spellsteal", { "MAGE" }, { "Arcane", "Frost", "Fire" }),
+        Rec("blessing dispel", { "PRIEST", "SHAMAN" }, { "Discipline", "Shadow", "Restoration" }, Reuse),
+        Rec("demon tank", { "WARLOCK" }, { "Destruction", "Demonology" }),
+        Rec("shear backup", { "WARRIOR", "ROGUE" }, { "Protection", "Combat" }),
+    },
     encounters = {
         Encounter("Raid Overview", {
             Group("Tanks", { A.TANK.MAIN, A.TANK.OFF, A.TANK.THIRD }),

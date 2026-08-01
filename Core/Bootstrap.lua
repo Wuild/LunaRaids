@@ -28,29 +28,29 @@ local simulatedNames = {
 }
 
 local simulatedCharacters = {
-    { "WARRIOR", "Human", "TANK" },
-    { "WARRIOR", "Orc", "TANK" },
-    { "DRUID", "Night Elf", "TANK" },
-    { "PALADIN", "Draenei", "HEALER" },
-    { "PRIEST", "Dwarf", "HEALER" },
-    { "SHAMAN", "Tauren", "HEALER" },
-    { "DRUID", "Tauren", "HEALER" },
-    { "PRIEST", "Blood Elf", "HEALER" },
-    { "PALADIN", "Human", "HEALER" },
-    { "SHAMAN", "Draenei", "HEALER" },
-    { "MAGE", "Gnome", "DAMAGER" },
-    { "MAGE", "Undead", "DAMAGER" },
-    { "WARLOCK", "Orc", "DAMAGER" },
-    { "WARLOCK", "Gnome", "DAMAGER" },
-    { "ROGUE", "Human", "DAMAGER" },
-    { "ROGUE", "Troll", "DAMAGER" },
-    { "HUNTER", "Night Elf", "DAMAGER" },
-    { "HUNTER", "Orc", "DAMAGER" },
-    { "HUNTER", "Dwarf", "DAMAGER" },
-    { "SHAMAN", "Troll", "DAMAGER" },
-    { "PALADIN", "Blood Elf", "DAMAGER" },
-    { "DRUID", "Night Elf", "DAMAGER" },
-    { "PRIEST", "Undead", "DAMAGER" },
+    { "WARRIOR", "Human", "TANK", "Protection" },
+    { "DRUID", "Night Elf", "TANK", "Feral" },
+    { "WARRIOR", "Orc", "TANK", "Protection" },
+    { "PALADIN", "Draenei", "HEALER", "Holy" },
+    { "PRIEST", "Dwarf", "HEALER", "Discipline" },
+    { "SHAMAN", "Tauren", "HEALER", "Restoration" },
+    { "DRUID", "Tauren", "HEALER", "Restoration" },
+    { "PRIEST", "Blood Elf", "HEALER", "Holy" },
+    { "PALADIN", "Human", "HEALER", "Holy" },
+    { "SHAMAN", "Draenei", "HEALER", "Restoration" },
+    { "MAGE", "Gnome", "DAMAGER", "Fire" },
+    { "WARLOCK", "Orc", "DAMAGER", "Destruction" },
+    { "ROGUE", "Human", "DAMAGER", "Combat" },
+    { "HUNTER", "Night Elf", "DAMAGER", "Marksmanship" },
+    { "SHAMAN", "Troll", "DAMAGER", "Enhancement" },
+    { "MAGE", "Undead", "DAMAGER", "Frost" },
+    { "WARLOCK", "Gnome", "DAMAGER", "Affliction" },
+    { "HUNTER", "Orc", "DAMAGER", "Beast Mastery" },
+    { "PALADIN", "Blood Elf", "DAMAGER", "Retribution" },
+    { "DRUID", "Night Elf", "DAMAGER", "Balance" },
+    { "PRIEST", "Undead", "DAMAGER", "Shadow" },
+    { "ROGUE", "Troll", "DAMAGER", "Assassination" },
+    { "HUNTER", "Dwarf", "DAMAGER", "Survival" },
 }
 
 local simulatedByRole = {
@@ -122,6 +122,17 @@ local defaults = {
         point = "CENTER", x = 300, y = 40,
         width = 360,
         hide = false,
+    },
+    mechanicsHUD = {
+        enabled = true,
+        point = "CENTER", x = 330, y = 120,
+        width = 430,
+        visibility = "GROUP",
+        combatOnly = false,
+        locked = false,
+        showTitle = true,
+        maxLines = 6,
+        opacity = .92,
     },
     raidCooldowns = {
         enabled = true,
@@ -214,13 +225,13 @@ function Raid:PromoteRosterPlayer(player)
     if not self:IsActualRaidLeader() or not player or player.manual
         or player.simulated or self:IsRosterPlayerSelf(player)
     then
-        self:Print("Only the raid leader can promote live raid members.")
+        self:Print(self.L.ONLY_LEADER_PROMOTE)
         return
     end
     if type(PromoteToAssistant) ~= "function"
         or not pcall(PromoteToAssistant, player.name, true)
     then
-        self:Print("The client rejected the assistant promotion.")
+        self:Print(self.L.PROMOTION_REJECTED)
     end
 end
 
@@ -228,13 +239,13 @@ function Raid:DemoteRosterPlayer(player)
     if not self:IsActualRaidLeader() or not player or player.manual
         or player.simulated or self:IsRosterPlayerSelf(player)
     then
-        self:Print("Only the raid leader can demote live raid members.")
+        self:Print(self.L.ONLY_LEADER_DEMOTE)
         return
     end
     if type(DemoteAssistant) ~= "function"
         or not pcall(DemoteAssistant, player.name)
     then
-        self:Print("The client rejected the assistant demotion.")
+        self:Print(self.L.DEMOTION_REJECTED)
     end
 end
 
@@ -242,13 +253,13 @@ function Raid:TransferRaidLeader(player)
     if not self:IsActualRaidLeader() or not player or player.manual
         or player.simulated or self:IsRosterPlayerSelf(player)
     then
-        self:Print("Only the raid leader can transfer raid leadership.")
+        self:Print(self.L.ONLY_LEADER_TRANSFER)
         return
     end
     if type(PromoteToLeader) ~= "function"
         or not pcall(PromoteToLeader, player.name)
     then
-        self:Print("The client rejected the raid leader transfer.")
+        self:Print(self.L.TRANSFER_REJECTED)
     end
 end
 
@@ -261,7 +272,7 @@ function Raid:RemoveRosterPlayer(player)
     if not self:CanEditRaidGroups() or player.simulated
         or self:IsRosterPlayerSelf(player)
     then
-        self:Print("Only raid leadership can remove live raid members.")
+        self:Print(self.L.ONLY_LEADERSHIP_REMOVE)
         return
     end
     local uninvite = C_PartyInfo and C_PartyInfo.UninviteUnit
@@ -269,7 +280,7 @@ function Raid:RemoveRosterPlayer(player)
     if type(uninvite) ~= "function"
         or not pcall(uninvite, player.name)
     then
-        self:Print("The client rejected removing that raid member.")
+        self:Print(self.L.REMOVE_MEMBER_REJECTED)
     end
 end
 
@@ -320,7 +331,7 @@ end
 
 function Raid:ResetAllSettings()
     local keys = {
-        "window", "quickBar", "readyCheck", "assignmentInfo",
+        "window", "quickBar", "readyCheck", "assignmentInfo", "mechanicsHUD",
         "raidCooldowns", "raidAdmin", "minimap",
         "announcementChannel", "messageDelay", "hudScale",
     }
@@ -353,6 +364,7 @@ function Raid:ResetAllSettings()
     Position(self.quickActionBar, self.db.quickBar)
     Position(self.readyCheckWindow, self.db.readyCheck)
     Position(self.personalAssignmentFrame, self.db.assignmentInfo)
+    Position(self.mechanicsHUDFrame, self.db.mechanicsHUD)
     if self.personalAssignmentFrame then
         self.personalAssignmentFrame:SetWidth(
             self.db.assignmentInfo.width)
@@ -372,12 +384,14 @@ function Raid:ResetAllSettings()
     if self.ApplyInterfaceScale then self:ApplyInterfaceScale() end
     if self.UpdateWindowLayout then self:UpdateWindowLayout() end
     if self.RefreshSettingsView then self:RefreshSettingsView() end
-    self:Print("All addon settings and window positions were reset.")
+    self:Print(self.L.ALL_SETTINGS_RESET)
 end
 
 function Raid:NormalizeDatabase()
     local restore = self.db.simulationRestore
-    if type(restore) == "table" then
+    if type(restore) == "table"
+        and type(self.db.simulationSession) ~= "table"
+    then
         self.db.activeExpansion =
             restore.activeExpansion or self.db.activeExpansion
         self.db.activeRaid =

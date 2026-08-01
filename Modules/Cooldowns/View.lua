@@ -1,4 +1,5 @@
 local _, Raid = ...
+local L = Raid.L
 local Cooldowns = Raid:GetModule("Cooldowns")
 local View = Cooldowns.View
 local DEFINITIONS = View.definitions
@@ -84,7 +85,7 @@ function Raid:CreateRaidCooldownFrame()
             dot:SetVertexColor(.15, .75, 1, 1)
         end
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Drag to move")
+        GameTooltip:SetText(L.DRAG_TO_MOVE)
         GameTooltip:Show()
     end)
     frame.Grip:SetScript("OnLeave", function(self)
@@ -105,7 +106,7 @@ function Raid:CreateRaidCooldownFrame()
     frame.Line:SetPoint("TOPRIGHT", -1, -18)
     frame.Line:SetHeight(1)
     frame.Line:SetVertexColor(ACCENT[1], ACCENT[2], ACCENT[3], .7)
-    frame.Title = Label(frame, 9, "RAID COOLDOWNS", ACCENT)
+    frame.Title = Label(frame, 9, L.RAID_COOLDOWNS, ACCENT)
     frame.Title:SetPoint("TOPLEFT", 9, -8)
     frame.Count = Label(frame, 8, "", MUTED)
     frame.Count:SetPoint("LEFT", frame.Title, "RIGHT", 8, 0)
@@ -125,7 +126,7 @@ function Raid:CreateRaidCooldownFrame()
     end)
     frame.Style:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Change cooldown style")
+        GameTooltip:SetText(L.CHANGE_COOLDOWN_STYLE)
         GameTooltip:Show()
     end)
     frame.Style:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -141,7 +142,7 @@ function Raid:CreateRaidCooldownFrame()
     frame.Config:SetScript("OnEnter", function(self)
         self:SetAlpha(1)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText("Cooldown settings")
+        GameTooltip:SetText(L.COOLDOWN_SETTINGS)
         GameTooltip:Show()
     end)
     frame.Config:SetScript("OnLeave", function(self)
@@ -222,7 +223,7 @@ function Raid:CreateRaidCooldownRow(index)
         GameTooltip:SetOwner(row.IconHit, "ANCHOR_TOP")
         GameTooltip:SetText(row.definition[2])
         GameTooltip:AddDoubleLine(
-            "Base cooldown",
+            L.BASE_COOLDOWN,
             CooldownLength(row.definition[5]),
             .62, .72, .78, .95, .82, .35)
         GameTooltip:Show()
@@ -243,7 +244,7 @@ function Raid:WhisperRaidCooldown(playerName, definition)
     if not playerName or not definition then return end
     if not self:GetRaidCooldownSettings().whisperEnabled then return end
     if not IsInGroup or not IsInGroup() then
-        self:Print("Join a group before sending cooldown requests.")
+        self:Print(L.JOIN_GROUP_COOLDOWN_REQUEST)
         return
     end
     local spell = definition[2]
@@ -259,8 +260,11 @@ function Raid:WhisperRaidCooldown(playerName, definition)
             spell = link
         end
     end
+    -- Outbound raid communication defaults to English. UI locale must not
+    -- change whispers or announcements; a communication-language option can
+    -- explicitly select different message templates in the future.
     self:QueueMessage(
-        "WHISPER", playerName, "Cast " .. spell .. ".", true)
+        "WHISPER", playerName, ("Cast %s."):format(spell), true)
     self:StartMessageQueue()
 end
 
@@ -284,7 +288,7 @@ function Raid:CreateRaidCooldownChip(row, index)
         GameTooltip:SetOwner(chip.IconHit, "ANCHOR_TOP")
         GameTooltip:SetText(chip.definition[2])
         GameTooltip:AddDoubleLine(
-            "Base cooldown",
+            L.BASE_COOLDOWN,
             CooldownLength(chip.definition[5]),
             .62, .72, .78, .95, .82, .35)
         GameTooltip:Show()
@@ -416,7 +420,7 @@ function Raid:RefreshRaidCooldowns()
     frame.Line:SetVertexColor(
         ACCENT[1], ACCENT[2], ACCENT[3], minimal and 0 or .7)
     frame.Title:SetShown(not minimal or showChrome)
-    if minimal then frame.Title:SetText("RAID COOLDOWNS") end
+    if minimal then frame.Title:SetText(L.RAID_COOLDOWNS) end
     frame.Count:SetShown(not minimal)
     frame.Style:SetShown(not minimal)
     frame.Grip:SetShown(false)
@@ -563,7 +567,8 @@ function Raid:RefreshRaidCooldowns()
                 rowLayout and (readyCount .. "/" .. onlineCount)
                     or minimal and ""
                     or style == "CARDS"
-                        and (readyCount .. "/" .. onlineCount .. " ready")
+                        and Raid:Localize(
+                            "READY_COUNT", readyCount, onlineCount)
                     or (readyCount .. "/" .. onlineCount))
             local chipWidth = listLayout and activeColumnWidth
                 or rowLayout and 62 or math.floor(
@@ -666,9 +671,9 @@ function Raid:RefreshRaidCooldowns()
                         "RIGHT", chip.Status, "LEFT", -columnGap, 0)
                     chip.Text:SetJustifyH("LEFT")
                     chip.Status:SetText(
-                        offline and "Offline"
+                        offline and L.OFFLINE
                             or activeEffect and TimeText(effectRemaining)
-                            or ready and "Ready" or TimeText(remaining))
+                            or ready and L.READY or TimeText(remaining))
                     chip.Status:SetTextColor(
                         offline and .42
                             or barR,
@@ -684,7 +689,8 @@ function Raid:RefreshRaidCooldowns()
                 else
                     chip.Text:SetPoint("CENTER")
                     chip.Text:SetJustifyH("CENTER")
-                    local suffix = offline and " |cff737b80OFFLINE|r"
+                    local suffix = offline
+                        and " |cff737b80" .. L.OFFLINE_UPPER .. "|r"
                         or activeEffect and (
                             " |cff43bff5" .. TimeText(effectRemaining) .. "|r")
                         or not ready and (
@@ -707,16 +713,20 @@ function Raid:RefreshRaidCooldowns()
                 end
                 chip.playerName = player.name
                 chip.playerOnline = not offline
-                chip.statusText = offline and "Offline"
-                    or activeEffect and (
-                        definition[2] .. " active"
-                            .. (effect.targetName and (
-                                " on " .. ShortName(effect.targetName)) or "")
-                            .. ": " .. TimeText(effectRemaining)
-                            .. " remaining")
-                    or ready and "Ready"
-                    or ((state and state.exact and "Synced: " or "Cooldown: ")
-                        .. TimeText(remaining) .. " remaining")
+                chip.statusText = offline and L.OFFLINE
+                    or activeEffect and (effect.targetName
+                        and Raid:Localize(
+                            "COOLDOWN_ACTIVE_TARGET", definition[2],
+                            ShortName(effect.targetName),
+                            TimeText(effectRemaining))
+                        or Raid:Localize(
+                            "COOLDOWN_ACTIVE", definition[2],
+                            TimeText(effectRemaining)))
+                    or ready and L.READY
+                    or Raid:Localize(
+                        state and state.exact and "SYNCED_REMAINING"
+                            or "COOLDOWN_REMAINING",
+                        TimeText(remaining))
                 chip:Show()
             end
             for index = #displayPlayers + 1, #row.Chips do
@@ -728,7 +738,8 @@ function Raid:RefreshRaidCooldowns()
     for index = visible + 1, #frame.Rows do frame.Rows[index]:Hide() end
     frame.Style.Text:SetText(style)
     frame.Count:SetText(
-        visible > 0 and (visible .. " CARDS") or "SELECT COOLDOWNS")
+        visible > 0 and Raid:Localize("CARDS_COUNT", visible)
+            or L.SELECT_COOLDOWNS)
     frame.Nav:Hide()
     frame.Nav.Page:SetText(settings.page .. "/" .. pageCount)
     frame.Nav.Previous:SetEnabled(settings.page > 1)
@@ -818,10 +829,10 @@ function Raid:CreateRaidCooldownConfig()
     panel:SetPoint("TOPLEFT", owner, "TOPRIGHT", 6, 0)
     panel:SetFrameStrata("DIALOG")
     panel:SetClampedToScreen(true)
-    panel.Title = Label(panel, 11, "COOLDOWN DECK", ACCENT)
+    panel.Title = Label(panel, 11, L.COOLDOWN_DECK, ACCENT)
     panel.Title:SetPoint("TOPLEFT", 11, -11)
     panel.Help = Label(
-        panel, 8, "Choose which abilities become cards.", MUTED)
+        panel, 8, L.COOLDOWN_DECK_DESC, MUTED)
     panel.Help:SetPoint("TOPLEFT", 11, -28)
     panel.Close = CreateFrame("Button", nil, panel)
     panel.Close:SetSize(24, 24)
@@ -866,7 +877,7 @@ function Raid:RefreshRaidCooldownConfig()
     local settings = self:GetRaidCooldownSettings()
     for _, row in ipairs(panel.Rows) do
         local enabled = settings.spells[row.definition[1]] ~= false
-        row.State:SetText(enabled and "ON" or "OFF")
+        row.State:SetText(enabled and L.ON or L.OFF)
         row.State:SetTextColor(
             enabled and .18 or .75, enabled and .9 or .25,
             enabled and .55 or .25, 1)
@@ -887,8 +898,8 @@ function Raid:ToggleRaidCooldowns()
     local settings = self:GetRaidCooldownSettings()
     settings.enabled = not settings.enabled
     self:RefreshRaidCooldowns()
-    self:Print("Raid cooldowns "
-        .. (settings.enabled and "enabled." or "hidden."))
+    self:Print(settings.enabled
+        and L.RAID_COOLDOWNS_ENABLED or L.RAID_COOLDOWNS_HIDDEN)
 end
 
 function Raid:OpenRaidCooldownSettings()
