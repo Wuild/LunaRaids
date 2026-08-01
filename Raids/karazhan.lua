@@ -64,6 +64,20 @@ local raid = Raid:RegisterRaid({
         }, nil, nil, {
             icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\karazhan__operaevent",
             spellIcon = 31013,
+            encounterNames = {
+                "Opera Hall",
+                "Opera Event",
+                "The Big Bad Wolf",
+                "The Crone",
+                "The Wizard of Oz",
+                "Romulo and Julianne",
+                "Julianne and Romulo",
+                "Opera Hall: The Big Bad Wolf",
+                "Opera Hall: The Wizard of Oz",
+                "Opera Hall: Romulo and Julianne",
+                "Theater Event",
+                "Theatre Event",
+            },
             mechanics = {
                 Mechanic("Identify the active Opera encounter and confirm interrupts, fears, or kiting before pull."),
                 Mechanic("Keep dangerous casts controlled and avoid overlapping ground effects."),

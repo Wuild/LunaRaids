@@ -540,6 +540,7 @@ function Raid:PropagateOverviewAssignments()
 		[self.Role.HEALER] = {},
 		[self.Role.DAMAGE] = {},
 	}
+	local pooled = {}
 	local overviewByID = {}
 	local overview = raid.encounters[1]
 	for groupIndex, group in ipairs(overview.groups or {}) do
@@ -550,8 +551,22 @@ function Raid:PropagateOverviewAssignments()
 				local role = slot.role or group.role or self.Role.DAMAGE
 				pools[role] = pools[role] or {}
 				pools[role][#pools[role] + 1] = assignment
+				if assignment.name then
+					pooled[assignment.name:lower()] = true
+				end
 				overviewByID[slot.id] = assignment
 			end
+		end
+	end
+	for _, player in ipairs(self.roster or {}) do
+		local name = player.name and player.name:lower()
+		if name and not pooled[name] then
+			local role = player.role or player.reportedRole or self.Role.DAMAGE
+			if role == "NONE" or not pools[role] then
+				role = self.Role.DAMAGE
+			end
+			pools[role][#pools[role] + 1] = player
+			pooled[name] = true
 		end
 	end
 
@@ -607,9 +622,6 @@ function Raid:PropagateOverviewAssignments()
 			and IsCompatible(preferred, role, slot)
 			then
 				return preferred
-			end
-			if role == self.Role.DAMAGE then
-				return nil
 			end
 			local pool = pools[role] or {}
 			if type(slot) == "table" and slot.allowedClasses then
@@ -906,8 +918,8 @@ function Raid:AutoAssignEncounter()
 			end
 		end
 	end
-	if encounter.name == "Raid Overview" and assigned > 0 then
-		self:PropagateOverviewAssignments()
+	if encounter.name == "Raid Overview" then
+		assigned = assigned + self:PropagateOverviewAssignments()
 	end
 	if self.SendPlanSnapshot and assigned > 0 then
 		self:SendPlanSnapshot()
@@ -915,8 +927,13 @@ function Raid:AutoAssignEncounter()
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
-	self:Print(("Auto assigned %d player%s."):format(
-		assigned, assigned == 1 and "" or "s"))
+	if encounter.name == "Raid Overview" then
+		self:Print(("Auto assigned %d slot%s across the raid."):format(
+			assigned, assigned == 1 and "" or "s"))
+	else
+		self:Print(("Auto assigned %d player%s."):format(
+			assigned, assigned == 1 and "" or "s"))
+	end
 end
 
 function Raid:GetHealingTargets()
@@ -1200,17 +1217,29 @@ function Raid:AutoAssignMarkers()
 end
 
 function Raid:IsAutoMarkerEnabled()
-	local plan = self:GetPlan(false)
-	return plan and plan.AUTO_MARK == true or false
+	if self.db.autoMarkerEnabled == nil then
+		local enabled = false
+		for _, raidPlans in pairs(self.db.plans or {}) do
+			for _, plan in pairs(raidPlans or {}) do
+				if type(plan) == "table" and plan.AUTO_MARK == true then
+					enabled = true
+					break
+				end
+			end
+			if enabled then break end
+		end
+		self.db.autoMarkerEnabled = enabled
+	end
+	return self.db.autoMarkerEnabled == true
 end
 
 function Raid:ToggleAutoMarker()
 	if not self:RequireRaidEditor() then
 		return
 	end
+	self.db.autoMarkerEnabled = not self:IsAutoMarkerEnabled()
 	local plan = self:GetPlan(true)
-	plan.AUTO_MARK = not plan.AUTO_MARK
-	if plan.AUTO_MARK then
+	if self.db.autoMarkerEnabled then
 		local targets = self:GetEncounterTargets()
 		for index = 1, #targets do
 			plan["M:" .. index] =
@@ -1218,8 +1247,7 @@ function Raid:ToggleAutoMarker()
 		end
 		self:ApplyAutoMarkers()
 	end
-	if self.BroadcastPlanValue then
-		self:BroadcastPlanValue("AUTO_MARK", plan.AUTO_MARK)
+	if self.SendPlanSnapshot then
 		self:SendPlanSnapshot()
 	end
 	if self.RefreshAssignments then
@@ -1227,7 +1255,19 @@ function Raid:ToggleAutoMarker()
 	end
 end
 
-function Raid:ApplyAutoMarkers()
+local AUTO_MARKER_UNITS = {
+	"target", "focus", "mouseover",
+	"boss1", "boss2", "boss3", "boss4", "boss5",
+	"boss6", "boss7", "boss8", "boss9", "boss10",
+}
+
+local AUTO_MARKER_EVENT_UNIT = {
+	PLAYER_TARGET_CHANGED = "target",
+	PLAYER_FOCUS_CHANGED = "focus",
+	UPDATE_MOUSEOVER_UNIT = "mouseover",
+}
+
+function Raid:ApplyAutoMarkers(event)
 	if self.simulation.enabled or not self:IsAutoMarkerEnabled()
 	or type(SetRaidTarget) ~= "function"
 	then
@@ -1238,12 +1278,13 @@ function Raid:ApplyAutoMarkers()
 	for index, name in ipairs(targets) do
 		byName[name] = index
 	end
-	local units = {
-		"target", "focus", "mouseover",
-		"boss1", "boss2", "boss3", "boss4", "boss5",
-		"boss6", "boss7", "boss8", "boss9", "boss10",
-	}
-	for _, unit in ipairs(units) do
+	local changedUnit = AUTO_MARKER_EVENT_UNIT[event]
+	local first, last = 1, #AUTO_MARKER_UNITS
+	if changedUnit then
+		first, last = 1, 1
+	end
+	for index = first, last do
+		local unit = changedUnit or AUTO_MARKER_UNITS[index]
 		if UnitExists(unit) and not UnitIsFriend("player", unit) then
 			local name = UnitName(unit)
 			local targetIndex = name and byName[name]
@@ -1690,5 +1731,68 @@ function Raid:NavigateBoss(direction)
 		self:SetEncounter(nextBoss)
 	end
 	return true
+end
+
+local function NormalizeEncounterName(name)
+	name = tostring(name or ""):lower():gsub("[^%w]", "")
+	return name:gsub("^the", "")
+end
+
+local function EncounterNameMatches(encounter, encounterName)
+	local wanted = NormalizeEncounterName(encounterName)
+	if NormalizeEncounterName(encounter.name) == wanted then return true end
+	for _, alias in ipairs(encounter.encounterNames or {}) do
+		if NormalizeEncounterName(alias) == wanted then return true end
+	end
+	return false
+end
+
+function Raid:HandleEncounterStarted(_, encounterID, encounterName)
+	self.pendingBossAdvance = nil
+	if not self.db.raidLocked or not self:IsLocalRaidEditor() then return end
+	encounterID = tonumber(encounterID)
+	if not encounterID then return end
+	local raid = self:GetRaid()
+	local index = self:GetCurrentBossIndex(raid)
+	local encounter = index and raid.encounters[index]
+	if not encounter or not EncounterNameMatches(encounter, encounterName) then
+		return
+	end
+	self.pendingBossAdvance = {
+		raidKey = raid.key,
+		index = index,
+		encounterID = encounterID,
+	}
+end
+
+function Raid:HandleEncounterEnded(
+	_, encounterID, encounterName, difficultyID, groupSize, success)
+	local pending = self.pendingBossAdvance
+	self.pendingBossAdvance = nil
+	if not pending or tonumber(success) ~= 1
+		or tonumber(encounterID) ~= pending.encounterID
+		or self.db.activeRaid ~= pending.raidKey
+	then
+		return
+	end
+	local raid = self:GetRaid()
+	if self:GetCurrentBossIndex(raid) ~= pending.index then return end
+	self:NavigateBoss(1)
+end
+
+function Raid:HandleBossKill(_, encounterID, encounterName)
+	if self.pendingBossAdvance then
+		self:HandleEncounterEnded(
+			"BOSS_KILL", encounterID, encounterName, nil, nil, 1)
+		return
+	end
+	if not self.db.raidLocked or not self:IsLocalRaidEditor() then return end
+	local raid = self:GetRaid()
+	local index = self:GetCurrentBossIndex(raid)
+	local encounter = index and raid.encounters[index]
+	if not encounter or not EncounterNameMatches(encounter, encounterName) then
+		return
+	end
+	self:NavigateBoss(1)
 end
 

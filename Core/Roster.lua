@@ -486,7 +486,9 @@ function Raid:UpdateGearScoreFromTipTac(player)
     local ok, result = pcall(
         tipTac.GetAverageItemLevel, tipTac, player.unit,
         function(asyncResult)
-            if StoreResult(asyncResult) and Raid.RefreshRoster then
+            if StoreResult(asyncResult) and Raid.RefreshRoster
+                and Raid.rosterPanel and Raid.rosterPanel:IsShown()
+            then
                 Raid:RefreshRoster()
             end
         end)
@@ -548,7 +550,9 @@ function Raid:UpdateGearScores()
             end
         end
     end
-    if changed and self.RefreshRoster then
+    if changed and self.RefreshRoster
+        and self.rosterPanel and self.rosterPanel:IsShown()
+    then
         self:RefreshRoster()
     end
 end
@@ -761,14 +765,16 @@ function Raid:StopSimulation(silent)
     end
 end
 
-function Raid:UpdateRoster()
+function Raid:UpdateRoster(suppressRosterRefresh)
     if self.simulation.enabled then
         self.roster, self.simulation.roster =
             self:BuildSimulatedRoster(self.simulation.size)
         if self.BroadcastSimulationRoster then
             self:BroadcastSimulationRoster()
         end
-        if self.RefreshRoster then self:RefreshRoster() end
+        if not suppressRosterRefresh and self.RefreshRoster then
+            self:RefreshRoster()
+        end
         return
     end
     local result, seen = self:BuildLiveRoster()
@@ -787,7 +793,9 @@ function Raid:UpdateRoster()
     end)
     self.roster = result
     self:UpdateGearScores()
-    if self.RefreshRoster then self:RefreshRoster() end
+    if not suppressRosterRefresh and self.RefreshRoster then
+        self:RefreshRoster()
+    end
 end
 
 function Raid:RefreshLoginRoster()
@@ -798,6 +806,9 @@ function Raid:RefreshLoginRoster()
     local function Refresh()
         if generation ~= Raid.rosterBootstrapGeneration then return end
         Raid:UpdateRoster()
+        if Raid.RefreshPersonalAssignments then
+            Raid:RefreshPersonalAssignments()
+        end
         local expected, inRaid = GetLiveRaidCount()
         if not inRaid then return end
         local liveCount = 0

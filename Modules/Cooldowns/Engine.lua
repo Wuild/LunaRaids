@@ -197,7 +197,11 @@ function Raid:HandleRaidCooldownCombatLog()
 end
 
 function Raid:GetRaidCooldownEffect(definition, player)
-    local settings = self:GetRaidCooldownSettings()
+    -- This runs in the renderer's player-by-player inner loop.  Settings are
+    -- initialized before the cooldown frame is built, so avoid normalizing
+    -- every definition again for every displayed player.
+    local settings = self.db and self.db.raidCooldowns
+        or self:GetRaidCooldownSettings()
     local effects = settings.effects[definition[1]] or {}
     local now = CurrentTime()
     for owner, effect in pairs(effects) do
@@ -300,17 +304,19 @@ end
 function Raid:BroadcastLocalRaidCooldowns(target, force)
     if not IsInGroup or not IsInGroup() then return end
     self.localRaidCooldownWire = self.localRaidCooldownWire or {}
+    local changed = false
     local playerName = GetUnitName
         and GetUnitName("player", true) or UnitName("player")
     for index, definition in ipairs(DEFINITIONS) do
         local remaining = self:GetLocalRaidCooldownRemaining(definition)
         if remaining ~= nil then
-            self:StoreExactRaidCooldown(playerName, index, remaining)
             local previous = self.localRaidCooldownWire[index]
             if force or previous == nil
                 or math.abs(previous - remaining) > 1
                 or (previous > 0) ~= (remaining > 0)
             then
+                changed = true
+                self:StoreExactRaidCooldown(playerName, index, remaining)
                 self.localRaidCooldownWire[index] = remaining
                 if self.BroadcastOwnCooldown then
                     self:BroadcastOwnCooldown(index, remaining, target)
@@ -318,7 +324,7 @@ function Raid:BroadcastLocalRaidCooldowns(target, force)
             end
         end
     end
-    self:RefreshRaidCooldowns()
+    if changed then self:RefreshRaidCooldowns() end
 end
 
 function Raid:HandleLocalRaidCooldownUpdate()

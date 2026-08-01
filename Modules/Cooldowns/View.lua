@@ -175,10 +175,13 @@ function Raid:CreateRaidCooldownFrame()
     frame.Rows = {}
     frame:SetScript("OnUpdate", function(self, elapsed)
         self.elapsed = (self.elapsed or 0) + elapsed
-        if self.elapsed >= .2 then
-            self.elapsed = 0
-            Raid:RefreshRaidCooldowns()
-        end
+        -- RefreshRaidCooldowns performs a complete layout pass over every
+        -- tracked spell and raid member.  The countdown text is displayed in
+        -- whole seconds, so rebuilding that layout five times per second only
+        -- adds frame-time cost without producing a visible update.
+        if self.elapsed < 1 then return end
+        self.elapsed = self.elapsed - math.floor(self.elapsed)
+        Raid:RefreshRaidCooldowns()
     end)
     frame:Hide()
     self.raidCooldownFrame = frame
@@ -377,36 +380,29 @@ function Raid:RefreshRaidCooldowns()
     local visible, now = 0, CurrentTime()
     local maxColumns = #DEFINITIONS
     local bandTop, bandTallest, usedWidth = 0, 0, 0
-    local orderedDefinitions = {}
-    for index, definition in ipairs(DEFINITIONS) do
-        orderedDefinitions[index] = definition
-    end
-    if settings.sortMode == "CLASS" then
-        table.sort(orderedDefinitions, function(left, right)
-            if left[3] ~= right[3] then return left[3] < right[3] end
-            return left[2] < right[2]
-        end)
-    elseif settings.sortMode == "NAME" then
-        table.sort(orderedDefinitions, function(left, right)
-            return left[2] < right[2]
-        end)
-    end
-    local totalCards = 0
-    for _, definition in ipairs(orderedDefinitions) do
-        if settings.spells[definition[1]] ~= false then
-            for _, player in ipairs(self.roster or {}) do
-                if self:IsRaidCooldownPlayerEligible(player, definition) then
-                    totalCards = totalCards + 1
-                    break
-                end
-            end
+    local orderedDefinitions = self.raidCooldownOrderedDefinitions
+    if not orderedDefinitions
+        or self.raidCooldownDefinitionSortMode ~= settings.sortMode
+    then
+        orderedDefinitions = {}
+        for index, definition in ipairs(DEFINITIONS) do
+            orderedDefinitions[index] = definition
         end
+        if settings.sortMode == "CLASS" then
+            table.sort(orderedDefinitions, function(left, right)
+                if left[3] ~= right[3] then return left[3] < right[3] end
+                return left[2] < right[2]
+            end)
+        elseif settings.sortMode == "NAME" then
+            table.sort(orderedDefinitions, function(left, right)
+                return left[2] < right[2]
+            end)
+        end
+        self.raidCooldownOrderedDefinitions = orderedDefinitions
+        self.raidCooldownDefinitionSortMode = settings.sortMode
     end
     local pageCount = 1
     settings.page = 1
-    local pageStart = 1
-    local pageEnd = totalCards
-    local cardIndex = 0
     local minimal = style == "MINIMAL"
     local showChrome = false
     frame:SetBackdropColor(
@@ -447,11 +443,6 @@ function Raid:RefreshRaidCooldowns()
             end
         end
         if #players > 0 then
-            cardIndex = cardIndex + 1
-        end
-        if #players > 0
-            and cardIndex >= pageStart and cardIndex <= pageEnd
-        then
             local displayPlayers, readyNames = players, {}
             local readyCount, onlineCount = 0, 0
             for _, player in ipairs(players) do
@@ -607,24 +598,21 @@ function Raid:RefreshRaidCooldowns()
                     and effectRemaining or remaining
                 local color = RAID_CLASS_COLORS
                     and RAID_CLASS_COLORS[player.class]
-                    or { r = .3, g = .7, b = 1 }
-                local readyColor = settings.classColors and {
-                        r = color.r * .72,
-                        g = color.g * .72,
-                        b = color.b * .72,
-                    } or {
-                        r = settings.readyColor[1],
-                        g = settings.readyColor[2],
-                        b = settings.readyColor[3],
-                    }
-                local cooldownColor = {
-                    r = settings.cooldownColor[1],
-                    g = settings.cooldownColor[2],
-                    b = settings.cooldownColor[3],
-                }
-                local effectColor = { r = .08, g = .52, b = .72 }
-                local barColor = activeEffect and effectColor
-                    or ready and readyColor or cooldownColor
+                local classR = color and color.r or .3
+                local classG = color and color.g or .7
+                local classB = color and color.b or 1
+                local readyR = settings.classColors
+                    and classR * .72 or settings.readyColor[1]
+                local readyG = settings.classColors
+                    and classG * .72 or settings.readyColor[2]
+                local readyB = settings.classColors
+                    and classB * .72 or settings.readyColor[3]
+                local barR = activeEffect and .08
+                    or ready and readyR or settings.cooldownColor[1]
+                local barG = activeEffect and .52
+                    or ready and readyG or settings.cooldownColor[2]
+                local barB = activeEffect and .72
+                    or ready and readyB or settings.cooldownColor[3]
                 local collapseChipBorder = listLayout and rowGap == 0
                     or rowLayout and columnGap == 0
                     or not listLayout and not rowLayout
@@ -634,11 +622,11 @@ function Raid:RefreshRaidCooldowns()
                     offline and .24 or minimal and .46 or .64)
                 chip:SetBackdropBorderColor(
                     offline and .25
-                        or barColor.r,
+                        or barR,
                     offline and .28
-                        or barColor.g,
+                        or barG,
                     offline and .30
-                        or barColor.b,
+                        or barB,
                     collapseChipBorder and 0
                         or listLayout and .42 or minimal and 0 or .76)
                 local progress = offline and 0
@@ -660,8 +648,7 @@ function Raid:RefreshRaidCooldowns()
                 chip.Fill:SetWidth(math.max(
                     1, (chipWidth - (horizontalInset * 2)) * progress))
                 chip.Fill:SetVertexColor(
-                    barColor.r, barColor.g, barColor.b,
-                    1)
+                    barR, barG, barB, 1)
                 chip.Fill:SetAlpha(settings.hudOpacity)
                 chip.Icon:SetShown(listLayout)
                 chip.IconHit:SetShown(listLayout)
@@ -684,11 +671,11 @@ function Raid:RefreshRaidCooldowns()
                             or ready and "Ready" or TimeText(remaining))
                     chip.Status:SetTextColor(
                         offline and .42
-                            or barColor.r,
+                            or barR,
                         offline and .46
-                            or barColor.g,
+                            or barG,
                         offline and .49
-                            or barColor.b, 1)
+                            or barB, 1)
                     FitBarText(
                         chip.Text, player.name, "",
                         math.max(1, chipWidth - 29

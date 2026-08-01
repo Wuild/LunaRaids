@@ -214,11 +214,32 @@ function Raid:CreateQuickActionBar()
     AddButtonTooltip(
         bar.BossNav.Next, "Next Boss",
         "Select the next boss and set it as the current encounter.")
+    bar.BossNav.Announce = Button(bar.BossNav, "", 28, 24)
+    bar.BossNav.Announce:SetPoint(
+        "RIGHT", bar.BossNav.Next, "LEFT", -4, 0)
+    StyleButton(bar.BossNav.Announce, "primary")
+    AddButtonIcon(
+        bar.BossNav.Announce,
+        "Interface\\Icons\\Ability_Warrior_BattleShout", 15)
+    bar.BossNav.Announce.ActionIcon:ClearAllPoints()
+    bar.BossNav.Announce.ActionIcon:SetPoint("CENTER")
+    bar.BossNav.Announce:SetScript("OnClick", function()
+        local raid = Raid:GetRaid()
+        local index = Raid:GetCurrentBossIndex(raid)
+        if index and Raid.db.activeEncounter ~= index then
+            Raid:SetEncounter(index)
+        end
+        Raid:AnnounceAssignments()
+    end)
+    bar.BossNav.Announce.tooltipAnchorFrame = bar
+    AddButtonTooltip(
+        bar.BossNav.Announce, "Announce Assignments",
+        "Announce assignments for the selected boss.")
     bar.BossNav.Name = Font(bar.BossNav, 9, "accent", "")
     bar.BossNav.Name:SetPoint(
         "LEFT", bar.BossNav.Previous, "RIGHT", 8, -1)
     bar.BossNav.Name:SetPoint(
-        "RIGHT", bar.BossNav.Next, "LEFT", -8, -1)
+        "RIGHT", bar.BossNav.Announce, "LEFT", -8, -1)
     bar.BossNav.Name:SetJustifyH("CENTER")
     self.quickActionBar = bar
     return bar

@@ -971,28 +971,40 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
 end
 
 function Raid:HandleGroupRosterUpdate()
-    self:UpdateRoster()
-    if self.RefreshRaidCooldowns then
-        self:RefreshRaidCooldowns()
+    if self.rosterUpdatePending then return end
+    self.rosterUpdatePending = true
+    local function Refresh()
+        Raid.rosterUpdatePending = nil
+        -- RefreshAll below redraws the visible roster.  Avoid doing that work
+        -- twice for the same event burst (and skip hidden roster UI entirely).
+        Raid:UpdateRoster(true)
+        if Raid.RefreshRaidCooldowns then
+            Raid:RefreshRaidCooldowns()
+        end
+        if Raid.RefreshPersonalAssignments then
+            Raid:RefreshPersonalAssignments()
+        end
+        if Raid.frame and Raid.frame:IsShown() and Raid.RefreshAll then
+            Raid:RefreshAll()
+        end
+        if Raid.RefreshQuickActionBar then
+            Raid:RefreshQuickActionBar()
+        end
+        if Raid.ScheduleRaidAdministration then
+            Raid:ScheduleRaidAdministration()
+        elseif Raid.ApplyRaidAdministration then
+            Raid:ApplyRaidAdministration()
+        end
+        local now = GetTime and GetTime() or 0
+        if now - (Raid.lastPeerHello or -10) >= 5 then
+            Raid.lastPeerHello = now
+            Raid:RequestPeerSync()
+        end
     end
-    if self.RefreshPersonalAssignments then
-        self:RefreshPersonalAssignments()
-    end
-    if self.frame and self.frame:IsShown() and self.RefreshAll then
-        self:RefreshAll()
-    end
-    if self.RefreshQuickActionBar then
-        self:RefreshQuickActionBar()
-    end
-    if self.ScheduleRaidAdministration then
-        self:ScheduleRaidAdministration()
-    elseif self.ApplyRaidAdministration then
-        self:ApplyRaidAdministration()
-    end
-    local now = GetTime and GetTime() or 0
-    if now - (self.lastPeerHello or -10) >= 5 then
-        self.lastPeerHello = now
-        self:RequestPeerSync()
+    if C_Timer and C_Timer.After then
+        C_Timer.After(.1, Refresh)
+    else
+        Refresh()
     end
 end
 

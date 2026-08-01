@@ -86,6 +86,7 @@ local function Encounter(name, groups, targets, defaultMarkers, details)
         mechanics = details.mechanics,
         icon = details.icon,
         spellIcon = details.spellIcon,
+        encounterNames = details.encounterNames,
     }
 end
 

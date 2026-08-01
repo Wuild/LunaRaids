@@ -98,6 +98,7 @@ function Raid:RedrawWorkspace()
     self:UpdateWindowLayout()
     self:RefreshAssignments()
     self:UpdateWindowLayout()
+    local settledRowWidth = self.assignmentRowWidth
 
     self.workspaceRedrawToken = (self.workspaceRedrawToken or 0) + 1
     local token = self.workspaceRedrawToken
@@ -110,15 +111,20 @@ function Raid:RedrawWorkspace()
             then
                 return
             end
-            if Raid.workspaceMode == "ASSIGNMENTS"
-                and not Raid.raidPickerActive
-                and Raid.rosterPanel and Raid.rosterPanel:IsShown()
+            Raid:UpdateWindowLayout()
+            if math.abs(
+                (Raid.assignmentRowWidth or 0)
+                    - (settledRowWidth or 0)) > .5
             then
-                Raid:RefreshRoster()
+                if Raid.workspaceMode == "ASSIGNMENTS"
+                    and not Raid.raidPickerActive
+                    and Raid.rosterPanel and Raid.rosterPanel:IsShown()
+                then
+                    Raid:RefreshRoster()
+                end
+                Raid:RefreshAssignments()
+                Raid:UpdateWindowLayout()
             end
-            Raid:UpdateWindowLayout()
-            Raid:RefreshAssignments()
-            Raid:UpdateWindowLayout()
         end)
     end
 end
@@ -156,7 +162,6 @@ function Raid:RefreshAll()
     end
     self:RefreshBossRail()
     self:RefreshRaidIdentityHeader()
-    self:RefreshRoster()
     self:RedrawWorkspace()
     if self.newRaidWizard and self.newRaidWizard:IsShown()
         and self.frame and self.frame.Title
@@ -368,14 +373,31 @@ function Raid:CreateUI()
         Raid.db.window.point = point
         Raid.db.window.x, Raid.db.window.y = x, y
     end)
-    frame:SetScript("OnUpdate", function(self, elapsed)
-        self.gearScoreElapsed =
-            (self.gearScoreElapsed or 0) + elapsed
-        if self.gearScoreElapsed >= 10 then
-            self.gearScoreElapsed = 0
-            Raid:UpdateGearScores()
+    if C_Timer and C_Timer.NewTicker then
+        local function StartGearScoreTicker(self)
+            if self.gearScoreTicker then return end
+            self.gearScoreTicker = C_Timer.NewTicker(10, function()
+                if self:IsShown() then Raid:UpdateGearScores() end
+            end)
         end
-    end)
+        frame:HookScript("OnShow", StartGearScoreTicker)
+        frame:HookScript("OnHide", function(self)
+            if self.gearScoreTicker then
+                self.gearScoreTicker:Cancel()
+                self.gearScoreTicker = nil
+            end
+        end)
+        if frame:IsShown() then StartGearScoreTicker(frame) end
+    else
+        frame:SetScript("OnUpdate", function(self, elapsed)
+            self.gearScoreElapsed =
+                (self.gearScoreElapsed or 0) + elapsed
+            if self.gearScoreElapsed >= 10 then
+                self.gearScoreElapsed = 0
+                Raid:UpdateGearScores()
+            end
+        end)
+    end
     frame.BrandIcon = frame:CreateTexture(nil, "OVERLAY")
     frame.BrandIcon:SetTexture("Interface\\Icons\\INV_BannerPVP_02")
     PixelSetSize(frame.BrandIcon, 30, 30)

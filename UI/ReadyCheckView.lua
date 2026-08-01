@@ -146,8 +146,8 @@ function Raid:CreateReadyCheckWindow()
         self.auraRefreshElapsed =
             (self.auraRefreshElapsed or 0) + elapsed
         self.timerElapsed = (self.timerElapsed or 0) + elapsed
-        if self.timerElapsed < .1 then return end
-        self.timerElapsed = 0
+        if self.timerElapsed < .25 then return end
+        self.timerElapsed = self.timerElapsed - .25
         if self.auraRefreshElapsed >= 5 then
             self.auraRefreshElapsed = 0
             Raid:RefreshReadyCheckWindow()

@@ -181,7 +181,23 @@ function Raid:StoreCharacterIntel(data)
             end
         end
     end
-    if self.RefreshRoster then self:RefreshRoster() end
+    if self.RefreshRoster
+        and self.rosterPanel and self.rosterPanel:IsShown()
+        and not self.characterIntelRosterRefreshPending
+    then
+        self.characterIntelRosterRefreshPending = true
+        local function Refresh()
+            Raid.characterIntelRosterRefreshPending = nil
+            if Raid.rosterPanel and Raid.rosterPanel:IsShown() then
+                Raid:RefreshRoster()
+            end
+        end
+        if C_Timer and C_Timer.After then
+            C_Timer.After(.1, Refresh)
+        else
+            Refresh()
+        end
+    end
 end
 
 function Raid:BuildOwnCharacterIntel()
@@ -374,12 +390,18 @@ function Raid:InitializeCharacterIntel()
             Raid.lastGlobalInspectAt = GetTime and GetTime() or 0
         end)
     end
-    self.inspectFrame = CreateFrame("Frame")
-    self.inspectFrame.elapsed = 0
-    self.inspectFrame:SetScript("OnUpdate", function(frame, elapsed)
-        frame.elapsed = frame.elapsed + elapsed
-        if frame.elapsed < 2 then return end
-        frame.elapsed = 0
-        Raid:TryInspectNext()
-    end)
+    if C_Timer and C_Timer.NewTicker then
+        self.inspectTicker = C_Timer.NewTicker(2, function()
+            Raid:TryInspectNext()
+        end)
+    else
+        self.inspectFrame = CreateFrame("Frame")
+        self.inspectFrame.elapsed = 0
+        self.inspectFrame:SetScript("OnUpdate", function(frame, elapsed)
+            frame.elapsed = frame.elapsed + elapsed
+            if frame.elapsed < 2 then return end
+            frame.elapsed = 0
+            Raid:TryInspectNext()
+        end)
+    end
 end
