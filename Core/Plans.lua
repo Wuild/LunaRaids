@@ -99,6 +99,9 @@ function Raid:SetRaidCompositionCount(raidKey, role, value)
 			raidKey, role, self.db.raidCompositions[raidKey][role],
 		})
 	end
+	if raidKey == self.db.activeRaid then
+		self:AutoSaveActiveRaid()
+	end
 	if self.frame and raidKey == self.db.activeRaid then
 		self:RefreshAssignments()
 	end
@@ -121,6 +124,9 @@ function Raid:ResetRaidComposition(raidKey)
 				raidKey, role, composition[role],
 			})
 		end
+	end
+	if raidKey == self.db.activeRaid then
+		self:AutoSaveActiveRaid()
 	end
 	if self.frame and raidKey == self.db.activeRaid then
 		self:RefreshAssignments()
@@ -186,10 +192,51 @@ function Raid:GetBossOverride(create, raidKey, encounterIndex)
 	and self.db.bossOverrides[raid.key][encounterIndex]
 end
 
+function Raid:PersistRaidConfiguration(raidKey)
+	local raid = self.raidByKey[raidKey or self.db.activeRaid]
+	if not raid then return end
+	self.db.raidConfigurationDefaults =
+		self.db.raidConfigurationDefaults or {}
+	self.db.raidConfigurationDefaults[raid.key] = {
+		bossOverrides = Copy(self.db.bossOverrides[raid.key] or {}),
+		bossPresets = Copy(self.db.bossPresets[raid.key] or {}),
+	}
+	local saved = self.db.activeSavedRaid
+		and self.db.savedRaids[self.db.activeSavedRaid]
+	if saved and saved.raidKey == raid.key then
+		saved.bossOverrides =
+			Copy(self.db.bossOverrides[raid.key] or {})
+		saved.bossPresets =
+			Copy(self.db.bossPresets[raid.key] or {})
+		saved.activeEncounter = self.db.activeEncounter
+		saved.currentBoss = self:GetCurrentBossIndex(raid)
+		saved.savedAt = GetServerTime and GetServerTime()
+			or time and time() or saved.savedAt
+	end
+end
+
+function Raid:GetEncounterGroups(encounter, raidKey, encounterIndex)
+	encounter = encounter or self:GetEncounter()
+	local groups = {}
+	for _, group in ipairs(encounter and encounter.groups or {}) do
+		groups[#groups + 1] = group
+	end
+	local override = self:GetBossOverride(false, raidKey, encounterIndex)
+	for _, custom in ipairs(override and override.customGroups or {}) do
+		groups[#groups + 1] = {
+			name = custom.name, role = custom.role or self.Role.DAMAGE,
+			type = custom.type or self.AssignmentType.UTILITY,
+			slots = {}, custom = true, customID = custom.id,
+		}
+	end
+	return groups
+end
+
 function Raid:GetEncounterGroupSlots(
 	groupIndex, encounter, raidKey, encounterIndex)
 	encounter = encounter or self:GetEncounter()
-	local group = encounter.groups[groupIndex]
+	local group = self:GetEncounterGroups(
+		encounter, raidKey, encounterIndex)[groupIndex]
 	if not group then
 		return {}
 	end
@@ -203,7 +250,8 @@ function Raid:GetEncounterGroupSlots(
 	for index = 1, count do
 		result[index] = group.slots[index]
 		or self.DataSlot(
-			group.name:lower() .. "." .. index,
+			(group.customID and ("custom." .. group.customID)
+				or group.name:lower()) .. "." .. index,
 			singular .. " " .. index,
 			group.role or self.Role.DAMAGE,
 			group.type or self.AssignmentType.UTILITY,
@@ -218,18 +266,26 @@ function Raid:SetBossGroupCount(groupIndex, count)
 	end
 	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
 	local encounter = raid.encounters[encounterIndex]
-	if not encounter.groups[groupIndex] then
+	if not self:GetEncounterGroups(encounter)[groupIndex] then
 		return
 	end
 	local override = self:GetBossOverride(true)
 	override.groups[groupIndex] = math.max(
 		0, math.min(raid.size, math.floor(tonumber(count) or 0)))
+	local customIndex = groupIndex - #encounter.groups
+	if customIndex > 0 and override.customGroups
+	and override.customGroups[customIndex]
+	then
+		override.customGroups[customIndex].count =
+			override.groups[groupIndex]
+	end
 	if self.QueueSync and self:IsLocalRaidEditor() then
 		self:QueueSync("BOSSSET", {
 			raid.key, encounterIndex, "G:" .. groupIndex,
 			override.groups[groupIndex],
 		})
 	end
+	self:PersistRaidConfiguration(raid.key)
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
@@ -248,6 +304,7 @@ function Raid:SetBossHealerCount(count)
 			raid.key, encounterIndex, "HEALERS", override.healers,
 		})
 	end
+	self:PersistRaidConfiguration(raid.key)
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
@@ -264,6 +321,7 @@ function Raid:ResetBossOverride()
 	if self.QueueSync and self:IsLocalRaidEditor() then
 		self:QueueSync("BOSSRESET", { raid.key, encounterIndex })
 	end
+	self:PersistRaidConfiguration(raid.key)
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
@@ -365,6 +423,14 @@ function Raid:SyncBossSettings(kind, settings)
 	end
 	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
 	self:QueueSync(kind .. "RESET", { raid.key, encounterIndex })
+	if kind == "BOSS" then
+		for _, custom in ipairs(settings and settings.customGroups or {}) do
+			self:QueueSync("BOSSCUSTOM", {
+				raid.key, encounterIndex, custom.id,
+				custom.name, custom.count or 1,
+			})
+		end
+	end
 	if settings and tonumber(settings.healers) then
 		self:QueueSync(kind .. "SET", {
 			raid.key, encounterIndex, "HEALERS", settings.healers,
@@ -411,6 +477,7 @@ function Raid:SaveBossPreset(name)
 	preset.settings = settings
 	preset.savedAt = GetServerTime and GetServerTime() or time()
 	collection.selected = preset.id
+	self:PersistRaidConfiguration(raid.key)
 	if self.RefreshBossSettingsPanel then
 		self:RefreshBossSettingsPanel()
 	end
@@ -436,6 +503,7 @@ function Raid:LoadBossPreset(presetID)
 	self.db.bossOverrides[raid.key] =
 		self.db.bossOverrides[raid.key] or {}
 	self.db.bossOverrides[raid.key][encounterIndex] = Copy(preset)
+	self:PersistRaidConfiguration(raid.key)
 	self:SyncBossSettings("BOSS", preset)
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
@@ -461,6 +529,7 @@ function Raid:DeleteBossPreset(presetID)
 		collection.selected = nil
 	end
 	self:GetSelectedBossPreset()
+	self:PersistRaidConfiguration(self:GetRaid().key)
 	if self.RefreshBossSettingsPanel then
 		self:RefreshBossSettingsPanel()
 	end
@@ -514,6 +583,7 @@ function Raid:SetAssignment(groupIndex, slotIndex, player)
 	if self.db.activeEncounter == 1 and player then
 		self:PropagateOverviewAssignments()
 	end
+	self:AutoSaveActiveRaid()
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
@@ -580,7 +650,8 @@ function Raid:PropagateOverviewAssignments()
 				plan[key] = nil
 			end
 		end
-		for groupIndex, group in ipairs(encounter.groups or {}) do
+		for groupIndex, group in ipairs(self:GetEncounterGroups(
+			encounter, raid.key, encounterIndex)) do
 			local slots = self:GetEncounterGroupSlots(
 				groupIndex, encounter, raid.key, encounterIndex)
 			for slotIndex, slot in ipairs(slots) do
@@ -595,7 +666,8 @@ function Raid:PropagateOverviewAssignments()
 			end
 		end
 		local used = {}
-		for groupIndex, group in ipairs(encounter.groups or {}) do
+		for groupIndex, group in ipairs(self:GetEncounterGroups(
+			encounter, raid.key, encounterIndex)) do
 			for slotIndex, slot in ipairs(self:GetEncounterGroupSlots(
 				groupIndex, encounter, raid.key, encounterIndex))
 			do
@@ -711,7 +783,8 @@ function Raid:PropagateOverviewAssignments()
 			end
 			propagated = propagated + 1
 		end
-		for groupIndex, group in ipairs(encounter.groups or {}) do
+		for groupIndex, group in ipairs(self:GetEncounterGroups(
+			encounter, raid.key, encounterIndex)) do
 			if group.name ~= "Healing" then
 				local slots = self:GetEncounterGroupSlots(
 					groupIndex, encounter, raid.key, encounterIndex)
@@ -782,6 +855,9 @@ local function AssignmentClassBonus(class, text)
 	if Has("polymorph") then
 		bonus = bonus + (class == "MAGE" and 20000 or 0)
 	end
+	if Has("sheep") then
+		bonus = bonus + (class == "MAGE" and 20000 or 0)
+	end
 	if Has("mind control") then
 		bonus = bonus + (class == "PRIEST" and 20000 or 0)
 	end
@@ -831,6 +907,58 @@ local function AssignmentClassBonus(class, text)
 	return bonus
 end
 
+function Raid:AddBossCustomGroup(name)
+	if not self:RequireRaidEditor() then return false end
+	name = strtrim((name or ""):gsub("[%c]", " "))
+	if name == "" then return false end
+	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
+	local override = self:GetBossOverride(true)
+	override.customGroups = override.customGroups or {}
+	local stamp = GetServerTime and GetServerTime() or time()
+	self.customGroupSequence = (self.customGroupSequence or 0) + 1
+	local custom = {
+		id = tostring(stamp) .. "-" .. self.customGroupSequence,
+		name = name, count = 1,
+	}
+	override.customGroups[#override.customGroups + 1] = custom
+	local groupIndex = #raid.encounters[encounterIndex].groups
+		+ #override.customGroups
+	override.groups[groupIndex] = 1
+	if self.QueueSync and self:IsLocalRaidEditor() then
+		self:QueueSync("BOSSCUSTOM", {
+			raid.key, encounterIndex, custom.id, custom.name, 1,
+		})
+	end
+	self:PersistRaidConfiguration(raid.key)
+	if self.RefreshAssignments then self:RefreshAssignments() end
+	return true
+end
+
+function Raid:RemoveBossCustomGroup(groupIndex)
+	if not self:RequireRaidEditor() then return false end
+	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
+	local override = self:GetBossOverride(true)
+	local customIndex = groupIndex
+		- #raid.encounters[encounterIndex].groups
+	local custom = override.customGroups and override.customGroups[customIndex]
+	if not custom then return false end
+	table.remove(override.customGroups, customIndex)
+	local rebuilt = {}
+	for index, count in pairs(override.groups or {}) do
+		if index < groupIndex then rebuilt[index] = count
+		elseif index > groupIndex then rebuilt[index - 1] = count end
+	end
+	override.groups = rebuilt
+	if self.QueueSync and self:IsLocalRaidEditor() then
+		self:QueueSync("BOSSCUSTOMDEL", {
+			raid.key, encounterIndex, custom.id,
+		})
+	end
+	self:PersistRaidConfiguration(raid.key)
+	if self.RefreshAssignments then self:RefreshAssignments() end
+	return true
+end
+
 local function AssignmentRecommendationBonus(player, slot)
 	if type(slot) ~= "table" then return 0 end
 	local classes = slot.recommendedClasses or {}
@@ -849,7 +977,7 @@ end
 function Raid:GetAssignedPlayerNames()
 	local used, plan = {}, self:GetPlan(false) or {}
 	local encounter = self:GetEncounter()
-	for groupIndex, group in ipairs(encounter.groups or {}) do
+	for groupIndex, group in ipairs(self:GetEncounterGroups(encounter)) do
 		for slotIndex, slot in ipairs(self:GetEncounterGroupSlots(
 			groupIndex, encounter)) do
 			local assignment = plan[self:SlotKey(groupIndex, slotIndex)]
@@ -940,7 +1068,7 @@ function Raid:AutoAssignEncounter()
 	local plan = self:GetPlan(true)
 	local used = self:GetAssignedPlayerNames()
 	local assigned = 0
-	for groupIndex, group in ipairs(encounter.groups or {}) do
+	for groupIndex, group in ipairs(self:GetEncounterGroups(encounter)) do
 		local include = encounter.name == "Raid Overview"
 		or group.name ~= "Healing"
 		if include then
@@ -1145,6 +1273,7 @@ function Raid:GetHealingTargetIndex(slotIndex)
 			index = math.min(slotIndex, math.max(1, #targets - 1))
 		end
 	end
+	self:AutoSaveActiveRaid()
 	return math.max(1, math.min(index or #targets, #targets))
 end
 
@@ -1161,6 +1290,7 @@ function Raid:CycleHealingTarget(slotIndex)
 	if self.BroadcastPlanValue then
 		self:BroadcastPlanValue(self:HealingTargetKey(slotIndex), index)
 	end
+	self:AutoSaveActiveRaid()
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
@@ -1172,7 +1302,11 @@ function Raid:GetEncounterTargets()
 		return encounter.targets
 	end
 	if encounter.name == "Raid Overview" then
-		return {}
+		return {
+			"Kill First", "Kill Second", "Kill Third",
+			"Crowd Control", "Off-Tank", "Interrupt Focus",
+			"Dispel / Purge", "Do Not Attack",
+		}
 	end
 	return { encounter.name }
 end
@@ -1235,6 +1369,14 @@ function Raid:GetMarkerTokenForText(text, allowSingleTargetFallback)
 	for word in text:gmatch("[%a']+") do
 		wordsInText[word] = true
 	end
+	for markerIndex, marker in ipairs(self.markers or {}) do
+		local markerName = marker.name and marker.name:lower()
+		if markerName and (wordsInText[markerName]
+		or markerName == "cross" and wordsInText.x)
+		then
+			return self:GetMarkerChatToken(markerIndex)
+		end
+	end
 	local ignoredWords = {
 		the = true, high = true, grand = true, lord = true,
 		lady = true, king = true, tank = true, healer = true,
@@ -1283,6 +1425,7 @@ function Raid:SetMarkerAssignment(targetIndex, markerIndex)
 	if self.BroadcastPlanValue then
 		self:BroadcastPlanValue("M:" .. targetIndex, storedValue)
 	end
+	self:AutoSaveActiveRaid()
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
@@ -1436,6 +1579,7 @@ function Raid:ClearPlan()
 		self:QueueSync("SNAP_BEGIN", { raid.key, encounterIndex })
 		self:QueueSync("SNAP_END", { raid.key, encounterIndex })
 	end
+	self:AutoSaveActiveRaid()
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
 	end
@@ -1536,7 +1680,14 @@ function Raid:BeginRaid(raidKey)
 	local plans = self.simulation.enabled
 	and self.simulation.plans or self.db.plans
 	plans[raid.key] = {}
-	self.db.bossOverrides[raid.key] = {}
+	local configuration = self.db.raidConfigurationDefaults
+		and self.db.raidConfigurationDefaults[raid.key]
+	self.db.bossOverrides[raid.key] =
+		Copy(configuration and configuration.bossOverrides or {})
+	if configuration and configuration.bossPresets then
+		self.db.bossPresets[raid.key] =
+			Copy(configuration.bossPresets)
+	end
 	self.db.manualPlayers[raid.key] = {}
 	local firstBoss = #raid.encounters >= 2 and 2 or 1
 	self.db.currentBossByRaid[raid.key] =
@@ -1580,7 +1731,17 @@ function Raid:ConfirmNewRaid()
 	end
 end
 
-function Raid:SaveCurrentRaid(name)
+function Raid:AutoSaveActiveRaid()
+	local saved = self.db.activeSavedRaid
+		and self.db.savedRaids[self.db.activeSavedRaid]
+	if not saved or not self.db.raidLocked or self.receivingSync then
+		return false
+	end
+	self:SaveCurrentRaid(saved.name, true)
+	return true
+end
+
+function Raid:SaveCurrentRaid(name, silent)
 	local raid = self:GetRaid()
 	name = strtrim(name or "")
 	if name == "" then
@@ -1639,8 +1800,11 @@ function Raid:SaveCurrentRaid(name)
 		manualPlayers = savedPlayers,
 	}
 	self.db.activeSavedRaid = id
-	self:Print(self:Localize("RAID_PLAN_SAVED", name))
-	if self.RefreshNewRaidWizard then
+	self:PersistRaidConfiguration(raid.key)
+	if not silent then
+		self:Print(self:Localize("RAID_PLAN_SAVED", name))
+	end
+	if not silent and self.RefreshNewRaidWizard then
 		self:RefreshNewRaidWizard()
 	end
 end
@@ -1676,6 +1840,7 @@ function Raid:LoadSavedRaid(id)
 		and savedCurrentBoss or nil
 	self.db.raidLocked = true
 	self.db.activeSavedRaid = id
+	self:PersistRaidConfiguration(raid.key)
 	self.db.lastRaidByExpansion[raid.expansion] = raid.key
 	self.db.lastEncounterByRaid[raid.key] = self.db.activeEncounter
 	self:ApplyRaidComposition(raid)
@@ -1776,6 +1941,7 @@ function Raid:SetEncounter(index)
 		math.max(1, math.min(tonumber(index) or 1, #raid.encounters))
 	self.db.lastEncounterByRaid[raid.key] =
 		self.db.activeEncounter
+	self:AutoSaveActiveRaid()
 	if self.assignmentScroll then
 		self.assignmentScroll:SetVerticalScroll(0)
 	end
@@ -1809,6 +1975,7 @@ function Raid:SetCurrentBoss(index, fromSync)
 	if not fromSync and self.QueueSync then
 		self:QueueSync("CURRENT", { raid.key, index })
 	end
+	if not fromSync then self:AutoSaveActiveRaid() end
 	if self.RefreshPersonalAssignments then
 		self:RefreshPersonalAssignments()
 	end

@@ -30,6 +30,13 @@ local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
 local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
 local CreateScrollArea = UI.CreateScrollArea
+
+local function UseRowSeparator(frame)
+    if not frame.PixelBorders then return end
+    frame.PixelBorders[1]:Hide()
+    frame.PixelBorders[3]:Hide()
+    frame.PixelBorders[4]:Hide()
+end
 function Raid:ShowRoleMenu(player, anchor)
     if not self.roleMenu then
         local dismiss = CreateFrame("Button", nil, UIParent)
@@ -546,6 +553,16 @@ function Raid:GetPersonalAssignmentEntries(raid, encounterIndex)
             end
         end
         local lower = tostring(text or ""):lower()
+        local words = {}
+        for word in lower:gmatch("[%a']+") do words[word] = true end
+        for markerIndex, marker in ipairs(self.markers or {}) do
+            local markerName = marker.name and marker.name:lower()
+            if markerName and (words[markerName]
+                or markerName == "cross" and words.x)
+            then
+                return self:GetMarkerChatToken(markerIndex)
+            end
+        end
         for targetIndex, candidate in ipairs(encounterTargets) do
             if lower:find(candidate:lower(), 1, true) then
                 return self:GetMarkerChatToken(
@@ -555,7 +572,8 @@ function Raid:GetPersonalAssignmentEntries(raid, encounterIndex)
         end
         return ""
     end
-    for groupIndex, group in ipairs(encounter.groups or {}) do
+    for groupIndex, group in ipairs(self:GetEncounterGroups(
+        encounter, raid.key, encounterIndex)) do
         for slotIndex, slot in ipairs(
             self:GetEncounterGroupSlots(
                 groupIndex, encounter, raid.key, encounterIndex)) do
@@ -595,7 +613,8 @@ function Raid:GetPersonalAssignmentEntries(raid, encounterIndex)
         end
     end
     local healingTargets = {}
-    for groupIndex, group in ipairs(encounter.groups or {}) do
+    for groupIndex, group in ipairs(self:GetEncounterGroups(
+        encounter, raid.key, encounterIndex)) do
         if group.name == "Tanks" then
             for slotIndex, slot in ipairs(self:GetEncounterGroupSlots(
                 groupIndex, encounter, raid.key, encounterIndex)) do
@@ -886,7 +905,10 @@ end
 
 function Raid:CreateRosterButton(index)
     local button = Button(self.rosterContent, "", ROSTER_ROW_WIDTH, 34)
-    button:SetPoint("TOPLEFT", 0, -((index - 1) * ROW_HEIGHT))
+    UseRowSeparator(button)
+    local rowHeight = button:GetHeight()
+    self.rosterRowHeight = rowHeight
+    button:SetPoint("TOPLEFT", 0, -((index - 1) * rowHeight))
     button.ClassDot = button:CreateTexture(nil, "OVERLAY")
     button.ClassDot:SetTexture(WHITE)
     PixelSetSize(button.ClassDot, 4, 20)
@@ -1123,7 +1145,7 @@ function Raid:RefreshRoster()
         self.rosterButtons[index]:Hide()
     end
     self.rosterContent:SetHeight(math.max(
-        1, #self.roster * ROW_HEIGHT))
+        1, #self.roster * (self.rosterRowHeight or ROW_HEIGHT)))
     self.rosterCount:SetText(
         self.simulation.enabled
             and ("%d simulated"):format(#self.roster)

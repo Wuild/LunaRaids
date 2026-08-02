@@ -8,6 +8,7 @@ local KIND_TO_WIRE = {
     SELECT = "S", CURRENT = "c", PLAN = "A", VALUE = "V", CLEAR = "C",
     SNAP_BEGIN = "B", SNAP_END = "E", COMP = "O",
     MANUAL = "M", MANUALDEL = "D", BOSSSET = "b",
+    BOSSCUSTOM = "u", BOSSCUSTOMDEL = "v",
     BOSSRESET = "r", PRESETSET = "p", PRESETRESET = "q",
     PRESETCLEAR = "x", RESET = "R", CLOSE = "X",
     SIM_BEGIN = "Y", SIM_PLAYER = "Z", SIM_END = "y",
@@ -54,32 +55,10 @@ local function DecodeBase36(value)
     return decoded and tostring(decoded) or ""
 end
 
-local function RaidWireMaps()
-    if Raid.raidToWire then return Raid.raidToWire, Raid.wireToRaid end
-    Raid.raidToWire, Raid.wireToRaid = {}, {}
-    local alphabet =
-        "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    for index, raid in ipairs(Raid.raids or {}) do
-        local wire = alphabet:sub(index, index)
-        Raid.raidToWire[raid.key] = wire
-        Raid.wireToRaid[wire] = raid.key
-    end
-    return Raid.raidToWire, Raid.wireToRaid
-end
-
-local RAID_FIRST = {
-    SELECT = true, CURRENT = true, PLAN = true, VALUE = true, CLEAR = true,
-    SNAP_BEGIN = true, SNAP_END = true, COMP = true,
-    MANUAL = true, MANUALDEL = true, BOSSSET = true,
-    BOSSRESET = true, PRESETSET = true, PRESETRESET = true,
-    PRESETCLEAR = true, RESET = true, CLOSE = true,
-    SIM_BEGIN = true, SIM_PLAYER = true, SIM_END = true,
-    GROUP = true,
-}
-
 local ENCOUNTER_SECOND = {
     SELECT = true, CURRENT = true, PLAN = true, VALUE = true, CLEAR = true,
     SNAP_BEGIN = true, SNAP_END = true, BOSSSET = true,
+    BOSSCUSTOM = true, BOSSCUSTOMDEL = true,
     BOSSRESET = true, PRESETSET = true, PRESETRESET = true,
     PRESETCLEAR = true,
 }
@@ -125,8 +104,7 @@ end
 local function EncodeValues(kind, source)
     local values = {}
     for index, value in ipairs(source or {}) do values[index] = tostring(value) end
-    local raidToWire = RaidWireMaps()
-    if RAID_FIRST[kind] then values[1] = raidToWire[values[1]] or values[1] end
+    -- Keep raid keys unchanged: registration order can differ between builds.
     if ENCOUNTER_SECOND[kind] then values[2] = Base36(values[2]) end
     if kind == "PLAN" or kind == "VALUE" or kind == "CLEAR" then
         values[3] = EncodePlanKey(values[3])
@@ -174,8 +152,6 @@ local function DecodeFields(fields)
     if not kind then return nil end
     fields[2] = kind
     fields[3] = DecodeBase36(fields[3])
-    local _, wireToRaid = RaidWireMaps()
-    if RAID_FIRST[kind] then fields[4] = wireToRaid[fields[4]] or fields[4] end
     if ENCOUNTER_SECOND[kind] then
         fields[5] = DecodeBase36(fields[5])
     end
@@ -295,7 +271,8 @@ local function AssignmentLabel(raid, encounterIndex, key)
     local encounter = raid.encounters
         and raid.encounters[encounterIndex]
     if not encounter then return key end
-    for groupIndex, group in ipairs(encounter.groups or {}) do
+    for groupIndex, group in ipairs(Raid:GetEncounterGroups(
+        encounter, raid.key, encounterIndex)) do
         local slots = Raid:GetEncounterGroupSlots(
             groupIndex, encounter, raid.key, encounterIndex)
         for slotIndex, slot in ipairs(slots) do
@@ -322,7 +299,6 @@ function Raid:IsLocalRaidEditor()
     if self.simulation.enabled then return true end
     if not (IsInRaid and IsInRaid()) then return true end
     return (UnitIsGroupLeader and UnitIsGroupLeader("player"))
-        or (UnitIsGroupAssistant and UnitIsGroupAssistant("player"))
         or false
 end
 
@@ -334,7 +310,7 @@ function Raid:IsAuthorizedPeer(sender)
         local unitName = GetUnitName and GetUnitName(unit, true)
             or UnitName(unit)
         if SamePlayer(unitName, sender) then
-            return UnitIsGroupLeader(unit) or UnitIsGroupAssistant(unit)
+            return UnitIsGroupLeader(unit) or false
         end
     end
     return false
@@ -407,11 +383,11 @@ function Raid:BroadcastPlanValue(key, value)
     end
 end
 
-function Raid:BroadcastSelection()
+function Raid:BroadcastSelection(target)
     if not self:IsLocalRaidEditor() then return end
     self:QueueSync("SELECT", {
         self.db.activeRaid, self.db.activeEncounter,
-    })
+    }, target and "WHISPER" or nil, target)
 end
 
 function Raid:BroadcastCurrentBoss(target)
@@ -503,7 +479,16 @@ function Raid:SendPlanSnapshot(
     end
     local bossOverride = self:GetBossOverride(
         false, raid.key, encounterIndex)
+    self:QueueSync("BOSSRESET", {
+        raid.key, encounterIndex,
+    }, distribution, target)
     if bossOverride then
+        for _, custom in ipairs(bossOverride.customGroups or {}) do
+            self:QueueSync("BOSSCUSTOM", {
+                raid.key, encounterIndex, custom.id,
+                custom.name, custom.count or 1,
+            }, distribution, target)
+        end
         if tonumber(bossOverride.healers) then
             self:QueueSync("BOSSSET", {
                 raid.key, encounterIndex, "HEALERS",
@@ -590,7 +575,7 @@ function Raid:RequestPeerSync()
         self.version or "unknown", "Q",
     })
     if self.BroadcastCharacterProfile then
-        self:BroadcastCharacterProfile()
+        self:BroadcastCharacterProfile(nil, true)
     end
     self:BroadcastOwnGear()
     if self.BroadcastLocalRaidCooldowns then
@@ -598,11 +583,24 @@ function Raid:RequestPeerSync()
     end
 end
 
-function Raid:ApplyPeerSelection(raidKey, encounterIndex)
+function Raid:ApplyPeerSelection(raidKey, encounterIndex, replaceOpenRaid)
     local raid = self.raidByKey[raidKey]
     if not raid then return end
     local continuingCurrentRaid =
-        self.db.raidLocked and self.db.activeRaid == raid.key
+        not replaceOpenRaid
+        and self.db.raidLocked and self.db.activeRaid == raid.key
+    if replaceOpenRaid and self.db.raidLocked then
+        -- A leader selection starts a new shared session. Detach assistants
+        -- from their previous open plan without deleting the saved plan.
+        self.db.raidLocked = false
+        self.db.activeSavedRaid = nil
+        self.selectedPlayer = nil
+        self.dragPlayer = nil
+        self.remoteSimulationRoster = nil
+        wipe(self.messageQueue)
+        if self.messageFrame then self.messageFrame:Hide() end
+        if self.HideDragGhost then self:HideDragGhost() end
+    end
     self.db.activeExpansion = raid.expansion
     self.db.activeRaid = raid.key
     self.db.activeEncounter = math.max(
@@ -675,6 +673,9 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
             self:QueueSync("HELLO", {
                 self.version or "unknown", "R",
             }, "WHISPER", sender)
+            if self.BroadcastCharacterProfile then
+                self:BroadcastCharacterProfile(sender, true)
+            end
             self:BroadcastOwnGear(sender)
             if self.BroadcastLocalRaidCooldowns then
                 self:BroadcastLocalRaidCooldowns(sender, true)
@@ -685,6 +686,7 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
                 or self.IsActualRaidLeader
                     and self:IsActualRaidLeader())
         if fields[5] ~= "R" and snapshotAuthority then
+            self:BroadcastSelection(sender)
             self:SendRaidPlanSnapshots(sender)
         end
         return
@@ -803,7 +805,7 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     self.receivingSync = true
     local raidKey, encounterIndex = fields[4], tonumber(fields[5])
     if kind == "SELECT" then
-        self:ApplyPeerSelection(raidKey, encounterIndex)
+        self:ApplyPeerSelection(raidKey, encounterIndex, true)
     elseif kind == "CURRENT" then
         local raid = self.raidByKey[raidKey]
         if raid and encounterIndex and encounterIndex >= 2
@@ -1012,6 +1014,58 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
                 if groupIndex then override.groups[groupIndex] = value end
             end
         end
+    elseif kind == "BOSSCUSTOM" then
+        local raid, id, name, count = self.raidByKey[raidKey],
+            fields[6], fields[7], tonumber(fields[8]) or 1
+        if raid and raid.encounters[encounterIndex]
+            and id and id ~= "" and name and name ~= ""
+        then
+            self.db.bossOverrides[raidKey] =
+                self.db.bossOverrides[raidKey] or {}
+            local override = self.db.bossOverrides[raidKey][encounterIndex]
+                or { groups = {} }
+            override.groups = override.groups or {}
+            override.customGroups = override.customGroups or {}
+            self.db.bossOverrides[raidKey][encounterIndex] = override
+            local found
+            for index, custom in ipairs(override.customGroups) do
+                if custom.id == id then
+                    custom.name, custom.count = name, count
+                    override.groups[#raid.encounters[encounterIndex].groups
+                        + index] = count
+                    found = true
+                    break
+                end
+            end
+            if not found then
+                override.customGroups[#override.customGroups + 1] = {
+                    id = id, name = name, count = count,
+                }
+                override.groups[#raid.encounters[encounterIndex].groups
+                    + #override.customGroups] = count
+            end
+        end
+    elseif kind == "BOSSCUSTOMDEL" then
+        local override = self.db.bossOverrides[raidKey]
+            and self.db.bossOverrides[raidKey][encounterIndex]
+        if override and override.customGroups then
+            for index, custom in ipairs(override.customGroups) do
+                if custom.id == fields[6] then
+                    local groupIndex = #self.raidByKey[raidKey]
+                        .encounters[encounterIndex].groups + index
+                    table.remove(override.customGroups, index)
+                    local rebuilt = {}
+                    for oldIndex, value in pairs(override.groups or {}) do
+                        if oldIndex < groupIndex then rebuilt[oldIndex] = value
+                        elseif oldIndex > groupIndex then
+                            rebuilt[oldIndex - 1] = value
+                        end
+                    end
+                    override.groups = rebuilt
+                    break
+                end
+            end
+        end
     elseif kind == "BOSSRESET" then
         if self.db.bossOverrides[raidKey] then
             self.db.bossOverrides[raidKey][encounterIndex] = nil
@@ -1037,6 +1091,12 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         and self.PropagateOverviewAssignments
     then
         self:PropagateOverviewAssignments()
+    end
+    if (kind == "BOSSSET" or kind == "BOSSRESET"
+        or kind == "BOSSCUSTOM" or kind == "BOSSCUSTOMDEL")
+        and self.PersistRaidConfiguration
+    then
+        self:PersistRaidConfiguration(raidKey)
     end
     self.receivingSync = false
     if kind == "SNAP_END" then
@@ -1080,6 +1140,17 @@ function Raid:HandleGroupRosterUpdate()
     self.rosterUpdatePending = true
     local function Refresh()
         Raid.rosterUpdatePending = nil
+        local inGroup = IsInGroup and IsInGroup() or false
+        local joinedGroup = inGroup
+            and Raid.communicationWasInGroup == false
+        local isAssistant = UnitIsGroupAssistant
+            and UnitIsGroupAssistant("player") or false
+        local isLeader = UnitIsGroupLeader
+            and UnitIsGroupLeader("player") or false
+        local becameAssistant = inGroup and isAssistant and not isLeader
+            and Raid.communicationWasAssistant == false
+        Raid.communicationWasInGroup = inGroup
+        Raid.communicationWasAssistant = isAssistant
         -- RefreshAll below redraws the visible roster.  Avoid doing that work
         -- twice for the same event burst (and skip hidden roster UI entirely).
         Raid:UpdateRoster(true)
@@ -1101,9 +1172,7 @@ function Raid:HandleGroupRosterUpdate()
         elseif Raid.ApplyRaidAdministration then
             Raid:ApplyRaidAdministration()
         end
-        local now = GetTime and GetTime() or 0
-        if now - (Raid.lastPeerHello or -10) >= 5 then
-            Raid.lastPeerHello = now
+        if joinedGroup or becameAssistant then
             Raid:RequestPeerSync()
         end
     end
@@ -1128,6 +1197,14 @@ function Raid:InitializeCommunication()
     self.syncQueueHead = self.syncQueueHead or 1
     self.syncQueueTail = self.syncQueueTail or 0
     self.syncSequence = self.syncSequence or 0
+    if self.communicationWasInGroup == nil then
+        self.communicationWasInGroup =
+            IsInGroup and IsInGroup() or false
+    end
+    if self.communicationWasAssistant == nil then
+        self.communicationWasAssistant = UnitIsGroupAssistant
+            and UnitIsGroupAssistant("player") or false
+    end
     if self.syncFrame then return end
     self.syncFrame = CreateFrame("Frame")
     self.syncFrame:Hide()

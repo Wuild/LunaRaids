@@ -97,6 +97,7 @@ local defaults = {
     raidCompositions = {},
     bossOverrides = {},
     bossPresets = {},
+    raidConfigurationDefaults = {},
     characterIntel = {},
     savedRaids = {},
     manualPlayers = {},
@@ -161,6 +162,7 @@ local defaults = {
     raidAdmin = {
         autoInvite = false,
         inviteKeywords = "inv, invite",
+        inviteScope = "EVERYONE",
         autoPromote = false,
         promoteNames = "",
         promoteGuildRanks = {},
@@ -183,7 +185,7 @@ function Raid:RequireRaidEditor()
         return true
     end
     self:Print(
-        "This raid is view only. Only the raid leader and assistants can edit it.")
+        "This raid is view only. Only the raid leader can edit it.")
     return false
 end
 
@@ -191,10 +193,7 @@ function Raid:CanEditRaidGroups()
     if IsInRaid and IsInRaid() then
         return UnitIsGroupLeader
                 and UnitIsGroupLeader("player")
-            or UnitIsGroupAssistant
-                and UnitIsGroupAssistant("player")
             or IsRaidLeader and IsRaidLeader()
-            or IsRaidOfficer and IsRaidOfficer()
             or false
     end
     return self.simulation and self.simulation.enabled or false
@@ -203,7 +202,7 @@ end
 function Raid:RequireRaidGroupEditor()
     if self:CanEditRaidGroups() then return true end
     self:Print(
-        "Only the raid leader and assistants can change raid groups.")
+        "Only the raid leader can change raid groups.")
     return false
 end
 

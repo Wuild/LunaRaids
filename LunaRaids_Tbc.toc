@@ -3,7 +3,7 @@
 ## Notes: Vanilla through Mists raid assignments, announcements and role whispers.
 ## IconTexture: Interface\Icons\INV_BannerPVP_02
 ## Author: Wuild
-## Version: @project-version@
+## Version: 1.0.3
 ## Category: Raid
 ## OptionalDeps: TacoTip, TipTac, TipTacTalents
 ## SavedVariables: LunaRaidsDB

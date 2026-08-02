@@ -31,6 +31,8 @@ local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
 local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
 local CreateScrollArea = UI.CreateScrollArea
+local ROW_SEPARATOR = { .085, .105, .12, 1 }
+local FILLED_ROW_SEPARATOR = { .09, .18, .16, 1 }
 local SetMarkerTexture = UI.SetMarkerTexture
 
 function Raid:RefreshAssignments()
@@ -51,13 +53,11 @@ function Raid:RefreshAssignments()
         or self.activeBossTab or "ASSIGNMENTS"
     if self.bossSettingsButton then
         self.bossSettingsButton:SetShown(
-            encounter.name ~= "Raid Overview"
-                and activeTab ~= "GROUPS"
+            activeTab ~= "GROUPS"
                 and activeTab ~= "STATUS"
                 and activeTab ~= "GEAR"
                 and activeTab ~= "ABOUT")
-        if (encounter.name == "Raid Overview"
-            or activeTab == "GROUPS"
+        if (activeTab == "GROUPS"
             or activeTab == "STATUS"
             or activeTab == "GEAR"
             or activeTab == "ABOUT")
@@ -179,7 +179,7 @@ function Raid:RefreshAssignments()
                 "Interface\\Icons\\Spell_Holy_MindVision")
             self.autoAssignButton:SetScript(
                 "OnClick", function() Raid:AutoAssignEncounter() end)
-            StyleButton(self.autoAssignButton, "primary")
+            StyleButton(self.autoAssignButton, "default")
             self.autoAssignButton:HookScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:SetText(L.SMART_AUTO_ASSIGN)
@@ -193,7 +193,7 @@ function Raid:RefreshAssignments()
                 "OnLeave", function() GameTooltip:Hide() end)
         end
         self.autoAssignButton:ClearAllPoints()
-        self.autoAssignButton:SetPoint("TOPRIGHT", -1, -y)
+        self.autoAssignButton:SetPoint("TOPRIGHT", -8, -y - 2)
         if self:IsLocalRaidEditor() then
             self.autoAssignButton:Show()
             y = y + 34
@@ -213,7 +213,9 @@ function Raid:RefreshAssignments()
         end
         markerHeader:ClearAllPoints()
         markerHeader:SetPoint("TOPLEFT", 2, -y)
-        markerHeader:SetText(L.BOSSES_ADDS)
+        markerHeader:SetText(
+            encounter.name == "Raid Overview"
+                and "TRASH MARKING ROLES" or L.BOSSES_ADDS)
         markerHeader:Show()
         y = y + 29
         for targetIndex, targetName in ipairs(encounterTargets) do
@@ -238,7 +240,7 @@ function Raid:RefreshAssignments()
                 row.MarkerText:SetTextColor(unpack(MUTED))
             end
             row:Show()
-            y = y + ROW_HEIGHT
+            y = y + row:GetHeight()
         end
         y = y + 12
     end
@@ -249,7 +251,7 @@ function Raid:RefreshAssignments()
         for _, row in ipairs(self.markerRows) do row:Hide() end
     end
     local visibleGroups = {}
-    for groupIndex, group in ipairs(encounter.groups) do
+    for groupIndex, group in ipairs(self:GetEncounterGroups(encounter)) do
         if encounter.name == "Raid Overview"
             or group.name ~= "Healing"
         then
@@ -277,13 +279,13 @@ function Raid:RefreshAssignments()
         groupNumber = groupNumber + 1
         local header = self.groupHeaders[groupNumber]
         if not header then
-            header = Font(self.assignmentContent, 10, "accent", "")
+            header = Font(self.assignmentContent, 11, "text", "")
             self.groupHeaders[groupNumber] = header
         end
         header:ClearAllPoints()
         header:SetPoint("TOPLEFT", 4, -y)
         header:SetText(group.name:upper())
-        header:SetTextColor(.48, .78, .96, 1)
+        header:SetTextColor(.72, .78, .82, 1)
         header:Show()
         y = y + 29
         for slotIndex, assignmentSlot in ipairs(
@@ -326,13 +328,13 @@ function Raid:RefreshAssignments()
                 SetClassText(slot.Player, assignment.name, assignment.class)
                 slot.FilledBar:Show()
                 slot.baseColor = { .035, .105, .095, .98 }
-                slot.baseBorder = { .12, .30, .27, 1 }
+                slot.baseBorder = { unpack(FILLED_ROW_SEPARATOR) }
             else
                 slot.Player:SetText(L.DROP_OR_CLICK_SUGGEST)
                 slot.Player:SetTextColor(unpack(MUTED))
                 slot.FilledBar:Hide()
                 slot.baseColor = { .038, .055, .075, .96 }
-                slot.baseBorder = { unpack(BORDER) }
+                slot.baseBorder = { unpack(ROW_SEPARATOR) }
             end
             slot:SetBackdropColor(unpack(slot.baseColor))
             slot:SetBackdropBorderColor(unpack(slot.baseBorder))
@@ -340,7 +342,7 @@ function Raid:RefreshAssignments()
             slot.HealingTarget:SetBackdropColor(
                 unpack(slot.baseColor))
             slot:Show()
-            y = y + ROW_HEIGHT
+            y = y + slot:GetHeight()
         end
         y = y + 12
     end
@@ -349,13 +351,13 @@ function Raid:RefreshAssignments()
         local healingHeader = self.groupHeaders[groupNumber]
         if not healingHeader then
             healingHeader = Font(
-                self.assignmentContent, 10, "accent", "")
+                self.assignmentContent, 11, "text", "")
             self.groupHeaders[groupNumber] = healingHeader
         end
         healingHeader:ClearAllPoints()
         healingHeader:SetPoint("TOPLEFT", 4, -y)
         healingHeader:SetText(L.HEALER_ASSIGNMENTS)
-        healingHeader:SetTextColor(.48, .78, .96, 1)
+        healingHeader:SetTextColor(.72, .78, .82, 1)
         healingHeader:Show()
         y = y + 29
         local healingTargets = self:GetHealingTargets()
@@ -403,13 +405,13 @@ function Raid:RefreshAssignments()
                     slot.Player, assignment.name, assignment.class)
                 slot.FilledBar:Show()
                 slot.baseColor = { .035, .105, .095, .98 }
-                slot.baseBorder = { .12, .30, .27, 1 }
+                slot.baseBorder = { unpack(FILLED_ROW_SEPARATOR) }
             else
                 slot.Player:SetText(L.DROP_OR_CLICK_SUGGEST)
                 slot.Player:SetTextColor(unpack(MUTED))
                 slot.FilledBar:Hide()
                 slot.baseColor = { .038, .055, .075, .96 }
-                slot.baseBorder = { unpack(BORDER) }
+                slot.baseBorder = { unpack(ROW_SEPARATOR) }
             end
             slot:SetBackdropColor(unpack(slot.baseColor))
             slot:SetBackdropBorderColor(unpack(slot.baseBorder))
@@ -417,7 +419,7 @@ function Raid:RefreshAssignments()
             slot.HealingTarget:SetBackdropColor(
                 unpack(slot.baseColor))
             slot:Show()
-            y = y + ROW_HEIGHT
+            y = y + slot:GetHeight()
         end
         y = y + 12
     end
@@ -446,7 +448,10 @@ function Raid:RefreshAssignments()
     self.assignmentContent:SetHeight(math.max(1, y))
     if self.assignmentTitle then
         if activeTab == "MARKERS" then
-            self.assignmentTitle:SetText(L.BOSS_ADD_MARKERS)
+            self.assignmentTitle:SetText(
+                encounter.name == "Raid Overview"
+                    and "RAID-WIDE TRASH MARKERS"
+                    or L.BOSS_ADD_MARKERS)
         else
             self.assignmentTitle:SetText(
                 ("ASSIGNMENTS  %d/%d"):format(
@@ -488,7 +493,7 @@ function Raid:CreateBossRailButton(index)
     button.SelectionGlow:SetTexture(WHITE)
     button.SelectionGlow:SetPoint("TOPLEFT", 2, -2)
     button.SelectionGlow:SetPoint("BOTTOMRIGHT", -2, 2)
-    button.SelectionGlow:SetVertexColor(.18, .70, 1, .12)
+    button.SelectionGlow:SetVertexColor(.30, .34, .38, .10)
     button.SelectionGlow:Hide()
     button.CurrentDot = button:CreateTexture(nil, "OVERLAY")
     button.CurrentDot:SetTexture(WHITE)
@@ -501,7 +506,7 @@ function Raid:CreateBossRailButton(index)
         Raid:SetEncounter(self.encounterIndex)
     end)
     button:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(.04, .16, .23, .98)
+        self:SetBackdropColor(.07, .08, .09, .98)
         self:SetBackdropBorderColor(
             self.selected and .18 or .22,
             self.selected and .70 or .48,
@@ -566,6 +571,10 @@ function Raid:RefreshBossRail()
     end
     local raid = self:GetRaid()
     local currentBossIndex = self:GetCurrentBossIndex(raid)
+    if self.clearPlanButton then
+        self.clearPlanButton.Text:SetText(
+            self.db.activeEncounter == 1 and "CLEAR PAGE" or L.CLEAR_BOSS)
+    end
     if self.setCurrentBossButton then
         local isOverview = self.db.activeEncounter == 1
         local isCurrent = self.db.activeEncounter == currentBossIndex
@@ -610,7 +619,8 @@ function Raid:RefreshBossRail()
             -BOSS_RAIL_GAP
                 - (row * (BOSS_BUTTON_SIZE + BOSS_RAIL_GAP)))
         button.encounterIndex = index
-        button.encounterName = encounter.name
+        button.encounterName = encounter.name == "Raid Overview"
+            and "Raid-Wide Plan" or encounter.name
         button.selected = index == self.db.activeEncounter
         button.currentBoss = index == currentBossIndex
         button.CurrentDot:SetShown(button.currentBoss)
@@ -620,14 +630,14 @@ function Raid:RefreshBossRail()
         button.Icon:SetDesaturated(not button.selected)
         button.Icon:SetAlpha(button.selected and 1 or .62)
         if button.selected then
-            button.baseColor = { .035, .14, .21, .98 }
+            button.baseColor = { .060, .070, .080, .98 }
             button.baseBorder = { unpack(ACCENT) }
             button:SetBackdropColor(unpack(button.baseColor))
             button:SetBackdropBorderColor(unpack(button.baseBorder))
-            button.ActiveBar:Show()
+            button.ActiveBar:Hide()
             button.SelectionGlow:Show()
         else
-            button.baseColor = { .035, .052, .07, .98 }
+            button.baseColor = { .035, .043, .052, .98 }
             button.baseBorder = { unpack(BORDER) }
             button:SetBackdropColor(unpack(button.baseColor))
             button:SetBackdropBorderColor(unpack(button.baseBorder))

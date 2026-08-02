@@ -139,6 +139,7 @@ function Raid:AddManualPlayer(name, class, role, spec, subgroup)
             raid.key, name, class, role, strtrim(spec or ""), subgroup,
         })
     end
+    self:AutoSaveActiveRaid()
     self:UpdateRoster()
 end
 
@@ -174,6 +175,7 @@ function Raid:RemoveManualPlayer(name)
     if self.QueueSync and self:IsLocalRaidEditor() then
         self:QueueSync("MANUALDEL", { raid.key, name })
     end
+    self:AutoSaveActiveRaid()
     self:UpdateRoster()
     if self.RefreshAssignments then self:RefreshAssignments() end
 end

@@ -228,19 +228,9 @@ function Raid:CreateQuickActionBar()
     bar.BossNav.Announce:SetScript("OnClick", function(self, mouseButton)
         if mouseButton == "RightButton" then
             Raid:ShowAnnouncementChannelMenu(self, function(channel)
-                local raid = Raid:GetRaid()
-                local index = Raid:GetCurrentBossIndex(raid)
-                if index and Raid.db.activeEncounter ~= index then
-                    Raid:SetEncounter(index)
-                end
                 Raid:AnnounceAssignments(channel)
             end)
             return
-        end
-        local raid = Raid:GetRaid()
-        local index = Raid:GetCurrentBossIndex(raid)
-        if index and Raid.db.activeEncounter ~= index then
-            Raid:SetEncounter(index)
         end
         Raid:AnnounceAssignments()
     end)

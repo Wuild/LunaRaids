@@ -66,6 +66,57 @@ local function CanInvite()
         or not IsInGroup()
 end
 
+local function NamesMatch(left, right)
+    local leftFull = Trim(left):lower()
+    local rightFull = Trim(right):lower()
+    if leftFull == "" or rightFull == "" then return false end
+    return leftFull == rightFull
+        or ShortName(leftFull):lower() == ShortName(rightFull):lower()
+end
+
+local function IsFriend(name)
+    if C_FriendList and C_FriendList.GetFriendInfoByName then
+        local info = C_FriendList.GetFriendInfoByName(name)
+        if info then return true end
+    end
+    local count = C_FriendList and C_FriendList.GetNumFriends
+        and C_FriendList.GetNumFriends()
+        or GetNumFriends and GetNumFriends() or 0
+    for index = 1, count do
+        local info = C_FriendList and C_FriendList.GetFriendInfoByIndex
+            and C_FriendList.GetFriendInfoByIndex(index)
+        local friendName = type(info) == "table" and info.name
+            or info or GetFriendInfo and GetFriendInfo(index)
+        if NamesMatch(name, friendName) then return true end
+    end
+    return false
+end
+
+local function IsGuildMember(name)
+    if not IsInGuild or not IsInGuild() then return false end
+    if C_GuildInfo and C_GuildInfo.MemberExistsByName
+        and C_GuildInfo.MemberExistsByName(name)
+    then
+        return true
+    end
+    local count = GetNumGuildMembers and GetNumGuildMembers() or 0
+    for index = 1, count do
+        local memberName = GetGuildRosterInfo and GetGuildRosterInfo(index)
+        if NamesMatch(name, memberName) then return true end
+    end
+    return false
+end
+
+local function CanUseAutoInvite(scope, sender)
+    scope = scope or "EVERYONE"
+    if scope == "FRIENDS" then return IsFriend(sender) end
+    if scope == "GUILD" then return IsGuildMember(sender) end
+    if scope == "FRIENDS_OR_GUILD" then
+        return IsFriend(sender) or IsGuildMember(sender)
+    end
+    return true
+end
+
 function Raid:HandleAutoInviteWhisper(_, message, sender)
     local settings = self.db and self.db.raidAdmin
     if not settings or not settings.autoInvite or not CanInvite() then
@@ -79,7 +130,11 @@ function Raid:HandleAutoInviteWhisper(_, message, sender)
             break
         end
     end
-    if not matched or sender == "" then return end
+    if not matched or sender == ""
+        or not CanUseAutoInvite(settings.inviteScope, sender)
+    then
+        return
+    end
 
     self.inviteCooldowns = self.inviteCooldowns or {}
     local key = sender:lower()

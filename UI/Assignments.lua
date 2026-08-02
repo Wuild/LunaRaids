@@ -31,6 +31,14 @@ local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
 local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
 local CreateScrollArea = UI.CreateScrollArea
+local ROW_SEPARATOR = { .085, .105, .12, 1 }
+
+local function UseRowSeparator(frame)
+    if not frame.PixelBorders then return end
+    frame.PixelBorders[1]:Hide()
+    frame.PixelBorders[3]:Hide()
+    frame.PixelBorders[4]:Hide()
+end
 
 local function RecommendationText(values, classNames)
     local entries = {}
@@ -57,6 +65,9 @@ function Raid:CreateAssignmentSlot(index)
     local slot = Button(
         self.assignmentContent, "",
         self.assignmentRowWidth or ASSIGNMENT_ROW_WIDTH, 34)
+    UseRowSeparator(slot)
+    slot.baseBorder = { unpack(ROW_SEPARATOR) }
+    slot:SetBackdropBorderColor(unpack(slot.baseBorder))
     slot.RoleIcon = slot:CreateTexture(nil, "ARTWORK")
     slot.RoleIcon:SetTexture(ROLE_TEXTURE)
     PixelSetSize(slot.RoleIcon, 19, 19)
@@ -201,6 +212,9 @@ function Raid:CreateMarkerRow(index)
     local row = Button(
         self.assignmentContent, "",
         self.assignmentRowWidth or ASSIGNMENT_ROW_WIDTH, 27)
+    UseRowSeparator(row)
+    row.baseBorder = { unpack(ROW_SEPARATOR) }
+    row:SetBackdropBorderColor(unpack(row.baseBorder))
     row.Label = Font(row, 10, "muted", "")
     row.Label:SetPoint("LEFT", 7, 0)
     row.Label:SetPoint("RIGHT", -145, 0)
@@ -231,7 +245,7 @@ function Raid:CreateMarkerRow(index)
         GameTooltip:Show()
     end)
     row:SetScript("OnLeave", function(self)
-        self:SetBackdropBorderColor(unpack(BORDER))
+        self:SetBackdropBorderColor(unpack(self.baseBorder))
         GameTooltip:Hide()
     end)
     return row
@@ -380,6 +394,12 @@ function Raid:RefreshFooterLayout()
     then
         return
     end
+    local gearWorkspace = self.workspaceMode == "GEAR"
+    if gearWorkspace then
+        for _, button in ipairs(self.footerActionButtons or {}) do
+            button:Hide()
+        end
+    end
     local previous
     for _, button in ipairs(self.footerLeftButtons or {}) do
         button:ClearAllPoints()
@@ -400,7 +420,7 @@ function Raid:RefreshFooterLayout()
                 button:SetPoint("RIGHT", previous, "LEFT", -5, 0)
             else
                 button:SetPoint(
-                    "BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -24, 14)
+                    "BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -34, 14)
             end
             previous = button
         end
@@ -412,6 +432,7 @@ function Raid:RefreshFooterLayout()
             break
         end
     end
+    if gearWorkspace then hasFooter = nil end
     local bottomInset = hasFooter and 58 or 1
     self.rosterPanel:ClearAllPoints()
     self.rosterPanel:SetPoint("TOPLEFT", 1, -46)
@@ -533,14 +554,19 @@ function Raid:RefreshWorkspaceNavigation()
             or settings and "SETTINGS"
             or "ASSIGNMENTS")
         button.baseColor = selected
-            and { .035, .18, .27, .98 }
-            or { .035, .06, .08, .98 }
+            and { .060, .090, .110, .98 }
+            or { .035, .043, .052, .98 }
         button.baseBorder = selected
-            and { unpack(ACCENT) }
+            and { .24, .34, .40, 1 }
             or { unpack(BORDER) }
         button:SetBackdropColor(unpack(button.baseColor))
         button:SetBackdropBorderColor(unpack(button.baseBorder))
         button.ActiveBar:SetShown(selected)
+        button.Text:SetTextColor(
+            selected and .94 or .66,
+            selected and .96 or .70,
+            selected and .98 or .74, 1)
+        button.Icon:SetAlpha(selected and 1 or .72)
         button:SetEnabled(true)
         button:SetAlpha(1)
     end
@@ -627,6 +653,14 @@ function Raid:CreateBossSettingsPanel()
         "TOPRIGHT", self.bossSettingsButton, "BOTTOMRIGHT", 0, -5)
     panel.Title = Font(panel, 11, "accent", L.BOSS_ASSIGNMENT_SETUP:upper())
     panel.Title:SetPoint("TOPLEFT", 10, -10)
+    panel.AddCategory = Button(panel, "+ CATEGORY", 90, 23)
+    panel.AddCategory:SetPoint("TOPRIGHT", -8, -6)
+    panel.AddCategory:SetScript("OnClick", function()
+        Raid:PromptAddBossCustomGroup()
+    end)
+    AddButtonTooltip(
+        panel.AddCategory, "Add Assignment Category",
+        "On the Raid-Wide Plan, include a marker name such as Moon, Star, Skull, or Cross to create a marked player duty.")
     panel.Rows = {}
     panel.PresetPrevious = Button(panel, "<", 27, 23)
     panel.PresetPrevious:SetPoint("TOPLEFT", 8, -31)
@@ -700,6 +734,13 @@ function Raid:PromptDeleteBossPreset()
     end
 end
 
+function Raid:PromptAddBossCustomGroup()
+    if not StaticPopup_Show then return end
+    local popup = StaticPopup_Show("LUNARAIDS_ADD_BOSS_CATEGORY")
+    local editBox = self:GetPopupEditBox(popup)
+    if editBox then editBox:SetText(""); editBox:SetFocus() end
+end
+
 function Raid:RefreshBossSettingsPanel()
     local panel = self:CreateBossSettingsPanel()
     if not panel:IsShown() then return end
@@ -707,7 +748,10 @@ function Raid:RefreshBossSettingsPanel()
     local presets = self:GetBossPresets()
     local selected = self:GetSelectedBossPreset()
     local hasPreset = selected ~= nil
-    panel.Title:SetText(self.L.BOSS_ASSIGNMENT_SETUP:upper() .. "  -  "
+    local setupTitle = encounter.name == "Raid Overview"
+        and "RAID-WIDE ASSIGNMENT SETUP"
+        or self.L.BOSS_ASSIGNMENT_SETUP:upper()
+    panel.Title:SetText(setupTitle .. "  -  "
         .. #presets .. (#presets == 1 and " PRESET" or " PRESETS"))
     panel.PresetName.Text:SetText(
         selected and selected.name:upper() or self.L.NO_SAVED_PRESETS)
@@ -719,18 +763,19 @@ function Raid:RefreshBossSettingsPanel()
     panel.Load:SetAlpha(hasPreset and 1 or .42)
     panel.Delete:SetEnabled(hasPreset)
     panel.Delete:SetAlpha(hasPreset and 1 or .42)
-    local entries = {
-        {
+    local entries = {}
+    if encounter.name ~= "Raid Overview" then
+        entries[#entries + 1] = {
             label = self.L.HEALER_ASSIGNMENTS_TITLE,
             value = self:GetHealingSlotCount(),
             adjust = function(delta)
                 Raid:SetBossHealerCount(
                     Raid:GetHealingSlotCount() + delta)
             end,
-        },
-    }
-    for groupIndex, group in ipairs(encounter.groups or {}) do
-        if group.name ~= "Healing" then
+        }
+    end
+    for groupIndex, group in ipairs(self:GetEncounterGroups(encounter)) do
+        if encounter.name == "Raid Overview" or group.name ~= "Healing" then
             local index = groupIndex
             entries[#entries + 1] = {
                 label = group.name,
@@ -741,6 +786,9 @@ function Raid:RefreshBossSettingsPanel()
                         #Raid:GetEncounterGroupSlots(index, encounter)
                             + delta)
                 end,
+                remove = group.custom and function()
+                    Raid:RemoveBossCustomGroup(index)
+                end or nil,
             }
         end
     end
@@ -751,7 +799,7 @@ function Raid:RefreshBossSettingsPanel()
             PixelSetSize(row, 310, 27)
             row.Label = Font(row, 10, "text", "")
             row.Label:SetPoint("LEFT", 3, 0)
-            row.Label:SetWidth(205)
+            row.Label:SetWidth(185)
             row.Label:SetJustifyH("LEFT")
             row.Minus = Button(row, "-", 25, 23)
             row.Minus:SetPoint("RIGHT", -65, 0)
@@ -761,12 +809,16 @@ function Raid:RefreshBossSettingsPanel()
             row.Value:SetJustifyH("CENTER")
             row.Plus = Button(row, "+", 25, 23)
             row.Plus:SetPoint("RIGHT", -2, 0)
+            row.Delete = Button(row, "x", 21, 21)
+            row.Delete:SetPoint("RIGHT", row.Minus, "LEFT", -3, 0)
             panel.Rows[index] = row
         end
         row:SetPoint("TOPLEFT", 8, -65 - ((index - 1) * 29))
         row.Label:SetText(entry.label)
         row.Value:SetText(entry.value)
         row.adjust = entry.adjust
+        row.Delete:SetShown(entry.remove ~= nil)
+        row.Delete:SetScript("OnClick", entry.remove)
         row.Minus:SetScript("OnClick", function()
             row.adjust(-1)
             Raid:RefreshBossSettingsPanel()
@@ -795,12 +847,12 @@ function Raid:RefreshBossTabs()
     for key, button in pairs(self.bossTabs) do
         local selected = key == active
         button:SetBackdropColor(
-            selected and .035 or .035,
-            selected and .18 or .06,
-            selected and .27 or .08, .98)
+            selected and .065 or .035,
+            selected and .075 or .043,
+            selected and .085 or .052, .98)
         button.baseColor = selected
-            and { .035, .18, .27, .98 }
-            or { .035, .06, .08, .98 }
+            and { .065, .075, .085, .98 }
+            or { .035, .043, .052, .98 }
         button.baseBorder = selected
             and { unpack(ACCENT) }
             or { unpack(BORDER) }
@@ -825,9 +877,9 @@ function Raid:RefreshMechanics()
     local lines = {}
     if encounter.name == "Raid Overview" then
         lines = {
-            "Select a boss from the rail to open its quick guide.",
-            "Use Markers to prepare boss and add marks.",
-            "Use Assignments to place tanks, healers, and utility players.",
+            "This page is shared across the whole raid, including trash and transitions.",
+            "Use Markers to define standard trash kill, control, interrupt, and off-tank marks.",
+            "Use Assignments for recurring duties; add custom categories from the setup cog.",
         }
     elseif guide then
         for _, line in ipairs(guide) do
@@ -836,7 +888,7 @@ function Raid:RefreshMechanics()
     else
         lines[#lines + 1] =
             "Confirm positioning, pull order, and phase transitions before the pull."
-        for groupIndex, group in ipairs(encounter.groups or {}) do
+        for groupIndex, group in ipairs(self:GetEncounterGroups(encounter)) do
             if group.name ~= "Healing" then
                 local labels = {}
                 for _, slot in ipairs(
@@ -883,25 +935,36 @@ function Raid:RefreshMechanics()
         self.mechanicLines[index]:Hide()
     end
     self.assignmentContent:SetHeight(math.max(1, y))
-    self.assignmentTitle:SetText(encounter.name:upper() .. "  " .. self.L.QUICK_GUIDE)
+    self.assignmentTitle:SetText(
+        (encounter.name == "Raid Overview"
+            and "RAID-WIDE PLAN" or encounter.name:upper())
+        .. "  " .. self.L.QUICK_GUIDE)
 end
 
 function Raid:CreateRaidGroupFrame(groupIndex)
     self.raidGroupFrames = self.raidGroupFrames or {}
-    local group = CreateFrame("Frame", nil, self.assignmentContent)
+    local group = BackdropFrame("Frame", nil, self.assignmentContent)
+    group:SetBackdrop({
+        bgFile = WHITE,
+        edgeFile = WHITE,
+        edgeSize = Pixel(1),
+    })
+    InstallPixelBorder(group)
+    group:SetBackdropColor(.018, .022, .026, .72)
+    group:SetBackdropBorderColor(0, 0, 0, 0)
     group.GroupIndex = groupIndex
     group.HeaderBg = group:CreateTexture(nil, "BACKGROUND")
     group.HeaderBg:SetTexture(WHITE)
     group.HeaderBg:SetPoint("TOPLEFT", 0, 0)
     group.HeaderBg:SetPoint("TOPRIGHT", 0, 0)
     group.HeaderBg:SetHeight(28)
-    group.HeaderBg:SetVertexColor(.025, .075, .105, .92)
+    group.HeaderBg:SetVertexColor(.038, .046, .055, .96)
     group.Accent = group:CreateTexture(nil, "ARTWORK")
     group.Accent:SetTexture(WHITE)
     group.Accent:SetPoint("TOPLEFT", 0, 0)
     group.Accent:SetPoint("BOTTOMLEFT", group.HeaderBg, "BOTTOMLEFT", 0, 0)
     SetPixelWidth(group.Accent, 2)
-    group.Accent:SetVertexColor(unpack(ACCENT))
+    group.Accent:SetVertexColor(.25, .30, .34, 1)
     group.HeaderLine = group:CreateTexture(nil, "ARTWORK")
     group.HeaderLine:SetTexture(WHITE)
     group.HeaderLine:SetPoint(
@@ -909,23 +972,28 @@ function Raid:CreateRaidGroupFrame(groupIndex)
     group.HeaderLine:SetPoint(
         "BOTTOMRIGHT", group.HeaderBg, "BOTTOMRIGHT", 0, 0)
     SetPixelHeight(group.HeaderLine, 1)
-    group.HeaderLine:SetVertexColor(.14, .29, .38, .8)
+    group.HeaderLine:SetVertexColor(.10, .13, .15, .9)
     group.Divider = group:CreateTexture(nil, "BACKGROUND")
     group.Divider:SetTexture(WHITE)
     group.Divider:SetPoint("TOPRIGHT", 0, 0)
     group.Divider:SetPoint("BOTTOMRIGHT", 0, 0)
     SetPixelWidth(group.Divider, 1)
-    group.Divider:SetVertexColor(.09, .14, .18, .65)
-    group.Title = Font(group, 10, "accent",
+    group.Divider:SetVertexColor(.09, .11, .13, .65)
+    group.Title = Font(group, 10, "text",
         Raid:Localize("GROUP_NUMBER", groupIndex))
     group.Title:SetPoint("LEFT", group.HeaderBg, "LEFT", 10, 0)
     group.Count = Font(group, 9, "muted", "0/5")
     group.Count:SetPoint("RIGHT", group.HeaderBg, "RIGHT", -9, 0)
     group.Slots = {}
+    local slotY = 28
     for slotIndex = 1, 5 do
         local slot = Button(group, "", 140, 29)
-        slot:SetPoint("TOPLEFT", 0, -32 - ((slotIndex - 1) * 31))
-        slot:SetPoint("TOPRIGHT", -7, -32 - ((slotIndex - 1) * 31))
+        UseRowSeparator(slot)
+        slot.baseBorder = { unpack(ROW_SEPARATOR) }
+        slot:SetBackdropBorderColor(unpack(slot.baseBorder))
+        slot:SetPoint("TOPLEFT", 0, -slotY)
+        slot:SetPoint("TOPRIGHT", 0, -slotY)
+        slotY = slotY + slot:GetHeight()
         slot.Text:ClearAllPoints()
         slot.Text:SetPoint("LEFT", 17, 0)
         slot.Text:SetPoint("RIGHT", -76, 0)
@@ -998,7 +1066,7 @@ function Raid:CreateRaidGroupFrame(groupIndex)
             ResetCursor()
         end)
         slot:SetScript("OnEnter", function(self)
-            self:SetBackdropBorderColor(unpack(ACCENT))
+            self:SetBackdropColor(.065, .072, .078, .98)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             if self.player then
                 GameTooltip:SetText(self.player.name)
@@ -1027,12 +1095,22 @@ function Raid:CreateRaidGroupFrame(groupIndex)
             GameTooltip:Show()
         end)
         slot:SetScript("OnLeave", function(self)
-            self:SetBackdropBorderColor(unpack(self.baseBorder))
+            self:SetBackdropColor(unpack(self.baseColor))
             GameTooltip:Hide()
         end)
         group.Slots[slotIndex] = slot
     end
-    PixelSetSize(group, 160, 194)
+    PixelSetSize(group, 160, slotY)
+    group.Outline = BackdropFrame("Frame", nil, group)
+    group.Outline:SetAllPoints()
+    group.Outline:SetBackdrop({
+        edgeFile = WHITE,
+        edgeSize = Pixel(1),
+    })
+    InstallPixelBorder(group.Outline)
+    group.Outline:SetBackdropBorderColor(.10, .13, .15, 1)
+    group.Outline:SetFrameLevel(group:GetFrameLevel() + 50)
+    group.Outline:EnableMouse(false)
     self.raidGroupFrames[groupIndex] = group
     return group
 end
@@ -1121,7 +1199,7 @@ function Raid:CreateRaidGroupQuickActions()
                 and (entry.rightDetail
                     or "\nRight-click to pin the latest results.")
                 or ""))
-        if index == 1 then StyleButton(button, "primary") end
+        StyleButton(button, "default")
         panel.Actions[index] = button
         previous = button
     end
@@ -1181,10 +1259,11 @@ function Raid:RefreshRaidGroups()
         local column = (groupIndex - 1) % 4
         local row = math.floor((groupIndex - 1) / 4)
         group:ClearAllPoints()
+        local groupStride = group:GetHeight() + gap
         group:SetPoint(
             "TOPLEFT",
             column * (cardWidth + gap),
-            -(row * 204))
+            -(row * groupStride))
         group:SetWidth(cardWidth)
         group.Count:SetText(
             ("%d/5"):format(#grouped[groupIndex]))
@@ -1246,7 +1325,7 @@ function Raid:RefreshRaidGroups()
                 slot.Text:SetPoint("LEFT", 17, 0)
                 slot.Text:SetPoint(
                     "RIGHT", slot, "RIGHT", rightOffset - 5, 0)
-                slot.baseColor = { .035, .075, .095, .98 }
+                slot.baseColor = { .044, .050, .056, .98 }
                 slot:SetAlpha(
                     unavailable and (player.manual and .72 or .48) or 1)
             else
@@ -1263,16 +1342,19 @@ function Raid:RefreshRaidGroups()
                 slot.Text:ClearAllPoints()
                 slot.Text:SetPoint("LEFT", 17, 0)
                 slot.Text:SetPoint("RIGHT", -7, 0)
-                slot.baseColor = { .025, .038, .052, .92 }
+                slot.baseColor = { .027, .032, .037, .94 }
                 slot:SetAlpha(1)
             end
-            slot.baseBorder = { unpack(BORDER) }
+            slot.baseBorder = { unpack(ROW_SEPARATOR) }
             slot:SetBackdropColor(unpack(slot.baseColor))
             slot:SetBackdropBorderColor(unpack(slot.baseBorder))
         end
         group:Show()
     end
-    self.assignmentContent:SetHeight(406)
+    local groupHeight = self.raidGroupFrames[1]
+        and self.raidGroupFrames[1]:GetHeight() or 0
+    self.assignmentContent:SetHeight(math.max(
+        1, (groupHeight * 2) + gap))
     self.assignmentTitle:SetText(self.L.RAID_GROUP_EDITOR)
     self:RefreshFooterLayout()
 end

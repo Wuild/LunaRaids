@@ -73,7 +73,15 @@ function Raid:AnnounceAssignments(channelOverride)
     local encounter = self:GetEncounter()
     local plan = self:GetPlan(false) or {}
     local count = 0
-    for groupIndex, group in ipairs(encounter.groups) do
+    if encounter.name == "Raid Overview" then
+        local markedTargets = self:GetMarkedTargetEntries()
+        if #markedTargets > 0 then
+            self:QueueEntryLines(
+                channel, nil, "Trash Marks: ", markedTargets)
+            count = count + #markedTargets
+        end
+    end
+    for groupIndex, group in ipairs(self:GetEncounterGroups(encounter)) do
         local prefix = group.name .. ": "
         local entries = {}
         for slotIndex, slot in ipairs(
@@ -129,7 +137,7 @@ function Raid:WhisperAssignments()
     local encounter = self:GetEncounter()
     local plan = self:GetPlan(false) or {}
     local byPlayer = {}
-    for groupIndex, group in ipairs(encounter.groups) do
+    for groupIndex, group in ipairs(self:GetEncounterGroups(encounter)) do
         for slotIndex, slot in ipairs(
             self:GetEncounterGroupSlots(groupIndex, encounter)) do
             local assignment = plan[self:SlotKey(groupIndex, slotIndex)]

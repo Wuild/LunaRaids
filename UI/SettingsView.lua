@@ -889,7 +889,7 @@ function Raid:CreateSettingsView()
 
     SectionHeader(
         inviteCard, "AUTO INVITE",
-        "Invite exact whisper keywords, separated by commas.", 162)
+        "Invite exact whisper keywords from the selected audience.", 162)
     view.AutoInvite = Button(inviteCard, "", 142, 28)
     view.AutoInvite:SetPoint("TOPRIGHT", inviteCard, -10, -2)
     view.AutoInvite:SetScript("OnClick", function()
@@ -903,6 +903,21 @@ function Raid:CreateSettingsView()
     view.InviteKeywords:SetScript("OnTextChanged", function(self, user)
         self.Placeholder:SetShown(self:GetText() == "")
         if user then Raid.db.raidAdmin.inviteKeywords = self:GetText() end
+    end)
+    view.InviteScope = Button(inviteCard, "", 190, 28)
+    AddDropdownArrow(view.InviteScope)
+    view.InviteScope:SetPoint("BOTTOMRIGHT", inviteCard, -10, 10)
+    view.InviteScope:SetScript("OnClick", function()
+        local settings = Raid.db.raidAdmin
+        ShowSelectionMenu(view.InviteScope, {
+            { "EVERYONE", "Everyone" },
+            { "FRIENDS", "Friends only" },
+            { "GUILD", "Guild members only" },
+            { "FRIENDS_OR_GUILD", "Friends or guild members" },
+        }, settings.inviteScope or "EVERYONE", function(value)
+            settings.inviteScope = value
+            Raid:RefreshSettingsView()
+        end)
     end)
 
     SectionHeader(
@@ -1310,6 +1325,15 @@ function Raid:RefreshSettingsView()
         settings.autoInvite and "AUTO INVITE: ON" or "AUTO INVITE: OFF")
     StyleButton(
         view.AutoInvite, settings.autoInvite and "positive" or "danger")
+    local inviteScopeLabels = {
+        EVERYONE = "EVERYONE",
+        FRIENDS = "FRIENDS ONLY",
+        GUILD = "GUILD MEMBERS ONLY",
+        FRIENDS_OR_GUILD = "FRIENDS OR GUILD",
+    }
+    view.InviteScope.Text:SetText(
+        inviteScopeLabels[settings.inviteScope or "EVERYONE"]
+            or inviteScopeLabels.EVERYONE)
     view.AutoPromote.Text:SetText(
         settings.autoPromote and "PROMOTE: ON" or "PROMOTE: OFF")
     StyleButton(

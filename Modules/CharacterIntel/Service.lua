@@ -226,16 +226,26 @@ function Raid:BuildOwnCharacterIntel()
     }
 end
 
-function Raid:BroadcastCharacterProfile()
+function Raid:BroadcastCharacterProfile(target, force)
     if not self.QueueSync or not IsInGroup or not IsInGroup() then return end
     local data = self:BuildOwnCharacterIntel()
     if not data then return end
     self:StoreCharacterIntel(data)
+    local signature = table.concat({
+        data.name or "", data.guid or "", data.class or "",
+        data.role or "", data.spec or "", tostring(data.points or 0),
+        data.race or "", tostring(data.gearScore or ""),
+        tostring(data.itemLevel or ""),
+    }, "\t")
+    if not force and signature == self.lastBroadcastCharacterProfile then
+        return
+    end
+    self.lastBroadcastCharacterProfile = signature
     self:QueueSync("PROFILE", {
         data.name, data.guid, data.class, data.role,
         data.spec, data.points, data.updated, data.race,
         data.gearScore, data.itemLevel,
-    })
+    }, target and "WHISPER" or nil, target)
 end
 
 function Raid:BroadcastInspectedIntel(data)
@@ -375,6 +385,20 @@ function Raid:PLAYER_TALENT_UPDATE()
     self:BroadcastCharacterProfile()
 end
 
+function Raid:PLAYER_ROLES_ASSIGNED()
+    self:BroadcastCharacterProfile()
+end
+
+function Raid:PLAYER_SPECIALIZATION_CHANGED(_, unit)
+    if not unit or unit == "player" then
+        self:BroadcastCharacterProfile()
+    end
+end
+
+function Raid:ACTIVE_TALENT_GROUP_CHANGED()
+    self:BroadcastCharacterProfile()
+end
+
 function Raid:InitializeCharacterIntel()
     for _, data in pairs(self.db.characterIntel or {}) do
         if type(data) == "table" then
@@ -384,6 +408,9 @@ function Raid:InitializeCharacterIntel()
     end
     self:RegisterEvent("INSPECT_READY")
     self:RegisterEvent("PLAYER_TALENT_UPDATE")
+    self:RegisterEvent("PLAYER_ROLES_ASSIGNED")
+    self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+    self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
     if hooksecurefunc and NotifyInspect and not self.inspectHookInstalled then
         self.inspectHookInstalled = true
         hooksecurefunc("NotifyInspect", function()

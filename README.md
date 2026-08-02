@@ -39,6 +39,7 @@ A raid plan can contain:
 - Boss and add raid markers
 - Different assignments for every boss
 - Per-boss assignment-count overrides
+- Per-boss custom assignment categories
 - Planned players who have not joined the group yet
 
 Players can be dragged from the roster onto an assignment. A player can also
@@ -47,14 +48,14 @@ without selecting a player asks LunaRaids to suggest a suitable character
 using role, class, specialization, and available gear information.
 
 `Auto Assign` fills the current encounter with suitable available players.
-Assignments made on the Raid Overview are inherited by bosses that do not
+Assignments made on the Raid-Wide Plan are inherited by bosses that do not
 already have an explicit assignment.
 
 ### Raid Groups
 
-The Raid Groups page displays the live Blizzard raid groups. Raid leaders and
-assistants can drag players between groups or swap two players. These changes
-are applied to the real raid, not only to the LunaRaids display.
+The Raid Groups page displays the live Blizzard raid groups. Only the raid
+leader can drag players between groups or swap two players through LunaRaids.
+These changes are applied to the real raid, not only to the LunaRaids display.
 
 Right-click a player for group administration actions such as:
 
@@ -271,8 +272,8 @@ raid is active, changing to a different raid requires creating or loading
 another plan.
 
 While in a raid group, only the actual raid leader can create or load the
-active raid. Assistants receive the leader's plan and can edit it after it has
-started. Outside a live raid, plans can be prepared in advance.
+active raid. Assistants receive the leader's plan as a read-only view. Outside
+a live raid, plans can be prepared in advance.
 
 If another plan is open, LunaRaids asks whether it should be saved before
 starting a new one. Opening an existing saved raid updates that save instead
@@ -292,9 +293,21 @@ Right-click a planned player to delete it.
 
 ### 3. Set raid-wide assignments
 
-Use the Raid Overview to establish the normal tanks, healers, and recurring
-utility assignments. Those assignments carry into bosses that have not been
-assigned separately.
+Use the **Raid-Wide Plan** (the first encounter-toolbar entry) to establish
+normal tanks, healers, recurring utility assignments, and standard trash
+markings. Player assignments carry into bosses that have not been assigned
+separately. Its marker page covers kill order, crowd control, off-tanking,
+interrupts, dispels, and do-not-attack targets.
+
+For player-owned trash control, add a raid-wide custom category whose name
+contains the marker and action, such as **Moon Polymorph**, **Star Polymorph**,
+or **Square Trap**, then assign the responsible player. Marker names render as
+raid icons and are included when announcing or whispering the Raid-Wide Plan.
+**X** can be used as an alias for **Cross**.
+
+Announce always uses the page currently being viewed. On the Raid-Wide Plan it
+posts both the configured trash-mark legend and any player-owned raid-wide
+duties; it no longer switches silently to the current boss.
 
 ### 4. Configure each boss
 
@@ -306,7 +319,9 @@ Each boss has three views:
 - **Assignments** — place players into encounter-specific duties
 - **Mechanics** — read the quick encounter guide
 
-Use the boss cog to change the number of assignment slots for only that boss.
+Use the setup cog to change assignment counts or add and remove custom
+categories. On a boss these settings affect only that encounter; on the
+Raid-Wide Plan they define recurring duties for the whole raid.
 Boss configurations can be reset to their built-in defaults or saved as
 multiple named presets.
 
@@ -358,11 +373,11 @@ The actual raid leader can:
 Assistants can:
 
 - Receive the active plan when joining or being promoted
-- Edit assignments and markers after the leader starts the raid
-- Change the current boss
-- Edit live raid groups where Blizzard permits it
+- View raid-wide and boss assignments, markers, groups, and the current boss
 
-Assistants cannot create or replace the active raid while grouped.
+Assistants cannot create, replace, or edit the active raid plan. Plan changes
+received from assistant clients are ignored; only the raid leader is accepted
+as synchronization authority.
 
 ### Normal raid members
 
@@ -426,7 +441,13 @@ Saved raids and assignments are not deleted by this reset.
 - Named boss presets
 
 Saved raids can be loaded from the New Raid flow and deleted from the saved
-raid list.
+plan list. Once a saved raid is loaded, assignment, marker, roster,
+composition, current-boss, and configuration edits are saved silently as they
+are made.
+
+Boss and raid-wide configuration is also retained as the default for that raid.
+Starting a fresh plan for the same raid restores custom categories, assignment
+counts, and boss presets without restoring the previous player assignments.
 
 Closing/completing a raid clears the active session without deleting its
 saved copy. Synchronization closing a raid does not close the recipient's

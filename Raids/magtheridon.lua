@@ -8,6 +8,13 @@ local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
 local Rec = Raid.Recommendation
 
+local clickers = Slots("Clicker", 5)
+for index, marker in ipairs({
+    "Skull", "Cross", "Square", "Moon", "Triangle",
+}) do
+    clickers[index].label = marker .. " Clicker"
+end
+
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
     key = "magtheridon", name = "Magtheridon's Lair", size = 25,
@@ -42,11 +49,11 @@ local raid = Raid:RegisterRaid({
         }),
         Encounter("Magtheridon", {
             Group("Tanks", {
-                A:Tank("magtheridon", "Magtheridon / Channeler Tank"),
-                A:Tank("channeler", "Channeler Tank", 2),
-                A:Tank("channeler", "Channeler Tank", 3),
+                A:Tank("magtheridon", "Skull Channeler / Magtheridon Tank"),
+                A:Tank("channeler", "Cross Off Tank", 2),
+                A:Tank("channeler", "Triangle Off Tank", 3),
             }),
-            Group("Click Team", Slots("Clicker", 5)),
+            Group("Click Team", clickers),
             Group("Interrupts", { "Channeler 1 Interrupt", "Channeler 2 Interrupt", "Channeler 3 Interrupt", "Channeler 4 Interrupt", "Channeler 5 Interrupt" }),
             Group("Utility", {
                 "Abyssal Banish Lead",

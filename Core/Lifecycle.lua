@@ -87,6 +87,24 @@ function Raid:OnInitialize()
         hideOnEscape = true,
         preferredIndex = 3,
     }
+    StaticPopupDialogs.LUNARAIDS_ADD_BOSS_CATEGORY = {
+        text = "Add a custom assignment category:\n\nFor trash duties, include the marker and action (for example: Moon Polymorph).",
+        button1 = "Add Category", button2 = CANCEL, hasEditBox = true,
+        OnAccept = function(dialog)
+            local editBox = Raid:GetPopupEditBox(dialog)
+            Raid:AddBossCustomGroup(editBox and editBox:GetText() or "")
+        end,
+        EditBoxOnEnterPressed = function(editBox)
+            if Raid:AddBossCustomGroup(editBox:GetText()) then
+                editBox:GetParent():Hide()
+            end
+        end,
+        EditBoxOnEscapePressed = function(editBox)
+            editBox:GetParent():Hide()
+        end,
+        timeout = 0, whileDead = true, hideOnEscape = true,
+        preferredIndex = 3,
+    }
     StaticPopupDialogs.LUNARAIDS_DELETE_BOSS_PRESET = {
         text = "Delete the boss preset \"%s\"?\n\nThis cannot be undone.",
         button1 = "Delete",

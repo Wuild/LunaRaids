@@ -257,12 +257,13 @@ function Raid:UpdateWindowLayout()
         tabCount = tabCount + 1
     end
     local panelWidth = math.max(
-        1, (self.frame:GetWidth() or FRAME_WIDTH) - ROSTER_WIDTH - 2)
+        1, self.assignmentPanel:GetWidth() or
+            ((self.frame:GetWidth() or FRAME_WIDTH) - ROSTER_WIDTH - 2))
     local tabWidth = PixelForRegion(
         self.assignmentPanel,
         math.max(
             1,
-            (panelWidth - 10
+            (panelWidth - 16
                 - (math.max(1, tabCount) - 1) * 6)
                 / math.max(1, tabCount)))
     for _, tab in pairs(self.bossTabs or {}) do
@@ -330,21 +331,7 @@ function Raid:CreateUI()
         frame:SetMaxResize(1600, 1200)
     end
     frame:EnableMouse(true)
-    frame.OpenAnimation = frame:CreateAnimationGroup()
-    local openFade = frame.OpenAnimation:CreateAnimation("Alpha")
-    openFade:SetFromAlpha(0)
-    openFade:SetToAlpha(1)
-    openFade:SetDuration(.18)
-    openFade:SetSmoothing("OUT")
-    frame.OpenAnimation:SetScript("OnPlay", function()
-        frame:SetAlpha(0)
-    end)
-    frame.OpenAnimation:SetScript("OnFinished", function()
-        frame:SetAlpha(1)
-    end)
     frame:SetScript("OnShow", function()
-        frame.OpenAnimation:Stop()
-        frame.OpenAnimation:Play()
         Raid:UpdateRoster()
         if C_Timer and C_Timer.After then
             C_Timer.After(0, function()
@@ -414,30 +401,30 @@ function Raid:CreateUI()
     frame.TitleBarBg:SetPoint("TOPLEFT", 1, -1)
     frame.TitleBarBg:SetPoint("TOPRIGHT", -1, -1)
     frame.TitleBarBg:SetHeight(45)
-    frame.TitleBarBg:SetVertexColor(.022, .082, .118, .99)
+    frame.TitleBarBg:SetVertexColor(.032, .039, .047, .99)
     frame.TitleAccent = frame:CreateTexture(nil, "OVERLAY")
     frame.TitleAccent:SetTexture(WHITE)
     frame.TitleAccent:SetPoint("TOPLEFT", 1, -44)
     frame.TitleAccent:SetPoint("TOPRIGHT", -1, -44)
-    SetPixelHeight(frame.TitleAccent, 2)
-    frame.TitleAccent:SetVertexColor(unpack(ACCENT))
+    SetPixelHeight(frame.TitleAccent, 1)
+    frame.TitleAccent:SetVertexColor(.14, .18, .21, 1)
     frame.DarkInset = frame:CreateTexture(nil, "BORDER")
     frame.DarkInset:SetTexture(WHITE)
     frame.DarkInset:SetPoint("TOPLEFT", 1, -46)
     frame.DarkInset:SetPoint("BOTTOMRIGHT", -1, 58)
-    frame.DarkInset:SetVertexColor(.008, .015, .024, .88)
+    frame.DarkInset:SetVertexColor(.012, .016, .020, .96)
     frame.StatusBg = frame:CreateTexture(nil, "ARTWORK")
     frame.StatusBg:SetTexture(WHITE)
     frame.StatusBg:SetPoint("TOPLEFT", frame.DarkInset, "BOTTOMLEFT")
     frame.StatusBg:SetPoint("BOTTOMRIGHT", -1, 1)
-    frame.StatusBg:SetVertexColor(.018, .068, .092, .99)
+    frame.StatusBg:SetVertexColor(.028, .034, .040, .99)
     frame.OuterBorder = BackdropFrame("Frame", nil, frame)
     frame.OuterBorder:SetAllPoints()
     frame.OuterBorder:SetBackdrop({
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         edgeSize = Pixel(12),
     })
-    frame.OuterBorder:SetBackdropBorderColor(.22, .22, .22, 1)
+    frame.OuterBorder:SetBackdropBorderColor(.11, .13, .15, 1)
     frame.OuterBorder:EnableMouse(false)
     frame.Title:SetDrawLayer("OVERLAY", 3)
 
@@ -467,12 +454,13 @@ function Raid:CreateUI()
     self.workspaceRail:SetPoint(
         "TOPRIGHT", frame, "TOPLEFT", 1, -45)
     self.workspaceRail:SetWidth(NAV_RAIL_WIDTH)
-    self.workspaceRail:SetHeight(266)
+    self.workspaceRail:SetHeight(244)
     self.workspaceRail:SetFrameLevel(frame:GetFrameLevel() + 3)
     self.workspaceButtons = {}
     local workspaceEntries = {
         {
             key = "ASSIGNMENTS",
+            label = L.ASSIGNMENTS,
             title = L.RAID_ASSIGNMENTS,
             description = L.WORKSPACE_ASSIGNMENTS_DESC,
             icon = "Interface\\Icons\\INV_Misc_Note_05",
@@ -497,12 +485,14 @@ function Raid:CreateUI()
         },
         {
             key = "SETTINGS",
+            label = L.SETTINGS,
             title = L.LUNARAIDS_SETTINGS,
             description = L.WORKSPACE_SETTINGS_DESC,
             icon = "Interface\\Buttons\\UI-OptionsButton",
         },
         {
             key = "ABOUT",
+            label = "ABOUT",
             title = L.ABOUT_LUNARAIDS_TITLE,
             description = L.WORKSPACE_ABOUT_DESC,
             icon = "Interface\\Icons\\INV_Misc_QuestionMark",
@@ -510,13 +500,17 @@ function Raid:CreateUI()
     }
     for index, entry in ipairs(workspaceEntries) do
         local workspaceKey = entry.key
-        local button = Button(self.workspaceRail, "", 38, 38)
-        button:SetPoint("TOPLEFT", 5, -5 - ((index - 1) * 43))
+        local button = Button(
+            self.workspaceRail, entry.label or entry.title, 106, 34)
+        button:SetPoint("TOPLEFT", 5, -5 - ((index - 1) * 39))
         button.Icon = button:CreateTexture(nil, "ARTWORK")
         button.Icon:SetTexture(entry.icon)
-        PixelSetSize(button.Icon, 24, 24)
-        button.Icon:SetPoint("CENTER")
-        button.Text:Hide()
+        PixelSetSize(button.Icon, 18, 18)
+        button.Icon:SetPoint("LEFT", 8, 0)
+        button.Text:ClearAllPoints()
+        button.Text:SetPoint("LEFT", button.Icon, "RIGHT", 7, 0)
+        button.Text:SetPoint("RIGHT", -8, 0)
+        button.Text:SetJustifyH("LEFT")
         button.ActiveBar = button:CreateTexture(nil, "OVERLAY")
         button.ActiveBar:SetTexture(WHITE)
         button.ActiveBar:SetPoint("TOPRIGHT", -1, -1)
@@ -629,9 +623,14 @@ function Raid:CreateUI()
         "OnClick", function() Raid:ToggleBossSettings() end)
     self.bossSettingsButton:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(L.BOSS_ASSIGNMENT_SETUP)
+        local overview = Raid.db.activeEncounter == 1
+        GameTooltip:SetText(
+            overview and "Raid-Wide Assignment Setup"
+                or L.BOSS_ASSIGNMENT_SETUP)
         GameTooltip:AddLine(
-            "Change assignment counts for this boss only.",
+            overview
+                and "Add categories and change counts for the raid-wide plan."
+                or "Change assignment counts for this boss only.",
             MUTED[1], MUTED[2], MUTED[3], true)
         GameTooltip:Show()
     end)
@@ -718,13 +717,14 @@ function Raid:CreateUI()
         newRaid, "New Raid",
         "Open raid setup to create a new plan or load a saved raid.")
     local clear = Button(frame, L.CLEAR_BOSS, 104, 30)
+    self.clearPlanButton = clear
     clear:SetPoint("LEFT", newRaid, "RIGHT", 5, 0)
     AddButtonIcon(
         clear, "Interface\\Buttons\\UI-GroupLoot-Pass-Up", 16)
     clear:SetScript("OnClick", function() Raid:ClearPlan() end)
     AddButtonTooltip(
         clear, "Clear Boss",
-        "Remove every player, healing target, and marker assignment from the current boss.")
+        "Remove every player, healing target, and marker assignment from the current page.")
     local saveRaid = Button(frame, L.SAVE_RAID, 110, 30)
     saveRaid:SetPoint("LEFT", clear, "RIGHT", 5, 0)
     AddButtonIcon(
@@ -735,7 +735,7 @@ function Raid:CreateUI()
         "Save the complete raid plan so it can be loaded before a future raid.")
     local whisper = Button(frame, L.WHISPER, 114, 30)
     whisper:SetPoint("BOTTOMRIGHT", -163, 14)
-    StyleButton(whisper, "positive")
+    StyleButton(whisper, "default")
     AddButtonIcon(whisper, "Interface\\Icons\\INV_Letter_15", 16)
     whisper:SetScript("OnClick", function() Raid:WhisperAssignments() end)
     AddButtonTooltip(
@@ -743,7 +743,7 @@ function Raid:CreateUI()
         "Whisper each selected player their assignments for the current boss.")
     local announce = Button(frame, L.ANNOUNCE, 134, 30)
     announce:SetPoint("BOTTOMRIGHT", -24, 14)
-    StyleButton(announce, "primary")
+    StyleButton(announce, "default")
     AddButtonIcon(
         announce, "Interface\\Icons\\Ability_Warrior_BattleShout", 16)
     announce:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -784,10 +784,11 @@ function Raid:CreateUI()
     }
     self:RefreshWorkspaceNavigation()
 
+    -- The resize handle belongs to the window chrome, not the optional footer.
     frame.ResizeGrip = CreateFrame("Button", nil, frame)
     PixelSetSize(frame.ResizeGrip, 20, 20)
-    frame.ResizeGrip:SetPoint("BOTTOMRIGHT", -1, 1)
-    frame.ResizeGrip:SetFrameLevel(frame:GetFrameLevel() + 20)
+    frame.ResizeGrip:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
+    frame.ResizeGrip:SetFrameLevel(frame:GetFrameLevel() + 100)
     frame.ResizeGrip:SetNormalTexture(
         "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
     frame.ResizeGrip:SetHighlightTexture(

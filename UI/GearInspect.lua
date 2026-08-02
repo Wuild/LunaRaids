@@ -272,7 +272,7 @@ function Raid:CreateGearInspectView()
     if self.gearInspectView then return self.gearInspectView end
     local view = CreateFrame("Frame", nil, self.assignmentPanel)
     view:SetPoint("TOPLEFT", 6, -8)
-    view:SetPoint("BOTTOMRIGHT", -6, 8)
+    view:SetPoint("BOTTOMRIGHT", -6, 0)
     view.HeaderBackground =
         view:CreateTexture(nil, "BACKGROUND")
     view.HeaderBackground:SetTexture(WHITE)
@@ -423,12 +423,18 @@ function Raid:RefreshGearInspectView(queueScan)
     end
     self.gearInspectCache = self.gearInspectCache or {}
     local inspected, addonReported, locallyInspected = 0, 0, 0
+    local rosterCount = #(self.roster or {})
+    local availableHeight = math.max(1, view.Scroll:GetHeight() or 1)
+    local rowHeight = rosterCount > 0
+        and math.max(35, math.min(48, availableHeight / rosterCount))
+        or 35
     for index, player in ipairs(self.roster or {}) do
         local row = view.Rows[index]
             or self:CreateGearInspectRow(index, view)
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", 0, -((index - 1) * 35))
-        row:SetPoint("TOPRIGHT", 0, -((index - 1) * 35))
+        row:SetHeight(rowHeight)
+        row:SetPoint("TOPLEFT", 0, -((index - 1) * rowHeight))
+        row:SetPoint("TOPRIGHT", 0, -((index - 1) * rowHeight))
         SetClassText(row.Name, player.name, player.class)
         row.Bg:SetVertexColor(
             GetClassRowColor(player.class, index % 2 == 0))
@@ -478,7 +484,7 @@ function Raid:RefreshGearInspectView(queueScan)
         view.Rows[index]:Hide()
     end
     view.Content:SetHeight(math.max(
-        1, #(self.roster or {}) * 35))
+        availableHeight, rosterCount * rowHeight))
     view.Summary:SetText(
         ("%d/%d · %d ADDON · %d INSPECT")
             :format(

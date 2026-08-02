@@ -380,11 +380,18 @@ function Raid:RefreshReadyCheckWindow(frame)
     if frame.Hint then
         frame.Hint:Show()
     end
+    local rowHeight = 21
+    local availableHeight = math.max(1, frame.Scroll:GetHeight() or 1)
+    if frame.Embedded and #pending > 0 then
+        rowHeight = math.max(
+            21, math.min(44, availableHeight / #pending))
+    end
     for index, entry in ipairs(pending) do
         local row = frame.Rows[index]
             or self:CreateReadyCheckRow(index, frame)
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", 0, -((index - 1) * 21))
+        row:SetHeight(rowHeight)
+        row:SetPoint("TOPLEFT", 0, -((index - 1) * rowHeight))
         if row.LayoutSignature ~= layoutSignature then
             row.LayoutSignature = layoutSignature
             row:SetWidth(windowWidth - 16)
@@ -558,7 +565,8 @@ function Raid:RefreshReadyCheckWindow(frame)
     for index = #pending + 1, #frame.Rows do
         frame.Rows[index]:Hide()
     end
-    frame.Content:SetHeight(math.max(1, #pending * 21))
+    frame.Content:SetHeight(math.max(
+        availableHeight, #pending * rowHeight))
     if not frame.Embedded then
         frame:SetHeight(
             math.min(560, math.max(92, 71 + (#pending * 21))))

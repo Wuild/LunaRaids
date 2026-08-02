@@ -5,11 +5,13 @@ local FRAME_WIDTH, FRAME_HEIGHT = 900, 650
 local ROSTER_WIDTH, ROSTER_ROW_WIDTH = 260, 248
 local ASSIGNMENT_ROW_WIDTH = 674
 local BOSS_RAIL_WIDTH, BOSS_BUTTON_SIZE = 48, 38
-local NAV_RAIL_WIDTH = 48
+local NAV_RAIL_WIDTH = 116
 local BOSS_RAIL_GAP = 5
-local ACCENT = { .18, .70, 1.00, 1 }
-local BORDER = { .16, .22, .28, 1 }
-local MUTED = { .55, .62, .69, 1 }
+-- Keep colour functional. Accent identifies the current view or primary
+-- action; it should not be the default decoration for every surface.
+local ACCENT = { .20, .62, .82, 1 }
+local BORDER = { .12, .16, .20, 1 }
+local MUTED = { .54, .59, .64, 1 }
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local FONT_PATH = "Interface\\AddOns\\LunaRaids\\Assets\\Expressway.ttf"
 local fontObjects, fontObjectSerial = {}, 0
@@ -416,7 +418,7 @@ local function Font(parent, size, color, text)
         size = math.max(7, size * MainWindowDensity(.82))
     end
     if size then
-        font:SetFontObject(GetFontObject(Pixel(size), "MONOCHROMEOUTLINE"))
+        font:SetFontObject(GetFontObject(Pixel(size), "MONOCHROME"))
     end
     font:SetShadowOffset(0, 0)
     font:SetShadowColor(0, 0, 0, 0)
@@ -475,45 +477,17 @@ local function Button(parent, text, width, height, template)
         edgeSize = Pixel(1),
     })
     InstallPixelBorder(button)
-    button.baseColor = { .055, .075, .10, .96 }
+    button.baseColor = { .045, .055, .066, .98 }
     button.baseBorder = { unpack(BORDER) }
     button:SetBackdropColor(unpack(button.baseColor))
     button:SetBackdropBorderColor(unpack(button.baseBorder))
     button.Text = Font(button, 10, "text", text)
     button.Text:SetPoint("CENTER")
-    button.HoverGlow = button:CreateTexture(nil, "ARTWORK")
-    button.HoverGlow:SetTexture(WHITE)
-    button.HoverGlow:SetPoint("TOPLEFT", 1, -1)
-    button.HoverGlow:SetPoint("BOTTOMRIGHT", -1, 1)
-    button.HoverGlow:SetVertexColor(.18, .70, 1, .16)
-    button.HoverGlow:SetAlpha(0)
-    button.HoverIn = button.HoverGlow:CreateAnimationGroup()
-    local fadeIn = button.HoverIn:CreateAnimation("Alpha")
-    fadeIn:SetFromAlpha(0)
-    fadeIn:SetToAlpha(1)
-    fadeIn:SetDuration(.12)
-    button.HoverIn:SetScript("OnFinished", function()
-        button.HoverGlow:SetAlpha(1)
-    end)
-    button.HoverOut = button.HoverGlow:CreateAnimationGroup()
-    local fadeOut = button.HoverOut:CreateAnimation("Alpha")
-    fadeOut:SetFromAlpha(1)
-    fadeOut:SetToAlpha(0)
-    fadeOut:SetDuration(.18)
-    button.HoverOut:SetScript("OnFinished", function()
-        button.HoverGlow:SetAlpha(0)
-    end)
     button:HookScript("OnEnter", function(self)
-        self.HoverOut:Stop()
-        self.HoverGlow:SetAlpha(0)
-        self.HoverIn:Play()
-        self:SetBackdropColor(.075, .15, .21, .98)
-        self:SetBackdropBorderColor(.22, .66, .92, 1)
+        self:SetBackdropColor(.075, .09, .105, .98)
+        self:SetBackdropBorderColor(.25, .31, .36, 1)
     end)
     button:HookScript("OnLeave", function(self)
-        self.HoverIn:Stop()
-        self.HoverGlow:SetAlpha(1)
-        self.HoverOut:Play()
         self:SetBackdropColor(unpack(self.baseColor))
         self:SetBackdropBorderColor(unpack(self.baseBorder))
     end)
@@ -522,17 +496,17 @@ end
 
 local function StyleButton(button, style)
     if style == "primary" then
-        button.baseColor = { .035, .25, .39, .98 }
-        button.baseBorder = { .18, .70, 1, 1 }
+        button.baseColor = { .055, .19, .26, .98 }
+        button.baseBorder = { unpack(ACCENT) }
         button.Text:SetTextColor(.92, .98, 1, 1)
     elseif style == "positive" then
-        button.baseColor = { .045, .22, .15, .98 }
-        button.baseBorder = { .20, .65, .42, 1 }
+        button.baseColor = { .045, .14, .105, .98 }
+        button.baseBorder = { .18, .46, .33, 1 }
     elseif style == "danger" then
-        button.baseColor = { .22, .065, .075, .96 }
-        button.baseBorder = { .68, .20, .24, 1 }
+        button.baseColor = { .15, .055, .06, .98 }
+        button.baseBorder = { .50, .20, .22, 1 }
     else
-        button.baseColor = { .055, .075, .10, .96 }
+        button.baseColor = { .045, .055, .066, .98 }
         button.baseBorder = { unpack(BORDER) }
         button.Text:SetTextColor(.90, .90, .90, 1)
     end
@@ -606,20 +580,20 @@ local function Panel(parent)
         edgeSize = Pixel(1),
     })
     InstallPixelBorder(panel)
-    panel:SetBackdropColor(.035, .05, .07, .96)
-    panel:SetBackdropBorderColor(.13, .19, .24, 1)
+    panel:SetBackdropColor(.025, .031, .038, .98)
+    panel:SetBackdropBorderColor(unpack(BORDER))
     panel.InnerGlow = panel:CreateTexture(nil, "BACKGROUND")
     panel.InnerGlow:SetTexture(WHITE)
     panel.InnerGlow:SetPoint("TOPLEFT", 1, -1)
     panel.InnerGlow:SetPoint("TOPRIGHT", -1, -1)
     panel.InnerGlow:SetHeight(42)
-    panel.InnerGlow:SetVertexColor(.08, .18, .25, .22)
+    panel.InnerGlow:SetVertexColor(.08, .10, .12, .10)
     panel.TopLine = panel:CreateTexture(nil, "ARTWORK")
     panel.TopLine:SetTexture(WHITE)
     panel.TopLine:SetPoint("TOPLEFT", 1, -1)
     panel.TopLine:SetPoint("TOPRIGHT", -1, -1)
     SetPixelHeight(panel.TopLine, 1)
-    panel.TopLine:SetVertexColor(.18, .70, 1, .32)
+    panel.TopLine:SetVertexColor(.20, .24, .28, .55)
     return panel
 end
 
@@ -629,14 +603,14 @@ local function SectionHeader(panel, title, subtitle, rightInset)
     panel.SectionHeader:SetPoint("TOPLEFT", 1, -1)
     panel.SectionHeader:SetPoint("TOPRIGHT", -1, -1)
     panel.SectionHeader:SetHeight(31)
-    panel.SectionHeader:SetVertexColor(.025, .065, .09, .98)
+    panel.SectionHeader:SetVertexColor(.035, .043, .052, .98)
     panel.SectionAccent = panel:CreateTexture(nil, "OVERLAY")
     panel.SectionAccent:SetTexture(WHITE)
     panel.SectionAccent:SetPoint("TOPLEFT", 1, -1)
     panel.SectionAccent:SetPoint(
         "BOTTOMLEFT", panel.SectionHeader, "BOTTOMLEFT", 0, 0)
-    SetPixelWidth(panel.SectionAccent, 3)
-    panel.SectionAccent:SetVertexColor(unpack(ACCENT))
+    SetPixelWidth(panel.SectionAccent, 2)
+    panel.SectionAccent:SetVertexColor(.27, .34, .40, 1)
     panel.SectionDivider = panel:CreateTexture(nil, "OVERLAY")
     panel.SectionDivider:SetTexture(WHITE)
     panel.SectionDivider:SetPoint(
@@ -644,8 +618,8 @@ local function SectionHeader(panel, title, subtitle, rightInset)
     panel.SectionDivider:SetPoint(
         "BOTTOMRIGHT", panel.SectionHeader, "BOTTOMRIGHT", 0, 0)
     SetPixelHeight(panel.SectionDivider, 1)
-    panel.SectionDivider:SetVertexColor(.16, .34, .45, .85)
-    panel.Title = Font(panel, 10, "accent", title)
+    panel.SectionDivider:SetVertexColor(.13, .17, .20, 1)
+    panel.Title = Font(panel, 10, "text", title)
     panel.Title:SetPoint("LEFT", panel.SectionHeader, "LEFT", 13, 0)
     if subtitle then
         panel.Subtitle = Font(panel, 9, "muted", subtitle)
