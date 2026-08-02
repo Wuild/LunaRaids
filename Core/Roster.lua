@@ -44,8 +44,9 @@ local function AddRosterPlayer(result, seen, unit)
         reportedRole = "TANK"
     end
     local guid = UnitGUID and UnitGUID(unit)
-    local roleKey = guid or name
-    local role = Raid.db and Raid.db.roleOverrides[roleKey]
+    local role = Raid.db and (
+        guid and Raid.db.roleOverrides[guid]
+        or Raid.db.roleOverrides[name])
         or reportedRole
     local subgroup
     if raidIndex then subgroup = rosterSubgroup end
@@ -92,9 +93,7 @@ local function AddRosterPlayer(result, seen, unit)
             or player.gearScore
         player.itemLevel = tonumber(intel.itemLevel)
             or player.itemLevel
-        if (not player.role or player.role == "NONE"
-            or player.role == "DAMAGER"
-                and (intel.role == "TANK" or intel.role == "HEALER"))
+        if (not player.role or player.role == "NONE")
             and intel.role and intel.role ~= "NONE"
         then
             player.role = intel.role
@@ -208,11 +207,15 @@ function Raid:SetPlayerRole(player, role)
     end
     if role == "AUTO" then
         self.db.roleOverrides[key] = nil
+        if player.name then self.db.roleOverrides[player.name] = nil end
         player.role = changedBlizzardRole
             and "NONE" or player.reportedRole or "NONE"
     else
-        self.db.roleOverrides[key] =
-            changedBlizzardRole and nil or role
+        -- UnitSetRole may succeed before the group roster reflects the new
+        -- role, or the client may later report a spec-derived role again.
+        -- Keep the explicit LunaRaids choice authoritative until Auto is used.
+        self.db.roleOverrides[key] = role
+        if player.name then self.db.roleOverrides[player.name] = role end
         player.role = role
     end
     self:RefreshRoster()

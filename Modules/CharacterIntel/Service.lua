@@ -94,7 +94,6 @@ local function ResolveRole(reportedRole, spec)
     local inferred = spec and SPEC_ROLE[spec]
     if inferred and (
         not reportedRole or reportedRole == "NONE"
-            or reportedRole == "DAMAGER"
     ) then
         return inferred
     end
@@ -111,7 +110,6 @@ end
 function Raid:StoreCharacterIntel(data)
     if not data or not data.name then return end
     data.spec = NormalizeSpecialization(data.spec) or "Unknown"
-    local incomingSpecKnown = IsKnownSpec(data.spec)
     self.db.characterIntel = self.db.characterIntel or {}
     data.updated = tonumber(data.updated)
         or (GetServerTime and GetServerTime()
@@ -123,13 +121,6 @@ function Raid:StoreCharacterIntel(data)
         if not IsKnownSpec(data.spec) and IsKnownSpec(existing.spec) then
             data.spec = existing.spec
         end
-        if (existing.role == "TANK" or existing.role == "HEALER")
-            and (not data.role or data.role == "NONE"
-                or data.role == "DAMAGER")
-            and (not incomingSpecKnown or data.spec == existing.spec)
-        then
-            data.role = existing.role
-        end
         local existingUpdated = tonumber(existing.updated) or 0
         local incomingIsSelf = IsSelfReported(data)
         local existingIsSelf = IsSelfReported(existing)
@@ -138,12 +129,6 @@ function Raid:StoreCharacterIntel(data)
                 existing.spec = data.spec
                 existing.points = data.points
                 existing.localUpdated = data.localUpdated
-                if (not existing.role or existing.role == "NONE"
-                    or existing.role == "DAMAGER")
-                    and (data.role == "TANK" or data.role == "HEALER")
-                then
-                    existing.role = data.role
-                end
                 data = existing
             else
                 return
@@ -172,9 +157,7 @@ function Raid:StoreCharacterIntel(data)
             player.race = data.race ~= "" and data.race or player.race
             player.gearScore = tonumber(data.gearScore) or player.gearScore
             player.itemLevel = tonumber(data.itemLevel) or player.itemLevel
-            if (not player.role or player.role == "NONE"
-                or player.role == "DAMAGER"
-                    and (data.role == "TANK" or data.role == "HEALER"))
+            if (not player.role or player.role == "NONE")
                 and data.role and data.role ~= "NONE"
             then
                 player.role = data.role
