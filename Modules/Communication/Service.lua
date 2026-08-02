@@ -572,7 +572,7 @@ end
 function Raid:RequestPeerSync()
     if not IsInGroup or not IsInGroup() then return end
     self:QueueSync("HELLO", {
-        self.version or "unknown", "Q",
+        self.syncVersion or self.version or "unknown", "Q",
     })
     if self.BroadcastCharacterProfile then
         self:BroadcastCharacterProfile(nil, true)
@@ -657,21 +657,18 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     if not kind then return end
     local sequence = tonumber(fields[3]) or 0
     if kind == "HELLO" then
-        local peerVersion = fields[4] or "unknown"
-        local compatible = peerVersion == (self.version or "unknown")
         self.compatiblePeers = self.compatiblePeers or {}
-        self.compatiblePeers[sender] = compatible
-        if not compatible then
-            self:WarnIncompatiblePeer(sender, peerVersion, fields[1])
-            return
-        end
+        -- The protocol check above determines wire compatibility. Display
+        -- versions may differ (or be an unexpanded packager token) without
+        -- making otherwise compatible messages unsafe.
+        self.compatiblePeers[sender] = true
         self.peerSequences = self.peerSequences or {}
         self.peerSequences[sender] = 0
         self.profileSequences = self.profileSequences or {}
         self.profileSequences[sender] = 0
         if fields[5] ~= "R" then
             self:QueueSync("HELLO", {
-                self.version or "unknown", "R",
+                self.syncVersion or self.version or "unknown", "R",
             }, "WHISPER", sender)
             if self.BroadcastCharacterProfile then
                 self:BroadcastCharacterProfile(sender, true)

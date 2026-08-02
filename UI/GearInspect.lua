@@ -506,12 +506,8 @@ function Raid:CreateAboutView()
 
     view.Name = Font(view, 20, "accent", "LUNARAIDS")
     view.Name:SetPoint("TOPLEFT", view.Icon, "TOPRIGHT", 16, -4)
-    local metadata = C_AddOns and C_AddOns.GetAddOnMetadata
-        or GetAddOnMetadata
-    local version = metadata
-        and metadata("LunaRaids", "Version") or "0.1.0"
     view.Version = Font(
-        view, 9, "muted", "Version " .. (version or "0.1.0"))
+        view, 9, "muted", "Version " .. (self.version or "dev"))
     view.Version:SetPoint("TOPLEFT", view.Name, "BOTTOMLEFT", 1, -6)
 
     view.Credit = Font(

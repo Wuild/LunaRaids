@@ -1,7 +1,19 @@
 local ADDON, Raid = ...
 
 Raid.name = ADDON
-Raid.version = "0.1.0"
+local GetMetadata = C_AddOns and C_AddOns.GetAddOnMetadata
+    or GetAddOnMetadata
+local addonVersion = GetMetadata and GetMetadata(ADDON, "Version")
+local developmentVersion = not addonVersion or addonVersion == ""
+    or addonVersion:find("@project%-version@") ~= nil
+if developmentVersion then
+    addonVersion = "dev"
+end
+Raid.version = addonVersion
+-- Older protocol-8 builds compare this field literally against their
+-- hard-coded 0.1.0 value. Keep the handshake identity stable; the actual TOC
+-- version is informational, while PROTOCOL determines wire compatibility.
+Raid.syncVersion = "0.1.0"
 Raid.roster = {}
 Raid.messageQueue = {}
 Raid.simulation = { enabled = false, size = 0 }
