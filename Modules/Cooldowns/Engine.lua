@@ -2,8 +2,9 @@ local _, Raid = ...
 local Cooldowns = Raid:NewModule("Cooldowns", "AceEvent-3.0")
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
-local ACCENT = { .12, .72, 1, 1 }
-local MUTED = { .55, .66, .72, 1 }
+local THEME = Raid.UI.THEME
+local ACCENT = Raid.UI.ACCENT
+local MUTED = Raid.UI.MUTED
 
 local DEFINITIONS = Raid.CooldownDefinitions
 
@@ -22,8 +23,8 @@ local function Frame(parent, frameType)
     local template = BackdropTemplateMixin and "BackdropTemplate" or nil
     local frame = CreateFrame(frameType or "Frame", nil, parent, template)
     frame:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = 1 })
-    frame:SetBackdropColor(.012, .025, .035, .97)
-    frame:SetBackdropBorderColor(.10, .24, .32, 1)
+    frame:SetBackdropColor(unpack(THEME.window))
+    frame:SetBackdropBorderColor(unpack(THEME.border))
     return frame
 end
 

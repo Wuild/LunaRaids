@@ -217,6 +217,8 @@ function Raid:OnInitialize()
     self:InitializeCommunication()
     self:InitializeCharacterIntel()
     self:RegisterEvent("GROUP_ROSTER_UPDATE", "HandleGroupRosterUpdate")
+    self:RegisterEvent(
+        "PARTY_LOOT_METHOD_CHANGED", "HandleGroupRosterUpdate")
     self:RegisterEvent("CHAT_MSG_WHISPER", "HandleAutoInviteWhisper")
     self:RegisterEvent(
         "PLAYER_ENTERING_WORLD", "HandlePlayerEnteringWorld")

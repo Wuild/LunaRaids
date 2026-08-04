@@ -8,8 +8,10 @@ local ShortName, CompactName = View.ShortName, View.CompactName
 local TimeText, CooldownLength = View.TimeText, View.CooldownLength
 local CurrentTime = View.CurrentTime
 local WHITE = "Interface\\Buttons\\WHITE8X8"
-local ACCENT = { .12, .72, 1, 1 }
-local MUTED = { .55, .66, .72, 1 }
+local THEME = Raid.UI.THEME
+local ICONS = Raid.UI.ICONS
+local ACCENT = Raid.UI.ACCENT
+local MUTED = Raid.UI.MUTED
 local function SetLabelSize(label, size)
     label:SetFontObject(
         Raid.UI.GetFontObject(size, "MONOCHROMEOUTLINE"))
@@ -41,8 +43,10 @@ function Raid:CreateRaidCooldownFrame()
     local settings = self:GetRaidCooldownSettings()
     local frame = Frame(UIParent)
     frame:SetSize(430, 80)
-    frame:SetBackdropColor(.008, .018, .025, .72)
-    frame:SetBackdropBorderColor(.08, .20, .27, .72)
+    frame:SetBackdropColor(
+        THEME.content[1], THEME.content[2], THEME.content[3], .78)
+    frame:SetBackdropBorderColor(
+        THEME.border[1], THEME.border[2], THEME.border[3], .78)
     frame:SetPoint(settings.point or "CENTER", UIParent,
         settings.point or "CENTER", settings.x or -330, settings.y or 20)
     frame:SetFrameStrata("MEDIUM")
@@ -68,7 +72,8 @@ function Raid:CreateRaidCooldownFrame()
         dot:SetTexture(WHITE)
         dot:SetSize(2, 2)
         dot:SetPoint("CENTER", -4 + ((index - 1) * 4), 0)
-        dot:SetVertexColor(.35, .66, .78, .58)
+        dot:SetVertexColor(
+            THEME.accent[1], THEME.accent[2], THEME.accent[3], .58)
         frame.Grip.Dots[index] = dot
     end
     frame.Grip:SetScript("OnDragStart", function()
@@ -82,7 +87,7 @@ function Raid:CreateRaidCooldownFrame()
     end)
     frame.Grip:SetScript("OnEnter", function(self)
         for _, dot in ipairs(self.Dots) do
-            dot:SetVertexColor(.15, .75, 1, 1)
+            dot:SetVertexColor(unpack(ACCENT))
         end
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText(L.DRAG_TO_MOVE)
@@ -90,7 +95,8 @@ function Raid:CreateRaidCooldownFrame()
     end)
     frame.Grip:SetScript("OnLeave", function(self)
         for _, dot in ipairs(self.Dots) do
-            dot:SetVertexColor(.35, .66, .78, .58)
+            dot:SetVertexColor(
+                THEME.accent[1], THEME.accent[2], THEME.accent[3], .58)
         end
         GameTooltip:Hide()
     end)
@@ -99,7 +105,8 @@ function Raid:CreateRaidCooldownFrame()
     frame.Header:SetPoint("TOPLEFT", 1, -1)
     frame.Header:SetPoint("TOPRIGHT", -1, -1)
     frame.Header:SetHeight(18)
-    frame.Header:SetVertexColor(.025, .10, .14, .72)
+    frame.Header:SetVertexColor(
+        THEME.header[1], THEME.header[2], THEME.header[3], .78)
     frame.Line = frame:CreateTexture(nil, "ARTWORK")
     frame.Line:SetTexture(WHITE)
     frame.Line:SetPoint("TOPLEFT", 1, -18)
@@ -113,8 +120,10 @@ function Raid:CreateRaidCooldownFrame()
     frame.Style = Frame(frame, "Button")
     frame.Style:SetSize(62, 19)
     frame.Style:SetPoint("TOPRIGHT", -30, -4)
-    frame.Style:SetBackdropColor(.02, .05, .065, .55)
-    frame.Style:SetBackdropBorderColor(.09, .22, .29, .65)
+    frame.Style:SetBackdropColor(
+        THEME.surface[1], THEME.surface[2], THEME.surface[3], .65)
+    frame.Style:SetBackdropBorderColor(
+        THEME.border[1], THEME.border[2], THEME.border[3], .72)
     frame.Style.Text = Label(frame.Style, 8, "", MUTED)
     frame.Style.Text:SetPoint("CENTER")
     frame.Style:SetScript("OnClick", function()
@@ -134,7 +143,7 @@ function Raid:CreateRaidCooldownFrame()
     frame.Config:SetSize(22, 22)
     frame.Config:SetPoint("TOPRIGHT", -4, -3)
     frame.Config.Icon = frame.Config:CreateTexture(nil, "ARTWORK")
-    frame.Config.Icon:SetTexture("Interface\\Buttons\\UI-OptionsButton")
+    frame.Config.Icon:SetTexture(ICONS.SETTINGS)
     frame.Config.Icon:SetSize(14, 14)
     frame.Config.Icon:SetPoint("CENTER")
     frame.Config:SetScript(
@@ -410,12 +419,13 @@ function Raid:RefreshRaidCooldowns()
     local minimal = style == "MINIMAL"
     local showChrome = false
     frame:SetBackdropColor(
-        .008, .018, .025, minimal and (
+        THEME.content[1], THEME.content[2], THEME.content[3], minimal and (
             showChrome and .70 or 0) or .72)
     frame:SetBackdropBorderColor(
-        .08, .20, .27, minimal and 0 or .72)
+        THEME.border[1], THEME.border[2], THEME.border[3],
+        minimal and 0 or .72)
     frame.Header:SetVertexColor(
-        .025, .10, .14, minimal and (
+        THEME.header[1], THEME.header[2], THEME.header[3], minimal and (
             showChrome and .82 or 0) or .72)
     frame.Line:SetVertexColor(
         ACCENT[1], ACCENT[2], ACCENT[3], minimal and 0 or .7)
@@ -507,11 +517,12 @@ function Raid:RefreshRaidCooldowns()
                 (minimal and -20 or -32) - bandTop)
             row:SetSize(activeColumnWidth, columnHeight)
             row:SetBackdropColor(
-                .015, .035, .047, minimal and 0 or .58)
+                THEME.surface[1], THEME.surface[2], THEME.surface[3],
+                minimal and 0 or .58)
             local collapseRowBorder = rowLayout and rowGap == 0
                 or not rowLayout and columnGap == 0
             row:SetBackdropBorderColor(
-                .07, .17, .22,
+                THEME.border[1], THEME.border[2], THEME.border[3],
                 (minimal or collapseRowBorder) and 0 or .62)
             row.Icon:ClearAllPoints()
             row.Icon:SetTexture(
@@ -623,7 +634,7 @@ function Raid:RefreshRaidCooldowns()
                     or not listLayout and not rowLayout
                         and (rowGap == 0 or columnGap == 0)
                 chip:SetBackdropColor(
-                    .02, .045, .058,
+                    THEME.surface[1], THEME.surface[2], THEME.surface[3],
                     offline and .24 or minimal and .46 or .64)
                 chip:SetBackdropBorderColor(
                     offline and .25

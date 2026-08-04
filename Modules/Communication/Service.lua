@@ -365,6 +365,13 @@ function Raid:QueueSync(kind, values, distribution, target)
     self.syncFrame:Show()
 end
 
+function Raid:DiscardPendingSync()
+    self.syncQueue = {}
+    self.syncQueueHead = 1
+    self.syncQueueTail = 0
+    if self.syncFrame then self.syncFrame:Hide() end
+end
+
 function Raid:BroadcastPlanValue(key, value)
     if not self:IsLocalRaidEditor() then return end
     local raid = self:GetRaid()
@@ -678,7 +685,8 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
                 self:BroadcastLocalRaidCooldowns(sender, true)
             end
         end
-        local snapshotAuthority = self:IsLocalRaidEditor()
+        local snapshotAuthority = self.db.raidLocked
+            and self:IsLocalRaidEditor()
             and (not IsInRaid or not IsInRaid()
                 or self.IsActualRaidLeader
                     and self:IsActualRaidLeader())
@@ -868,36 +876,26 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
             self:UpdateRoster()
         end
     elseif kind == "CLOSE" then
-        local closedWorkspace = self.workspaceMode
         self.db.raidLocked = false
         self.db.activeSavedRaid = nil
         self.selectedPlayer = nil
         self.dragPlayer = nil
+        self.remoteSimulationRoster = nil
+        self.pendingRemoteSimulationRoster = nil
+        self.receivingSimulation = nil
+        self.receivingSnapshots = nil
+        self.snapshotFinalizeGeneration =
+            (self.snapshotFinalizeGeneration or 0) + 1
+        wipe(self.messageQueue)
+        if self.messageFrame then self.messageFrame:Hide() end
         self.receivingSync = false
         if self.HideDragGhost then self:HideDragGhost() end
         if self.RefreshPersonalAssignments then
             self:RefreshPersonalAssignments()
         end
-        if self.frame and self.frame:IsShown() then
-            if self.settingsView and self.settingsView:IsShown() then
-                self:RefreshSettingsView()
-            elseif closedWorkspace == "ASSIGNMENTS" then
-                self.workspaceMode = "ASSIGNMENTS"
-                if self:CanStartRaid() then
-                    self:ShowNewRaidWizard(false)
-                else
-                    self:SetRaidPickerMode(false)
-                    self:SetRaidWorkspaceVisible(true)
-                    self:RefreshAll()
-                    self:Print(self.L.ONLY_LEADER_CREATE_PLAN)
-                end
-            else
-                self.workspaceMode = closedWorkspace or "GROUPS"
-                self:SetRaidPickerMode(false)
-                self:SetRaidWorkspaceVisible(true)
-                self:RefreshAll()
-            end
-        end
+        if self.RefreshMechanicsHUD then self:RefreshMechanicsHUD() end
+        if self.RefreshQuickActionBar then self:RefreshQuickActionBar() end
+        if self.frame then self.frame:Hide() end
         self:Print(self.L.LEADER_COMPLETED_RAID)
         return
     elseif kind == "SNAP_BEGIN" then

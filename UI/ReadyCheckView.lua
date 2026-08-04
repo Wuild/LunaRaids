@@ -1,6 +1,8 @@
 local _, Raid = ...
 local UI = Raid.UI
+local ICONS = UI.ICONS
 local L = Raid.L
+local THEME = UI.THEME
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -64,7 +66,7 @@ function Raid:CreateReadyCheckWindow()
     frame.Header:SetPoint("TOPLEFT", 1, -1)
     frame.Header:SetPoint("TOPRIGHT", -1, -1)
     frame.Header:SetHeight(34)
-    frame.Header:SetVertexColor(.025, .075, .105, .99)
+    frame.Header:SetVertexColor(unpack(THEME.header))
     frame.Icon = frame:CreateTexture(nil, "OVERLAY")
     frame.Icon:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
     PixelSetSize(frame.Icon, 21, 21)
@@ -103,7 +105,7 @@ function Raid:CreateReadyCheckWindow()
     frame.HeaderBackground:SetPoint("TOPLEFT", 7, -36)
     frame.HeaderBackground:SetPoint("TOPRIGHT", -7, -36)
     frame.HeaderBackground:SetHeight(24)
-    frame.HeaderBackground:SetVertexColor(.035, .105, .145, .98)
+    frame.HeaderBackground:SetVertexColor(unpack(THEME.header))
     frame.HeaderLabel = Font(frame, 9, "accent", L.PLAYER_STATUS)
     frame.HeaderLabel:SetPoint("TOPLEFT", 14, -43)
     frame.Headers = {}
@@ -119,9 +121,8 @@ function Raid:CreateReadyCheckWindow()
         header.Background:SetAllPoints()
         header.Background:SetTexture(WHITE)
         header.Background:SetVertexColor(
-            index % 2 == 0 and .045 or .055,
-            index % 2 == 0 and .14 or .16,
-            index % 2 == 0 and .19 or .215, 1)
+            unpack(index % 2 == 0
+                and THEME.tableHeaderAlt or THEME.tableHeader))
         header.Icon = header:CreateTexture(nil, "ARTWORK")
         header.Icon:SetTexture(column.icon)
         PixelSetSize(header.Icon, 17, 17)
@@ -189,7 +190,7 @@ function Raid:CreateReadyCheckRow(index, frame)
     row:SetBackdrop({
         bgFile = WHITE,
     })
-    row:SetBackdropColor(.035, .055, .072, .97)
+    row:SetBackdropColor(unpack(THEME.surfaceAlt))
     row.Status = row:CreateTexture(nil, "ARTWORK")
     PixelSetSize(row.Status, 16, 16)
     row.Status:SetPoint("LEFT", 6, 0)
@@ -581,7 +582,8 @@ end
 
 function Raid:CreateRaidStatusView()
     if self.raidStatusView then return self.raidStatusView end
-    local frame = CreateFrame("Frame", nil, self.assignmentPanel)
+    local frame = UI.RegisterPage(
+        self, "STATUS", UI.MakePage(self.assignmentPanel))
     frame:SetPoint("TOPLEFT", 0, 0)
     frame:SetPoint("BOTTOMRIGHT", 0, 0)
     frame.Embedded = true
@@ -597,7 +599,7 @@ function Raid:CreateRaidStatusView()
     local actionEntries = {
         {
             label = L.ACTION_READY_CHECK,
-            icon = "Interface\\RaidFrame\\ReadyCheck-Ready",
+            icon = ICONS.READY,
             title = L.READY_CHECK,
             detail = L.READY_CHECK_DESC,
             run = function() Raid:StartReadyCheck() end,
@@ -607,21 +609,21 @@ function Raid:CreateRaidStatusView()
         },
         {
             label = L.ACTION_ROLE_CHECK,
-            icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",
+            icon = ICONS.ROLES,
             title = L.ROLE_CHECK,
             detail = L.ROLE_CHECK_DESC,
             run = function() Raid:StartRoleCheck() end,
         },
         {
             label = L.ACTION_PULL_10,
-            icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+            icon = ICONS.COOLDOWNS,
             title = L.PULL_TIMER,
             detail = L.PULL_TIMER_DESC,
             run = function() Raid:StartPullCountdown(10) end,
         },
         {
             label = L.ACTION_BREAK_5,
-            icon = "Interface\\Icons\\INV_Drink_05",
+            icon = ICONS.BREAK,
             title = L.BREAK_TIMER,
             detail = L.BREAK_TIMER_DESC,
             run = function() Raid:StartBreakTimer(5) end,
@@ -681,7 +683,7 @@ function Raid:CreateRaidStatusView()
     frame.HeaderBackground:SetPoint("TOPLEFT", 0, 0)
     frame.HeaderBackground:SetPoint("TOPRIGHT", 0, 0)
     frame.HeaderBackground:SetHeight(24)
-    frame.HeaderBackground:SetVertexColor(.035, .105, .145, .98)
+    frame.HeaderBackground:SetVertexColor(unpack(THEME.header))
     frame.HeaderLabel = Font(frame, 9, "accent", L.PLAYER)
     frame.HeaderLabel:SetPoint("TOPLEFT", 7, -7)
     frame.Headers = {}
@@ -697,9 +699,8 @@ function Raid:CreateRaidStatusView()
         header.Background:SetAllPoints()
         header.Background:SetTexture(WHITE)
         header.Background:SetVertexColor(
-            index % 2 == 0 and .045 or .055,
-            index % 2 == 0 and .14 or .16,
-            index % 2 == 0 and .19 or .215, 1)
+            unpack(index % 2 == 0
+                and THEME.tableHeaderAlt or THEME.tableHeader))
         header.Icon = header:CreateTexture(nil, "ARTWORK")
         header.Icon:SetTexture(column.icon)
         PixelSetSize(header.Icon, 17, 17)

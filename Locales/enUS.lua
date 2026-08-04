@@ -2,6 +2,8 @@ local L = LibStub("AceLocale-3.0"):NewLocale(
     "LunaRaids", "enUS", true)
 
 L.SETTINGS_GENERAL = "GENERAL"
+L.SETTINGS_INTERFACE = "INTERFACE"
+L.SETTINGS_HUDS = "HUDS"
 L.SETTINGS_TITLE = "ADDON SETTINGS"
 L.SETTINGS_INTRO = "Interface, communication, and automation"
 L.SETTINGS_RAID_ADMIN = "RAID ADMIN"
@@ -12,6 +14,8 @@ L.SETTINGS_SUBTITLE_COOLDOWNS = "Raid cooldown visibility and tracked abilities"
 L.MECHANICS_HUD_TITLE = "CURRENT BOSS"
 L.MECHANICS_HUD_SECTION = "MECHANICS HUD"
 L.MECHANICS_HUD_SECTION_DESC = "Current-boss mechanic reminders shown as movable cards."
+L.HUD_OPACITY = "HUD opacity"
+L.HUD_OPACITY_DESC = "Opacity of the Quick Toolbar, Your Assignments, and Current Boss Guide."
 L.MECHANICS_HUD_ENABLED = "Mechanic cards enabled"
 L.MECHANICS_HUD_ENABLED_DESC = "Enable or completely disable current-boss mechanic cards."
 L.MECHANICS_HUD_VISIBILITY = "Visibility"

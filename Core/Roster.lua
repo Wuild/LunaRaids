@@ -4,6 +4,34 @@ local Copy = Core.Copy
 local classNames = Core.classNames
 local simulatedNames = Core.simulatedNames
 local simulatedByRole = Core.simulatedByRole
+local ROLE_SORT_ORDER = {
+    TANK = 1,
+    HEALER = 2,
+    DAMAGER = 3,
+    NONE = 4,
+}
+
+function Raid:SortRosterByRole(roster)
+    roster = roster or self.roster
+    if not roster then return end
+    table.sort(roster, function(left, right)
+        local leftRole = left.role or left.reportedRole or "NONE"
+        local rightRole = right.role or right.reportedRole or "NONE"
+        local leftOrder = ROLE_SORT_ORDER[leftRole] or 5
+        local rightOrder = ROLE_SORT_ORDER[rightRole] or 5
+        if leftOrder ~= rightOrder then
+            return leftOrder < rightOrder
+        end
+        local leftName = tostring(left.name or ""):lower()
+        local rightName = tostring(right.name or ""):lower()
+        if leftName ~= rightName then
+            return leftName < rightName
+        end
+        return (tonumber(left.subgroup) or 1)
+            < (tonumber(right.subgroup) or 1)
+    end)
+end
+
 local function AddRosterPlayer(result, seen, unit)
     local unitExists = UnitExists and UnitExists(unit)
     local raidIndex = unit:match("^raid(%d+)$")
@@ -62,6 +90,20 @@ local function AddRosterPlayer(result, seen, unit)
     if not leader and unit == "player" then
         leader = IsRaidLeader and IsRaidLeader() or false
     end
+    local masterLooter = false
+    if GetLootMethod then
+        local lootMethod, partyMaster, raidMaster = GetLootMethod()
+        if lootMethod == "master" then
+            if raidIndex then
+                masterLooter = tonumber(raidMaster) == tonumber(raidIndex)
+            else
+                local partyIndex = unit == "player" and 0
+                    or tonumber(unit:match("^party(%d+)$"))
+                masterLooter = partyIndex ~= nil
+                    and tonumber(partyMaster) == partyIndex
+            end
+        end
+    end
     seen[normalizedName] = true
     local online
     if rosterOnline ~= nil then
@@ -81,6 +123,7 @@ local function AddRosterPlayer(result, seen, unit)
         guid = guid,
         leader = leader,
         assistant = assistant,
+        masterLooter = masterLooter,
         online = online,
     }
     local intel = Raid.GetCharacterIntel
@@ -218,6 +261,7 @@ function Raid:SetPlayerRole(player, role)
         if player.name then self.db.roleOverrides[player.name] = role end
         player.role = role
     end
+    self:SortRosterByRole()
     self:RefreshRoster()
 end
 
@@ -807,12 +851,7 @@ function Raid:UpdateRoster(suppressRosterRefresh)
             result[#result + 1] = Copy(player)
         end
     end
-    table.sort(result, function(left, right)
-        if left.subgroup ~= right.subgroup then
-            return left.subgroup < right.subgroup
-        end
-        return left.name < right.name
-    end)
+    self:SortRosterByRole(result)
     self.roster = result
     self:UpdateGearScores()
     if not suppressRosterRefresh and self.RefreshRoster then

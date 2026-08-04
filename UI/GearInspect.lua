@@ -1,5 +1,7 @@
 local _, Raid = ...
 local UI = Raid.UI
+local ICONS = UI.ICONS
+local THEME = UI.THEME
 local GearInspect = Raid:NewModule("GearInspect", "AceEvent-3.0")
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
@@ -270,16 +272,17 @@ end
 
 function Raid:CreateGearInspectView()
     if self.gearInspectView then return self.gearInspectView end
-    local view = CreateFrame("Frame", nil, self.assignmentPanel)
-    view:SetPoint("TOPLEFT", 6, -8)
-    view:SetPoint("BOTTOMRIGHT", -6, 0)
+    local view = UI.RegisterPage(
+        self, "GEAR", UI.MakePage(self.assignmentPanel))
+    view:SetPoint("TOPLEFT", 0, 0)
+    view:SetPoint("BOTTOMRIGHT", 0, 0)
     view.HeaderBackground =
         view:CreateTexture(nil, "BACKGROUND")
     view.HeaderBackground:SetTexture(WHITE)
     view.HeaderBackground:SetPoint("TOPLEFT", 0, 0)
     view.HeaderBackground:SetPoint("TOPRIGHT", 0, 0)
     view.HeaderBackground:SetHeight(30)
-    view.HeaderBackground:SetVertexColor(.035, .105, .145, .98)
+    view.HeaderBackground:SetVertexColor(unpack(THEME.header))
     view.Summary = Font(view, 9, "accent", "")
     view.Summary:SetPoint("TOPLEFT", 7, -10)
     view.Summary:SetWidth(130)
@@ -304,9 +307,8 @@ function Raid:CreateGearInspectView()
         header.Background:SetAllPoints()
         header.Background:SetTexture(WHITE)
         header.Background:SetVertexColor(
-            index % 2 == 0 and .045 or .055,
-            index % 2 == 0 and .14 or .16,
-            index % 2 == 0 and .19 or .215, 1)
+            unpack(index % 2 == 0
+                and THEME.tableHeaderAlt or THEME.tableHeader))
         header.Icon = header:CreateTexture(nil, "ARTWORK")
         local texture
         if GetInventorySlotInfo then
@@ -357,10 +359,8 @@ function Raid:CreateGearInspectRow(index, view)
     row.Bg = row:CreateTexture(nil, "BACKGROUND")
     row.Bg:SetAllPoints()
     row.Bg:SetTexture(WHITE)
-    row.Bg:SetVertexColor(
-        index % 2 == 0 and .025 or .035,
-        index % 2 == 0 and .045 or .06,
-        index % 2 == 0 and .06 or .075, .92)
+    row.Bg:SetVertexColor(unpack(
+        index % 2 == 0 and THEME.row or THEME.rowAlt))
     row.Name = Font(row, 10, "text", "")
     row.Name:SetPoint("LEFT", 7, 0)
     row.Name:SetWidth(132)
@@ -386,8 +386,8 @@ function Raid:CreateGearInspectRow(index, view)
             edgeSize = Pixel(1),
         })
         InstallPixelBorder(cell)
-        cell:SetBackdropColor(.008, .014, .019, .76)
-        cell:SetBackdropBorderColor(.12, .16, .19, .75)
+        cell:SetBackdropColor(unpack(THEME.content))
+        cell:SetBackdropBorderColor(unpack(THEME.borderSoft))
         cell.Icon = cell:CreateTexture(nil, "ARTWORK")
         cell.Icon:SetAllPoints()
         cell.Icon:SetTexture(
@@ -468,9 +468,9 @@ function Raid:RefreshGearInspectView(queueScan)
                 and ITEM_QUALITY_COLORS
                 and ITEM_QUALITY_COLORS[item.quality]
             cell:SetBackdropBorderColor(
-                qualityColor and qualityColor.r or .12,
-                qualityColor and qualityColor.g or .16,
-                qualityColor and qualityColor.b or .19,
+                qualityColor and qualityColor.r or THEME.borderSoft[1],
+                qualityColor and qualityColor.g or THEME.borderSoft[2],
+                qualityColor and qualityColor.b or THEME.borderSoft[3],
                 qualityColor and .95 or .55)
             cell.Level:SetTextColor(
                 qualityColor and qualityColor.r or MUTED[1],
@@ -495,12 +495,13 @@ end
 
 function Raid:CreateAboutView()
     if self.aboutView then return self.aboutView end
-    local view = CreateFrame("Frame", nil, self.assignmentPanel)
+    local view = UI.RegisterPage(
+        self, "ABOUT", UI.MakePage(self.assignmentPanel))
     view:SetPoint("TOPLEFT", 22, -24)
     view:SetPoint("BOTTOMRIGHT", -22, 24)
 
     view.Icon = view:CreateTexture(nil, "ARTWORK")
-    view.Icon:SetTexture("Interface\\Icons\\INV_BannerPVP_02")
+    view.Icon:SetTexture(ICONS.BRAND_LARGE)
     PixelSetSize(view.Icon, 64, 64)
     view.Icon:SetPoint("TOPLEFT")
 
@@ -531,7 +532,7 @@ function Raid:CreateAboutView()
     view.Divider:SetPoint("TOPLEFT", 0, -164)
     view.Divider:SetPoint("TOPRIGHT", 0, -164)
     SetPixelHeight(view.Divider, 1)
-    view.Divider:SetVertexColor(.12, .28, .38, .9)
+    view.Divider:SetVertexColor(unpack(THEME.dividerStrong))
 
     view.GitHubLabel = Font(view, 9, "muted", Raid.L.SOURCE_CODE)
     view.GitHubLabel:SetPoint("TOPLEFT", 0, -192)

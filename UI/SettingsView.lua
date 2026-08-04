@@ -1,6 +1,7 @@
 local _, Raid = ...
 local UI = Raid.UI
 local L = Raid.L
+local THEME = UI.THEME
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -35,61 +36,54 @@ local CreateScrollArea = UI.CreateScrollArea
 function Raid:CreateSettingsView()
     if self.settingsView then return self.settingsView end
     local view = CreateFrame("Frame", nil, self.frame)
-    view:SetPoint("TOPLEFT", 1, -46)
+    view:SetPoint("TOPLEFT", 1, -88)
     view:SetPoint("BOTTOMRIGHT", -1, 1)
     view:SetFrameLevel(self.frame:GetFrameLevel() + 3)
     view.Background = view:CreateTexture(nil, "BACKGROUND")
     view.Background:SetTexture(WHITE)
     view.Background:SetAllPoints()
-    view.Background:SetVertexColor(.012, .022, .031, 1)
+    view.Background:SetVertexColor(unpack(THEME.content))
     view.Title = Font(view, 15, "accent", L.SETTINGS_TITLE)
     view.Title:SetPoint("TOPLEFT", 20, -22)
     view.Title:Hide()
     view.Subtitle = Font(view, 10, "muted", L.SETTINGS_INTRO)
     view.Subtitle:SetPoint("TOPLEFT", 21, -50)
     view.Subtitle:Hide()
-    view.GeneralTab = Button(view, L.SETTINGS_GENERAL, 126, 28)
-    view.GeneralTab:SetPoint("TOPLEFT", 8, -8)
-    view.AdminTab = Button(view, L.SETTINGS_RAID_ADMIN, 126, 28)
-    view.AdminTab:SetPoint("LEFT", view.GeneralTab, "RIGHT", 8, 0)
-    view.CooldownTab = Button(view, L.SETTINGS_COOLDOWNS, 126, 28)
-    view.CooldownTab:SetPoint("LEFT", view.AdminTab, "RIGHT", 8, 0)
-    view.GeneralTab:SetScript("OnClick", function()
-        Raid.settingsTab = "GENERAL"
+    local function SelectSettingsTab(tab)
+        Raid.settingsTab = tab
         if Raid.settingsView and Raid.settingsView.Scroll then
             Raid.settingsView.Scroll:SetVerticalScroll(0)
         end
         Raid:RedrawSettingsView()
+    end
+    view.GeneralTab = Button(view, L.SETTINGS_INTERFACE, 132, 28)
+    view.GeneralTab:SetPoint("TOPLEFT", 8, -8)
+    view.AutomationTab = Button(view, L.AUTOMATION, 132, 28)
+    view.AutomationTab:SetPoint("LEFT", view.GeneralTab, "RIGHT", 5, 0)
+    view.HUDTab = Button(view, L.SETTINGS_HUDS, 132, 28)
+    view.HUDTab:SetPoint("LEFT", view.AutomationTab, "RIGHT", 5, 0)
+    view.AdminTab = Button(view, L.SETTINGS_RAID_ADMIN, 132, 28)
+    view.AdminTab:SetPoint("LEFT", view.HUDTab, "RIGHT", 5, 0)
+    view.CooldownTab = Button(view, L.SETTINGS_COOLDOWNS, 132, 28)
+    view.CooldownTab:SetPoint("LEFT", view.AdminTab, "RIGHT", 5, 0)
+    view.GeneralTab:SetScript("OnClick", function()
+        SelectSettingsTab("INTERFACE")
+    end)
+    view.AutomationTab:SetScript("OnClick", function()
+        SelectSettingsTab("AUTOMATION")
+    end)
+    view.HUDTab:SetScript("OnClick", function()
+        SelectSettingsTab("HUDS")
     end)
     view.AdminTab:SetScript("OnClick", function()
-        Raid.settingsTab = "ADMIN"
-        if Raid.settingsView and Raid.settingsView.Scroll then
-            Raid.settingsView.Scroll:SetVerticalScroll(0)
-        end
-        Raid:RedrawSettingsView()
+        SelectSettingsTab("ADMIN")
     end)
     view.CooldownTab:SetScript("OnClick", function()
-        Raid.settingsTab = "COOLDOWNS"
-        if Raid.settingsView and Raid.settingsView.Scroll then
-            Raid.settingsView.Scroll:SetVerticalScroll(0)
-        end
-        Raid:RedrawSettingsView()
+        SelectSettingsTab("COOLDOWNS")
     end)
-    view.Footer = CreateFrame("Frame", nil, view)
+    view.Footer = UI.MakeFooter(view, 43)
     view.Footer:SetPoint("BOTTOMLEFT", 1, 1)
     view.Footer:SetPoint("BOTTOMRIGHT", -1, 1)
-    view.Footer:SetHeight(43)
-    view.Footer.Background =
-        view.Footer:CreateTexture(nil, "BACKGROUND")
-    view.Footer.Background:SetTexture(WHITE)
-    view.Footer.Background:SetAllPoints()
-    view.Footer.Background:SetVertexColor(.018, .045, .062, 1)
-    view.Footer.TopLine = view.Footer:CreateTexture(nil, "ARTWORK")
-    view.Footer.TopLine:SetTexture(WHITE)
-    view.Footer.TopLine:SetPoint("TOPLEFT")
-    view.Footer.TopLine:SetPoint("TOPRIGHT")
-    SetPixelHeight(view.Footer.TopLine, 1)
-    view.Footer.TopLine:SetVertexColor(.12, .30, .40, 1)
     view.ResetAllSettings =
         Button(view.Footer, L.RESET_ALL_SETTINGS, 168, 28)
     view.ResetAllSettings:SetPoint("RIGHT", -12, 0)
@@ -247,8 +241,8 @@ function Raid:CreateSettingsView()
     AddButtonTooltip(
         view.QuickBar, L.QUICK_ACTION_BAR, L.QUICK_ACTION_BAR_TOOLTIP)
     local automation = Panel(view.Content)
-    automation:SetPoint("TOPLEFT", general, "BOTTOMLEFT", 0, -10)
-    automation:SetPoint("TOPRIGHT", general, "BOTTOMRIGHT", 0, -10)
+    automation:SetPoint("TOPLEFT", 12, -8)
+    automation:SetPoint("TOPRIGHT", -12, -8)
     automation:SetHeight(416)
     SectionHeader(
         automation, L.AUTOMATION, L.AUTOMATION_DESC)
@@ -668,8 +662,8 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     local mechanicsHUD = Panel(view.Content)
-    mechanicsHUD:SetPoint("TOPLEFT", automation, "BOTTOMLEFT", 0, -10)
-    mechanicsHUD:SetPoint("TOPRIGHT", automation, "BOTTOMRIGHT", 0, -10)
+    mechanicsHUD:SetPoint("TOPLEFT", 12, -8)
+    mechanicsHUD:SetPoint("TOPRIGHT", -12, -8)
     mechanicsHUD:SetHeight(344)
     SectionHeader(mechanicsHUD, L.MECHANICS_HUD_SECTION,
         L.MECHANICS_HUD_SECTION_DESC)
@@ -752,8 +746,8 @@ function Raid:CreateSettingsView()
             Raid.mechanicsHUDFrame:SetPoint("CENTER", UIParent, "CENTER", 330, 120)
         end
     end)
-    SettingLabel(mechanicsHUD, L.MECHANICS_HUD_OPACITY,
-        L.MECHANICS_HUD_OPACITY_DESC, -278)
+    SettingLabel(mechanicsHUD, L.HUD_OPACITY,
+        L.HUD_OPACITY_DESC, -278)
     view.MechanicsOpacity = Button(mechanicsHUD, "", 174, 27)
     AddDropdownArrow(view.MechanicsOpacity)
     view.MechanicsOpacity:SetPoint("TOPRIGHT", mechanicsHUD, -14, -282)
@@ -761,9 +755,9 @@ function Raid:CreateSettingsView()
         ShowSelectionMenu(view.MechanicsOpacity, {
             { .6, "60%" }, { .75, "75%" },
             { .9, "90%" }, { 1, "100%" },
-        }, Raid.db.mechanicsHUD.opacity or .9, function(value)
-            Raid.db.mechanicsHUD.opacity = value
-            Raid:RefreshMechanicsHUD()
+        }, Raid.db.hudOpacity or .92, function(value)
+            Raid.db.hudOpacity = value
+            Raid:ApplyHUDOpacity()
             Raid:RefreshSettingsView()
         end)
     end)
@@ -1062,33 +1056,61 @@ end
 function Raid:RefreshSettingsView()
     local view = self.settingsView
     if not view or not view:IsShown() then return end
+    if not self.settingsTab or self.settingsTab == "GENERAL" then
+        self.settingsTab = "INTERFACE"
+    end
+    local interfaceTab = self.settingsTab == "INTERFACE"
+    local automationTab = self.settingsTab == "AUTOMATION"
+    local hudTab = self.settingsTab == "HUDS"
     local adminTab = self.settingsTab == "ADMIN"
     local cooldownTab = self.settingsTab == "COOLDOWNS"
+    if not interfaceTab and not automationTab and not hudTab
+        and not adminTab and not cooldownTab then
+        self.settingsTab = "INTERFACE"
+        interfaceTab = true
+    end
     view.Subtitle:SetText(
         adminTab
             and L.SETTINGS_SUBTITLE_ADMIN
             or cooldownTab
                 and L.SETTINGS_SUBTITLE_COOLDOWNS
+            or automationTab
+                and L.AUTOMATION_DESC
+            or hudTab
+                and L.MECHANICS_HUD_SECTION_DESC
             or L.SETTINGS_SUBTITLE_GENERAL)
-    view.GeneralPanel:SetShown(not adminTab and not cooldownTab)
-    view.AutomationPanel:SetShown(not adminTab and not cooldownTab)
-    view.MechanicsHUDPanel:SetShown(not adminTab and not cooldownTab)
+    view.GeneralPanel:SetShown(interfaceTab)
+    view.AutomationPanel:SetShown(automationTab)
+    view.MechanicsHUDPanel:SetShown(hudTab)
     view.AdminPanel:SetShown(adminTab)
     view.CooldownPanel:SetShown(cooldownTab)
     view.ResetWindow:Hide()
     view.Back:Hide()
     view.Content:SetWidth(math.max(1, view:GetWidth() - 28))
     view.Content:SetHeight(
-        adminTab and 496 or cooldownTab and 820 or 1060)
+        cooldownTab and 820
+        or adminTab and 496
+        or automationTab and 432
+        or hudTab and 360
+        or 286)
     if view.Scroll.UpdateScrollbar then
         view.Scroll:UpdateScrollbar()
     end
-    StyleButton(
-        view.GeneralTab,
-        not adminTab and not cooldownTab and "primary" or nil)
-    StyleButton(view.AdminTab, adminTab and "primary" or nil)
-    StyleButton(
-        view.CooldownTab, cooldownTab and "primary" or nil)
+    local function StyleSettingsTab(button, active)
+        StyleButton(button, active and "primary" or nil)
+        button.borderless = not active
+        if not active then
+            button.baseColor = { unpack(THEME.content) }
+            button.baseBorder = { 0, 0, 0, 0 }
+            button:SetBackdropColor(unpack(button.baseColor))
+            button:SetBackdropBorderColor(unpack(button.baseBorder))
+        end
+    end
+    StyleSettingsTab(view.GeneralTab, interfaceTab)
+    StyleSettingsTab(view.AutomationTab, automationTab)
+    StyleSettingsTab(view.HUDTab, hudTab)
+    StyleSettingsTab(view.AdminTab, adminTab)
+    StyleSettingsTab(view.CooldownTab, cooldownTab)
     local mechanicsSettings = self.db.mechanicsHUD
     view.MechanicsEnabled.Text:SetText(
         mechanicsSettings.enabled and L.MECHANICS_ON or L.MECHANICS_OFF)
@@ -1115,7 +1137,7 @@ function Raid:RefreshSettingsView()
     view.MechanicsTitle.Text:SetText(
         mechanicsSettings.showTitle == false and L.TITLE_OFF or L.TITLE_ON)
     view.MechanicsOpacity.Text:SetText(("%d%%"):format(
-        math.floor((mechanicsSettings.opacity or .92) * 100 + .5)))
+        math.floor(self:GetHUDOpacity() * 100 + .5)))
     local cooldownSettings = self:GetRaidCooldownSettings()
     local cooldownSection =
         self.cooldownSettingsSection or "APPEARANCE"
@@ -1412,7 +1434,9 @@ function Raid:ShowSettingsView()
     self.frame.Title:SetText(L.SETTINGS)
     self.frame.Subtitle:SetText(
         "INTERFACE, COMMUNICATION, AND RAID ADMINISTRATION")
-    self.settingsTab = self.settingsTab or "GENERAL"
+    if not self.settingsTab or self.settingsTab == "GENERAL" then
+        self.settingsTab = "INTERFACE"
+    end
     view:Show()
     self:RefreshWorkspaceNavigation()
     self:RefreshFooterLayout()
@@ -1437,7 +1461,7 @@ function Raid:CreateNewRaidWizard()
     wizard:SetPoint("TOPLEFT", 1, -1)
     wizard:SetPoint("BOTTOMRIGHT", -1, 1)
     wizard:SetFrameLevel(self.assignmentPanel:GetFrameLevel() + 20)
-    wizard:SetBackdropColor(.018, .030, .043, 1)
+    wizard:SetBackdropColor(unpack(THEME.content))
     wizard:EnableMouse(true)
     wizard.Title = Font(wizard, 15, "accent", L.START_A_RAID)
     wizard.Title:SetPoint("TOPLEFT", 20, -22)
@@ -1563,9 +1587,7 @@ function Raid:RefreshNewRaidWizard()
                     logoHeight = 34,
                     action = function()
                         self.db.newRaidExpansion = raidExpansion
-                        if self:BeginRaid(raidKey) then
-                            self:EnterBossUI("ASSIGNMENTS")
-                        end
+                        self:BeginRaid(raidKey)
                     end,
                 }
             end
@@ -1630,9 +1652,7 @@ function Raid:RefreshNewRaidWizard()
                 logoWidth = 34,
                 logoHeight = 34,
                 action = function()
-                    if self:LoadSavedRaid(savedID) then
-                        self:EnterBossUI()
-                    end
+                    self:LoadSavedRaid(savedID)
                 end,
                 deleteID = savedID,
                 deleteName = data.name,

@@ -73,6 +73,9 @@ local raid = Raid:RegisterRaid({
                 Mechanic("The same five assigned players can click the cubes for every Blast Nova in the post-nerf encounter."),
                 Mechanic("At 30%, stabilize after the ceiling collapse, then continue clicks and avoid fire."),
             },
+            -- Five Channelers share one NPC name. Automatically applying one
+            -- logical marker would repeatedly move Skull between them.
+            autoMarkerTargets = { true, false },
         }),
     },
 })

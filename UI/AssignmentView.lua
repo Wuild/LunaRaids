@@ -1,6 +1,7 @@
 local _, Raid = ...
 local UI = Raid.UI
 local L = Raid.L
+local THEME = UI.THEME
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -31,8 +32,8 @@ local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
 local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
 local CreateScrollArea = UI.CreateScrollArea
-local ROW_SEPARATOR = { .085, .105, .12, 1 }
-local FILLED_ROW_SEPARATOR = { .09, .18, .16, 1 }
+local ROW_SEPARATOR = THEME.borderSoft
+local FILLED_ROW_SEPARATOR = THEME.divider
 local SetMarkerTexture = UI.SetMarkerTexture
 
 function Raid:RefreshAssignments()
@@ -51,6 +52,9 @@ function Raid:RefreshAssignments()
         or self.workspaceMode == "GROUPS" and "GROUPS"
         or self.workspaceMode == "ABOUT" and "ABOUT"
         or self.activeBossTab or "ASSIGNMENTS"
+    -- Standalone pages are mutually exclusive. Assignment and group content
+    -- continue through the shared scroll canvas underneath them.
+    UI.ShowPage(self, activeTab)
     if self.bossSettingsButton then
         self.bossSettingsButton:SetShown(
             activeTab ~= "GROUPS"
@@ -285,7 +289,7 @@ function Raid:RefreshAssignments()
         header:ClearAllPoints()
         header:SetPoint("TOPLEFT", 4, -y)
         header:SetText(group.name:upper())
-        header:SetTextColor(.72, .78, .82, 1)
+        header:SetTextColor(unpack(THEME.muted))
         header:Show()
         y = y + 29
         for slotIndex, assignmentSlot in ipairs(
@@ -327,13 +331,13 @@ function Raid:RefreshAssignments()
                 filledSlots = filledSlots + 1
                 SetClassText(slot.Player, assignment.name, assignment.class)
                 slot.FilledBar:Show()
-                slot.baseColor = { .035, .105, .095, .98 }
+                slot.baseColor = { unpack(THEME.surfaceSelected) }
                 slot.baseBorder = { unpack(FILLED_ROW_SEPARATOR) }
             else
                 slot.Player:SetText(L.DROP_OR_CLICK_SUGGEST)
                 slot.Player:SetTextColor(unpack(MUTED))
                 slot.FilledBar:Hide()
-                slot.baseColor = { .038, .055, .075, .96 }
+                slot.baseColor = { unpack(THEME.surfaceAlt) }
                 slot.baseBorder = { unpack(ROW_SEPARATOR) }
             end
             slot:SetBackdropColor(unpack(slot.baseColor))
@@ -357,7 +361,7 @@ function Raid:RefreshAssignments()
         healingHeader:ClearAllPoints()
         healingHeader:SetPoint("TOPLEFT", 4, -y)
         healingHeader:SetText(L.HEALER_ASSIGNMENTS)
-        healingHeader:SetTextColor(.72, .78, .82, 1)
+        healingHeader:SetTextColor(unpack(THEME.muted))
         healingHeader:Show()
         y = y + 29
         local healingTargets = self:GetHealingTargets()
@@ -404,13 +408,13 @@ function Raid:RefreshAssignments()
                 SetClassText(
                     slot.Player, assignment.name, assignment.class)
                 slot.FilledBar:Show()
-                slot.baseColor = { .035, .105, .095, .98 }
+                slot.baseColor = { unpack(THEME.surfaceSelected) }
                 slot.baseBorder = { unpack(FILLED_ROW_SEPARATOR) }
             else
                 slot.Player:SetText(L.DROP_OR_CLICK_SUGGEST)
                 slot.Player:SetTextColor(unpack(MUTED))
                 slot.FilledBar:Hide()
-                slot.baseColor = { .038, .055, .075, .96 }
+                slot.baseColor = { unpack(THEME.surfaceAlt) }
                 slot.baseBorder = { unpack(ROW_SEPARATOR) }
             end
             slot:SetBackdropColor(unpack(slot.baseColor))
@@ -493,7 +497,8 @@ function Raid:CreateBossRailButton(index)
     button.SelectionGlow:SetTexture(WHITE)
     button.SelectionGlow:SetPoint("TOPLEFT", 2, -2)
     button.SelectionGlow:SetPoint("BOTTOMRIGHT", -2, 2)
-    button.SelectionGlow:SetVertexColor(.30, .34, .38, .10)
+    button.SelectionGlow:SetVertexColor(
+        THEME.accent[1], THEME.accent[2], THEME.accent[3], .10)
     button.SelectionGlow:Hide()
     button.CurrentDot = button:CreateTexture(nil, "OVERLAY")
     button.CurrentDot:SetTexture(WHITE)
@@ -506,7 +511,7 @@ function Raid:CreateBossRailButton(index)
         Raid:SetEncounter(self.encounterIndex)
     end)
     button:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(.07, .08, .09, .98)
+        self:SetBackdropColor(unpack(THEME.surfaceHover))
         self:SetBackdropBorderColor(
             self.selected and .18 or .22,
             self.selected and .70 or .48,
@@ -630,14 +635,14 @@ function Raid:RefreshBossRail()
         button.Icon:SetDesaturated(not button.selected)
         button.Icon:SetAlpha(button.selected and 1 or .62)
         if button.selected then
-            button.baseColor = { .060, .070, .080, .98 }
+            button.baseColor = { unpack(THEME.surfaceSelected) }
             button.baseBorder = { unpack(ACCENT) }
             button:SetBackdropColor(unpack(button.baseColor))
             button:SetBackdropBorderColor(unpack(button.baseBorder))
             button.ActiveBar:Hide()
             button.SelectionGlow:Show()
         else
-            button.baseColor = { .035, .043, .052, .98 }
+            button.baseColor = { unpack(THEME.surfaceAlt) }
             button.baseBorder = { unpack(BORDER) }
             button:SetBackdropColor(unpack(button.baseColor))
             button:SetBackdropBorderColor(unpack(button.baseBorder))

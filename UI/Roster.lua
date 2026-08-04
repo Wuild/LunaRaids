@@ -1,5 +1,7 @@
 local _, Raid = ...
 local UI = Raid.UI
+local ICONS = UI.ICONS
+local THEME = UI.THEME
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -437,7 +439,7 @@ function Raid:CreateDragGhost()
         edgeSize = Pixel(1),
     })
     InstallPixelBorder(ghost)
-    ghost:SetBackdropColor(.07, .07, .07, .94)
+    ghost:SetBackdropColor(unpack(THEME.surfaceRaised))
     ghost:SetBackdropBorderColor(unpack(ACCENT))
     ghost.Role = ghost:CreateTexture(nil, "ARTWORK")
     ghost.Role:SetTexture(ROLE_TEXTURE)
@@ -451,7 +453,8 @@ function Raid:CreateDragGhost()
     ghost.Glow:SetTexture(WHITE)
     ghost.Glow:SetPoint("TOPLEFT", -3, 3)
     ghost.Glow:SetPoint("BOTTOMRIGHT", 3, -3)
-    ghost.Glow:SetVertexColor(.20, .72, 1, .13)
+    ghost.Glow:SetVertexColor(
+        THEME.accent[1], THEME.accent[2], THEME.accent[3], .13)
     ghost.Pulse = ghost.Glow:CreateAnimationGroup()
     ghost.Pulse:SetLooping("BOUNCE")
     local pulse = ghost.Pulse:CreateAnimation("Alpha")
@@ -695,9 +698,13 @@ function Raid:CreatePersonalAssignmentFrame()
     local savedWidth = math.max(
         320, math.min(720, tonumber(saved.width) or 360))
     PixelSetSize(frame, savedWidth, 76)
+    local savedPoint = saved.point or "CENTER"
+    local savedX, savedY = saved.x or 300, saved.y or 40
+    local migrateResizeAnchor = savedPoint == "TOPLEFT" and savedY > 0
     frame:SetPoint(
-        saved.point or "CENTER", UIParent,
-        saved.point or "CENTER", saved.x or 300, saved.y or 40)
+        savedPoint, UIParent,
+        migrateResizeAnchor and "BOTTOMLEFT" or savedPoint,
+        savedX, savedY)
     frame:SetFrameStrata("MEDIUM")
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
@@ -709,17 +716,45 @@ function Raid:CreatePersonalAssignmentFrame()
         if frame.SetMaxResize then frame:SetMaxResize(720, 600) end
     end
     frame:EnableMouse(true)
+    local function SaveAssignmentCenterPosition()
+        local centerX, centerY = frame:GetCenter()
+        local parentX, parentY = UIParent:GetCenter()
+        if not centerX or not centerY or not parentX or not parentY then
+            return
+        end
+        local x, y = centerX - parentX, centerY - parentY
+        frame:ClearAllPoints()
+        frame:SetPoint("CENTER", UIParent, "CENTER", x, y)
+        saved.point = "CENTER"
+        saved.x, saved.y = x, y
+    end
+    if migrateResizeAnchor then SaveAssignmentCenterPosition() end
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        local point, _, _, x, y = self:GetPoint(1)
-        saved.point, saved.x, saved.y = point, x, y
+        SaveAssignmentCenterPosition()
     end)
-    frame.Title = Font(frame, 11, "accent", self.L.YOUR_ASSIGNMENTS)
-    frame.Title:SetPoint("TOPLEFT", 10, -9)
-    frame.Encounter = Font(frame, 9, "muted", "")
-    frame.Encounter:SetPoint("TOPRIGHT", -10, -10)
+    frame.Header = frame:CreateTexture(nil, "ARTWORK")
+    frame.Header:SetTexture(WHITE)
+    frame.Header:SetPoint("TOPLEFT", 1, -1)
+    frame.Header:SetPoint("TOPRIGHT", -1, -1)
+    frame.Header:SetHeight(29)
+    frame.Header:SetVertexColor(unpack(THEME.header))
+    frame.HeaderLine = frame:CreateTexture(nil, "OVERLAY")
+    frame.HeaderLine:SetTexture(WHITE)
+    frame.HeaderLine:SetPoint("TOPLEFT", 1, -29)
+    frame.HeaderLine:SetPoint("TOPRIGHT", -1, -29)
+    SetPixelHeight(frame.HeaderLine, 1)
+    frame.HeaderLine:SetVertexColor(unpack(THEME.dividerStrong))
+    frame.HeaderIcon = frame:CreateTexture(nil, "OVERLAY")
+    frame.HeaderIcon:SetTexture(ICONS.ASSIGNMENTS)
+    PixelSetSize(frame.HeaderIcon, 18, 18)
+    frame.HeaderIcon:SetPoint("TOPLEFT", 8, -6)
+    frame.Title = Font(frame, 12, "accent", self.L.YOUR_ASSIGNMENTS)
+    frame.Title:SetPoint("LEFT", frame.HeaderIcon, "RIGHT", 7, 0)
+    frame.Encounter = Font(frame, 10, "muted", "")
+    frame.Encounter:SetPoint("TOPRIGHT", -10, -9)
     frame.ResizeGrip = CreateFrame("Button", nil, frame)
     PixelSetSize(frame.ResizeGrip, 16, 16)
     frame.ResizeGrip:SetPoint("BOTTOMRIGHT", -1, 1)
@@ -730,18 +765,34 @@ function Raid:CreatePersonalAssignmentFrame()
         "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
     frame.ResizeGrip:SetPushedTexture(
         "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
-    frame.ResizeGrip:SetScript("OnMouseDown", function(_, button)
+    frame.ResizeGrip:SetScript("OnMouseDown", function(grip, button)
         if button == "LeftButton" then
-            frame:StartSizing("RIGHT")
+            local cursorX = GetCursorPosition()
+            local scale = frame:GetEffectiveScale()
+            grip.resizeStartX = cursorX / scale
+            grip.resizeStartWidth = frame:GetWidth()
+            local left, top = frame:GetLeft(), frame:GetTop()
+            frame:ClearAllPoints()
+            frame:SetPoint(
+                "TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+            grip:SetScript("OnUpdate", function(self)
+                local currentX = GetCursorPosition()
+                currentX = currentX / scale
+                frame:SetWidth(math.max(320, math.min(720,
+                    self.resizeStartWidth
+                        + currentX - self.resizeStartX)))
+            end)
         end
     end)
-    frame.ResizeGrip:SetScript("OnMouseUp", function()
-        frame:StopMovingOrSizing()
+    frame.ResizeGrip:SetScript("OnMouseUp", function(grip)
+        grip:SetScript("OnUpdate", nil)
+        grip.resizeStartX, grip.resizeStartWidth = nil, nil
         local width = math.max(
             320, math.min(720, frame:GetWidth() or 360))
         width = PixelForRegion(frame, width)
         frame:SetWidth(width)
         saved.width = math.floor(width + .5)
+        SaveAssignmentCenterPosition()
     end)
     AddButtonTooltip(
         frame.ResizeGrip, "Resize Assignments",
@@ -794,6 +845,10 @@ local function EnsurePersonalAssignmentRow(frame, index)
     row.Meta:SetPoint("BOTTOMLEFT", 9, 4)
     row.Meta:SetPoint("BOTTOMRIGHT", -9, 4)
     row.Meta:SetJustifyH("LEFT")
+    row.baseColor = { unpack(THEME.surfaceAlt) }
+    row.baseBorder = { unpack(THEME.borderSoft) }
+    row:SetBackdropColor(unpack(row.baseColor))
+    row:SetBackdropBorderColor(unpack(row.baseBorder))
     row:EnableMouse(false)
     frame.Rows[index] = row
     return row
@@ -814,6 +869,7 @@ function Raid:RefreshPersonalAssignmentPresentationInCombat()
         frame:Hide()
         return
     end
+    frame:SetAlpha(self:GetHUDOpacity())
     for index, entry in ipairs(entries) do
         local row = EnsurePersonalAssignmentRow(frame, index)
         row:ClearAllPoints()
@@ -861,7 +917,7 @@ function Raid:RefreshPersonalAssignments()
     end
     self.personalAssignmentsRefreshPending = nil
     local frame = self:CreatePersonalAssignmentFrame()
-    frame:SetAlpha(1)
+    frame:SetAlpha(self:GetHUDOpacity())
     frame:EnableMouse(true)
     local raid = self:GetRaid()
     local encounterIndex = self:GetCurrentBossIndex(raid)
@@ -904,7 +960,9 @@ function Raid:HandleCombatStateChanged()
 end
 
 function Raid:CreateRosterButton(index)
-    local button = Button(self.rosterContent, "", ROSTER_ROW_WIDTH, 34)
+    local button = Button(
+        self.rosterContent, "",
+        math.max(1, self.rosterContent:GetWidth() or ROSTER_ROW_WIDTH), 34)
     UseRowSeparator(button)
     local rowHeight = button:GetHeight()
     self.rosterRowHeight = rowHeight
@@ -1040,7 +1098,8 @@ function Raid:CreateRosterButton(index)
                 .65, .65, .65, .55, .55, .55)
         end
         if self.player.leader then
-            GameTooltip:AddLine(Raid.L.RAID_LEADER, .20, .72, 1)
+            GameTooltip:AddLine(
+                Raid.L.RAID_LEADER, ACCENT[1], ACCENT[2], ACCENT[3])
         end
         if self.player.simulated then
             GameTooltip:AddLine(Raid.L.SIMULATED_PLAYER, .75, .60, .25)
@@ -1059,6 +1118,7 @@ end
 
 function Raid:RefreshRoster()
     if not self.rosterContent then return end
+    self:SortRosterByRole()
     self.rosterButtons = self.rosterButtons or {}
     for index, player in ipairs(self.roster) do
         local button = self.rosterButtons[index]
@@ -1067,6 +1127,8 @@ function Raid:RefreshRoster()
             self.rosterButtons[index] = button
         end
         button.player = player
+        button:SetWidth(math.max(
+            1, self.rosterContent:GetWidth() or ROSTER_ROW_WIDTH))
         local intel = self:GetCharacterIntel(player)
         if intel then
             player.spec = intel.spec
@@ -1123,15 +1185,15 @@ function Raid:RefreshRoster()
         if self.selectedPlayer
             and self.selectedPlayer.name == player.name
         then
-            button.baseColor = { .055, .16, .23, .98 }
+            button.baseColor = { unpack(THEME.surfaceSelected) }
             button.baseBorder = { unpack(ACCENT) }
             button:SetBackdropColor(unpack(button.baseColor))
             button:SetBackdropBorderColor(unpack(ACCENT))
             button.SelectedBar:Show()
         else
             button.baseColor = index % 2 == 0
-                and { .045, .065, .085, .96 }
-                or { .035, .052, .07, .96 }
+                and { unpack(THEME.surfaceAlt) }
+                or { unpack(THEME.surface) }
             button.baseBorder = { unpack(BORDER) }
             button:SetBackdropColor(unpack(button.baseColor))
             button:SetBackdropBorderColor(unpack(button.baseBorder))

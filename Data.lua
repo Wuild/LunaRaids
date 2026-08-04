@@ -3,6 +3,10 @@ local ADDON, Raid = ...
 Raid = LibStub("AceAddon-3.0"):NewAddon(
     Raid, ADDON, "AceConsole-3.0", "AceEvent-3.0")
 
+-- One structural colour for the complete addon UI.
+-- Blue: { .20, .62, .82 }  Gold alternative: { .82, .64, .22 }
+Raid.UIThemeAccent = { .20, .62, .82 }
+
 Raid.Role = {
     TANK = "TANK",
     HEALER = "HEALER",
@@ -87,6 +91,7 @@ local function Encounter(name, groups, targets, defaultMarkers, details)
         icon = details.icon,
         spellIcon = details.spellIcon,
         encounterNames = details.encounterNames,
+        autoMarkerTargets = details.autoMarkerTargets,
     }
 end
 

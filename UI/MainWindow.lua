@@ -1,6 +1,8 @@
 local _, Raid = ...
 local UI = Raid.UI
+local ICONS = UI.ICONS
 local L = Raid.L
+local THEME = UI.THEME
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -31,6 +33,32 @@ local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
 local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
 local CreateScrollArea = UI.CreateScrollArea
+local TOP_NAV_HEIGHT = 42
+local CONTENT_TOP = 46 + TOP_NAV_HEIGHT
+
+function Raid:GetRosterPanelWidth(width)
+    local frameWidth = self.frame and self.frame:GetWidth() or FRAME_WIDTH
+    local maximum = math.max(280, math.min(460, frameWidth - 540))
+    return PixelForRegion(
+        self.rosterPanel or self.frame,
+        math.max(240, math.min(maximum,
+            tonumber(width or self.db.window.rosterWidth) or 300)))
+end
+
+function Raid:ApplyRosterPanelWidth(width)
+    if not self.rosterPanel then return end
+    width = self:GetRosterPanelWidth(width)
+    self.rosterPanel:SetWidth(width)
+    if self.rosterContent then
+        local contentWidth = math.max(1, width - 12)
+        self.rosterContent:SetWidth(contentWidth)
+        for _, button in ipairs(self.rosterButtons or {}) do
+            button:SetWidth(contentWidth)
+        end
+    end
+    return width
+end
+
 function Raid:EnterBossUI(initialWorkspace)
     self:CreateUI()
     if self.newRaidWizard then self.newRaidWizard:Hide() end
@@ -79,7 +107,7 @@ function Raid:RefreshRaidIdentityHeader()
         raid and raid.name:upper() or self.L.NO_RAID_SELECTED)
     self.assignmentRaidIcon:SetTexture(
         raid and raid.icon
-            or "Interface\\Icons\\INV_BannerPVP_02")
+            or ICONS.BRAND)
 end
 
 function Raid:RedrawWorkspace()
@@ -180,6 +208,41 @@ function Raid:ApplyPixelSnapping()
     SnapTree(self.frame, {})
 end
 
+function Raid:IsMainWindowCompletelyOffScreen()
+    local frame = self.frame
+    if not frame or not UIParent then return false end
+    local left, right = frame:GetLeft(), frame:GetRight()
+    local top, bottom = frame:GetTop(), frame:GetBottom()
+    local parentLeft, parentRight = UIParent:GetLeft(), UIParent:GetRight()
+    local parentTop, parentBottom = UIParent:GetTop(), UIParent:GetBottom()
+    if not left or not right or not top or not bottom
+        or not parentLeft or not parentRight
+        or not parentTop or not parentBottom
+    then
+        return false
+    end
+    return right <= parentLeft
+        or left >= parentRight
+        or top <= parentBottom
+        or bottom >= parentTop
+end
+
+function Raid:ResetWindowPosition()
+    if not self.frame or not UIParent then return end
+    local usableWidth = math.max(320, UIParent:GetWidth() - 16)
+    local usableHeight = math.max(320, UIParent:GetHeight() - 16)
+    local width = math.min(FRAME_WIDTH, usableWidth)
+    local height = math.min(FRAME_HEIGHT, usableHeight)
+    self.frame:ClearAllPoints()
+    self.frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    self.frame:SetSize(width, height)
+    self.db.window.point = "CENTER"
+    self.db.window.x, self.db.window.y = 0, 0
+    self.db.window.width, self.db.window.height = width, height
+    self:UpdateWindowLayout()
+    self:ApplyPixelSnapping()
+end
+
 function Raid:UI_SCALE_CHANGED()
     self:ApplyInterfaceScale()
     if self.frame and self.frame:IsShown() then
@@ -205,6 +268,22 @@ function Raid:GetHUDScale()
         * self:GetAutomaticInterfaceScale()
 end
 
+function Raid:GetHUDOpacity()
+    return math.max(.35, math.min(1,
+        tonumber(self.db.hudOpacity) or .92))
+end
+
+function Raid:ApplyHUDOpacity()
+    self.db.hudOpacity = self:GetHUDOpacity()
+    if self.quickActionBar then
+        self.quickActionBar:SetAlpha(self.db.hudOpacity)
+    end
+    if self.personalAssignmentFrame then
+        self.personalAssignmentFrame:SetAlpha(self.db.hudOpacity)
+    end
+    if self.RefreshMechanicsHUD then self:RefreshMechanicsHUD() end
+end
+
 function Raid:ApplyInterfaceScale()
     local hudScale = math.max(
         .25, math.min(1.25, tonumber(self.db.hudScale) or 1))
@@ -228,6 +307,7 @@ end
 
 function Raid:UpdateWindowLayout()
     if not self.frame or not self.assignmentPanel then return end
+    self:ApplyRosterPanelWidth()
     local rowWidth = PixelForRegion(
         self.assignmentPanel,
         math.max(520, self.assignmentPanel:GetWidth() - 12))
@@ -287,6 +367,20 @@ function Raid:UpdateWindowLayout()
     then
         self.assignmentScroll:UpdateScrollbar()
     end
+    local workspaceCount = 0
+    for _ in pairs(self.workspaceButtons or {}) do
+        workspaceCount = workspaceCount + 1
+    end
+    if workspaceCount > 0 and self.workspaceRail then
+        local available = math.max(
+            1, (self.workspaceRail:GetWidth() or 1) - 10
+                - ((workspaceCount - 1) * 5))
+        local workspaceWidth = PixelForRegion(
+            self.workspaceRail, available / workspaceCount)
+        for _, button in pairs(self.workspaceButtons) do
+            button:SetWidth(workspaceWidth)
+        end
+    end
     if self.workspaceMode == "ASSIGNMENTS"
         and self.db.raidLocked
         and not self.raidPickerActive
@@ -314,10 +408,13 @@ function Raid:CreateUI()
     frame:SetSize(
         math.max(860, self.db.window.width or FRAME_WIDTH),
         math.max(520, self.db.window.height or FRAME_HEIGHT))
+    local savedPoint = self.db.window.point or "CENTER"
+    local savedX, savedY = self.db.window.x or 0, self.db.window.y or 0
+    local migrateResizeAnchor = savedPoint == "TOPLEFT" and savedY > 0
     frame:SetPoint(
-        self.db.window.point or "CENTER", UIParent,
-        self.db.window.point or "CENTER",
-        self.db.window.x or 0, self.db.window.y or 0)
+        savedPoint, UIParent,
+        migrateResizeAnchor and "BOTTOMLEFT" or savedPoint,
+        savedX, savedY)
     frame:SetScale(1)
     frame:SetFrameStrata("HIGH")
     frame:SetFrameLevel(100)
@@ -331,7 +428,23 @@ function Raid:CreateUI()
         frame:SetMaxResize(1600, 1200)
     end
     frame:EnableMouse(true)
+    local function SaveWindowCenterPosition()
+        local centerX, centerY = frame:GetCenter()
+        local parentX, parentY = UIParent:GetCenter()
+        if not centerX or not centerY or not parentX or not parentY then
+            return
+        end
+        local x, y = centerX - parentX, centerY - parentY
+        frame:ClearAllPoints()
+        frame:SetPoint("CENTER", UIParent, "CENTER", x, y)
+        Raid.db.window.point = "CENTER"
+        Raid.db.window.x, Raid.db.window.y = x, y
+    end
+    if migrateResizeAnchor then SaveWindowCenterPosition() end
     frame:SetScript("OnShow", function()
+        if Raid:IsMainWindowCompletelyOffScreen() then
+            Raid:ResetWindowPosition()
+        end
         Raid:UpdateRoster()
         if C_Timer and C_Timer.After then
             C_Timer.After(0, function()
@@ -355,9 +468,7 @@ function Raid:CreateUI()
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        local point, _, _, x, y = self:GetPoint(1)
-        Raid.db.window.point = point
-        Raid.db.window.x, Raid.db.window.y = x, y
+        SaveWindowCenterPosition()
     end)
     if C_Timer and C_Timer.NewTicker then
         local function StartGearScoreTicker(self)
@@ -385,7 +496,7 @@ function Raid:CreateUI()
         end)
     end
     frame.BrandIcon = frame:CreateTexture(nil, "OVERLAY")
-    frame.BrandIcon:SetTexture("Interface\\Icons\\INV_BannerPVP_02")
+    frame.BrandIcon:SetTexture(ICONS.BRAND)
     PixelSetSize(frame.BrandIcon, 30, 30)
     frame.BrandIcon:SetPoint("TOPLEFT", 12, -7)
     frame.Title = Font(frame, 15, "text", L.LUNA_RAID_LEADER)
@@ -395,54 +506,53 @@ function Raid:CreateUI()
     frame.WindowBg = frame:CreateTexture(nil, "BACKGROUND")
     frame.WindowBg:SetTexture(WHITE)
     frame.WindowBg:SetAllPoints()
-    frame.WindowBg:SetVertexColor(.018, .028, .04, .98)
+    frame.WindowBg:SetVertexColor(unpack(THEME.window))
     frame.TitleBarBg = frame:CreateTexture(nil, "ARTWORK")
     frame.TitleBarBg:SetTexture(WHITE)
     frame.TitleBarBg:SetPoint("TOPLEFT", 1, -1)
     frame.TitleBarBg:SetPoint("TOPRIGHT", -1, -1)
     frame.TitleBarBg:SetHeight(45)
-    frame.TitleBarBg:SetVertexColor(.032, .039, .047, .99)
+    frame.TitleBarBg:SetVertexColor(unpack(THEME.footer))
     frame.TitleAccent = frame:CreateTexture(nil, "OVERLAY")
     frame.TitleAccent:SetTexture(WHITE)
     frame.TitleAccent:SetPoint("TOPLEFT", 1, -44)
     frame.TitleAccent:SetPoint("TOPRIGHT", -1, -44)
     SetPixelHeight(frame.TitleAccent, 1)
-    frame.TitleAccent:SetVertexColor(.14, .18, .21, 1)
+    frame.TitleAccent:SetVertexColor(unpack(THEME.dividerStrong))
     frame.DarkInset = frame:CreateTexture(nil, "BORDER")
     frame.DarkInset:SetTexture(WHITE)
-    frame.DarkInset:SetPoint("TOPLEFT", 1, -46)
+    frame.DarkInset:SetPoint("TOPLEFT", 1, -CONTENT_TOP)
     frame.DarkInset:SetPoint("BOTTOMRIGHT", -1, 58)
-    frame.DarkInset:SetVertexColor(.012, .016, .020, .96)
-    frame.StatusBg = frame:CreateTexture(nil, "ARTWORK")
-    frame.StatusBg:SetTexture(WHITE)
+    frame.DarkInset:SetVertexColor(unpack(THEME.content))
+    frame.StatusBg = UI.MakeFooter(frame, 58)
     frame.StatusBg:SetPoint("TOPLEFT", frame.DarkInset, "BOTTOMLEFT")
     frame.StatusBg:SetPoint("BOTTOMRIGHT", -1, 1)
-    frame.StatusBg:SetVertexColor(.028, .034, .040, .99)
+    frame.StatusBg:SetFrameLevel(frame:GetFrameLevel())
     frame.OuterBorder = BackdropFrame("Frame", nil, frame)
     frame.OuterBorder:SetAllPoints()
     frame.OuterBorder:SetBackdrop({
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         edgeSize = Pixel(12),
     })
-    frame.OuterBorder:SetBackdropBorderColor(.11, .13, .15, 1)
+    frame.OuterBorder:SetBackdropBorderColor(unpack(THEME.border))
     frame.OuterBorder:EnableMouse(false)
     frame.Title:SetDrawLayer("OVERLAY", 3)
 
     frame.CloseButton = Button(frame, "X", 28, 28)
     frame.CloseButton:SetPoint("TOPRIGHT", -7, -8)
     frame.CloseButton.Text:SetFontObject(
-        Raid.UI.GetFontObject(12, "MONOCHROMEOUTLINE"))
-    frame.CloseButton.Text:SetTextColor(.72, .79, .84)
+        Raid.UI.GetFontObject(13, "OUTLINE"))
+    frame.CloseButton.Text:SetTextColor(unpack(THEME.muted))
     frame.CloseButton:SetScript("OnClick", function() frame:Hide() end)
     frame.CloseButton:HookScript("OnEnter", function(self)
-        self:SetBackdropColor(.22, .045, .055, .98)
-        self:SetBackdropBorderColor(.92, .22, .28, 1)
-        self.Text:SetTextColor(1, .82, .84)
+        self:SetBackdropColor(unpack(THEME.danger))
+        self:SetBackdropBorderColor(unpack(THEME.dangerBorder))
+        self.Text:SetTextColor(unpack(THEME.text))
     end)
     frame.CloseButton:HookScript("OnLeave", function(self)
         self:SetBackdropColor(unpack(self.baseColor))
         self:SetBackdropBorderColor(unpack(self.baseBorder))
-        self.Text:SetTextColor(.72, .79, .84)
+        self.Text:SetTextColor(unpack(THEME.muted))
     end)
     AddButtonTooltip(
         frame.CloseButton, "Close LunaRaids",
@@ -450,12 +560,25 @@ function Raid:CreateUI()
     self.frame = frame
 
     self.workspaceMode = self.workspaceMode or "GROUPS"
-    self.workspaceRail = Panel(frame)
-    self.workspaceRail:SetPoint(
-        "TOPRIGHT", frame, "TOPLEFT", 1, -45)
-    self.workspaceRail:SetWidth(NAV_RAIL_WIDTH)
-    self.workspaceRail:SetHeight(244)
+    self.workspaceRail = CreateFrame("Frame", nil, frame)
+    self.workspaceRail:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -47)
+    self.workspaceRail:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -47)
+    self.workspaceRail:SetHeight(TOP_NAV_HEIGHT - 4)
     self.workspaceRail:SetFrameLevel(frame:GetFrameLevel() + 3)
+    self.workspaceRail.Background =
+        self.workspaceRail:CreateTexture(nil, "BACKGROUND")
+    self.workspaceRail.Background:SetTexture(WHITE)
+    self.workspaceRail.Background:SetPoint("TOPLEFT", -7, 1)
+    self.workspaceRail.Background:SetPoint("BOTTOMRIGHT", 7, -1)
+    self.workspaceRail.Background:SetVertexColor(unpack(THEME.content))
+    self.workspaceRail.BottomLine =
+        self.workspaceRail:CreateTexture(nil, "ARTWORK")
+    self.workspaceRail.BottomLine:SetTexture(WHITE)
+    self.workspaceRail.BottomLine:SetPoint("BOTTOMLEFT", -7, -1)
+    self.workspaceRail.BottomLine:SetPoint("BOTTOMRIGHT", 7, -1)
+    SetPixelHeight(self.workspaceRail.BottomLine, 1)
+    self.workspaceRail.BottomLine:SetVertexColor(
+        THEME.divider[1], THEME.divider[2], THEME.divider[3], .8)
     self.workspaceButtons = {}
     local workspaceEntries = {
         {
@@ -463,46 +586,51 @@ function Raid:CreateUI()
             label = L.ASSIGNMENTS,
             title = L.RAID_ASSIGNMENTS,
             description = L.WORKSPACE_ASSIGNMENTS_DESC,
-            icon = "Interface\\Icons\\INV_Misc_Note_05",
+            icon = ICONS.ASSIGNMENTS,
         },
         {
             key = "GROUPS",
             title = L.RAID_GROUPS_TITLE,
             description = L.WORKSPACE_GROUPS_DESC,
-            icon = "Interface\\Icons\\INV_Misc_GroupLooking",
+            icon = ICONS.GROUPS,
         },
         {
             key = "STATUS",
             title = L.RAID_STATUS_TITLE,
             description = L.WORKSPACE_STATUS_DESC,
-            icon = "Interface\\RaidFrame\\ReadyCheck-Ready",
+            icon = ICONS.STATUS,
         },
         {
             key = "GEAR",
             title = L.GEAR_INSPECT_TITLE,
             description = L.WORKSPACE_GEAR_DESC,
-            icon = "Interface\\Icons\\INV_Chest_Plate04",
+            icon = ICONS.GEAR,
         },
         {
             key = "SETTINGS",
             label = L.SETTINGS,
             title = L.LUNARAIDS_SETTINGS,
             description = L.WORKSPACE_SETTINGS_DESC,
-            icon = "Interface\\Buttons\\UI-OptionsButton",
+            icon = ICONS.SETTINGS,
         },
         {
             key = "ABOUT",
             label = "ABOUT",
             title = L.ABOUT_LUNARAIDS_TITLE,
             description = L.WORKSPACE_ABOUT_DESC,
-            icon = "Interface\\Icons\\INV_Misc_QuestionMark",
+            icon = ICONS.ABOUT,
         },
     }
+    local previousWorkspaceButton
     for index, entry in ipairs(workspaceEntries) do
         local workspaceKey = entry.key
-        local button = Button(
-            self.workspaceRail, entry.label or entry.title, 106, 34)
-        button:SetPoint("TOPLEFT", 5, -5 - ((index - 1) * 39))
+        local button = UI.MakeButton(
+            self.workspaceRail, entry.label or entry.title, 128, 28)
+        if index == 1 then
+            button:SetPoint("LEFT", self.workspaceRail, "LEFT", 5, 0)
+        else
+            button:SetPoint("LEFT", previousWorkspaceButton, "RIGHT", 5, 0)
+        end
         button.Icon = button:CreateTexture(nil, "ARTWORK")
         button.Icon:SetTexture(entry.icon)
         PixelSetSize(button.Icon, 18, 18)
@@ -513,15 +641,16 @@ function Raid:CreateUI()
         button.Text:SetJustifyH("LEFT")
         button.ActiveBar = button:CreateTexture(nil, "OVERLAY")
         button.ActiveBar:SetTexture(WHITE)
-        button.ActiveBar:SetPoint("TOPRIGHT", -1, -1)
-        button.ActiveBar:SetPoint("BOTTOMRIGHT", -1, 1)
-        SetPixelWidth(button.ActiveBar, 3)
+        button.ActiveBar:SetPoint("BOTTOMLEFT", 1, 0)
+        button.ActiveBar:SetPoint("BOTTOMRIGHT", -1, 0)
+        SetPixelHeight(button.ActiveBar, 2)
         button.ActiveBar:SetVertexColor(unpack(ACCENT))
         button:SetScript("OnClick", function()
             Raid:SetWorkspaceMode(workspaceKey)
         end)
         AddButtonTooltip(button, entry.title, entry.description)
         self.workspaceButtons[workspaceKey] = button
+        previousWorkspaceButton = button
     end
 
     self.bossRail = Panel(frame)
@@ -533,13 +662,49 @@ function Raid:CreateUI()
     self.rosterPanel = rosterPanel
     rosterPanel:SetPoint("TOPLEFT", 12, -59)
     rosterPanel:SetPoint("BOTTOMLEFT", 12, 68)
-    rosterPanel:SetWidth(ROSTER_WIDTH)
+    rosterPanel:SetWidth(self:GetRosterPanelWidth())
     rosterPanel.Divider = rosterPanel:CreateTexture(nil, "OVERLAY")
     rosterPanel.Divider:SetTexture(WHITE)
     rosterPanel.Divider:SetPoint("TOPRIGHT", 0, 0)
     rosterPanel.Divider:SetPoint("BOTTOMRIGHT", 0, 0)
     SetPixelWidth(rosterPanel.Divider, 1)
-    rosterPanel.Divider:SetVertexColor(.13, .27, .35, .9)
+    rosterPanel.Divider:SetVertexColor(unpack(THEME.divider))
+    rosterPanel.ResizeHandle = CreateFrame("Button", nil, rosterPanel)
+    rosterPanel.ResizeHandle:SetPoint("TOPRIGHT", 5, 0)
+    rosterPanel.ResizeHandle:SetPoint("BOTTOMRIGHT", 5, 0)
+    rosterPanel.ResizeHandle:SetWidth(10)
+    rosterPanel.ResizeHandle:SetFrameLevel(rosterPanel:GetFrameLevel() + 20)
+    rosterPanel.ResizeHandle:RegisterForDrag("LeftButton")
+    rosterPanel.ResizeHandle:SetScript("OnDragStart", function(self)
+        local cursorX = GetCursorPosition()
+        self.dragStartX = cursorX / rosterPanel:GetEffectiveScale()
+        self.dragStartWidth = rosterPanel:GetWidth()
+        self:SetScript("OnUpdate", function(handle)
+            local currentX = GetCursorPosition()
+            currentX = currentX / rosterPanel:GetEffectiveScale()
+            local width = handle.dragStartWidth
+                + (currentX - handle.dragStartX)
+            Raid.db.window.rosterWidth = Raid:GetRosterPanelWidth(width)
+            Raid:RefreshFooterLayout()
+            Raid:UpdateWindowLayout()
+        end)
+    end)
+    rosterPanel.ResizeHandle:SetScript("OnDragStop", function(self)
+        self:SetScript("OnUpdate", nil)
+        self.dragStartX, self.dragStartWidth = nil, nil
+        rosterPanel.Divider:SetVertexColor(unpack(THEME.divider))
+        Raid.db.window.rosterWidth = math.floor(
+            Raid:GetRosterPanelWidth() + .5)
+        Raid:RefreshRoster()
+    end)
+    rosterPanel.ResizeHandle:SetScript("OnEnter", function()
+        rosterPanel.Divider:SetVertexColor(unpack(ACCENT))
+    end)
+    rosterPanel.ResizeHandle:SetScript("OnLeave", function(self)
+        if not self.dragStartWidth then
+            rosterPanel.Divider:SetVertexColor(unpack(THEME.divider))
+        end
+    end)
     local rosterIcon = rosterPanel:CreateTexture(nil, "ARTWORK")
     rosterIcon:SetTexture("Interface\\Icons\\INV_Misc_GroupLooking")
     PixelSetSize(rosterIcon, 22, 22)
@@ -566,7 +731,8 @@ function Raid:CreateUI()
         CreateScrollArea(rosterPanel)
     self.rosterScroll:SetPoint("TOPLEFT", 6, -40)
     self.rosterScroll:SetPoint("BOTTOMRIGHT", -6, 8)
-    self.rosterContent:SetWidth(ROSTER_ROW_WIDTH)
+    self.rosterContent:SetWidth(
+        math.max(1, self:GetRosterPanelWidth() - 12))
 
     local assignmentPanel = Panel(frame)
     self.assignmentPanel = assignmentPanel
@@ -579,7 +745,7 @@ function Raid:CreateUI()
     self.bossRail:SetHeight(
         BOSS_BUTTON_SIZE + (BOSS_RAIL_GAP * 2))
     self.bossRail:SetFrameLevel(assignmentPanel:GetFrameLevel() + 3)
-    self.bossRail:SetBackdropColor(.018, .045, .062, .88)
+    self.bossRail:SetBackdropColor(unpack(THEME.surfaceAlt))
     self.bossRail:SetBackdropBorderColor(0, 0, 0, 0)
     if self.bossRail.InnerGlow then self.bossRail.InnerGlow:Hide() end
     if self.bossRail.TopLine then self.bossRail.TopLine:Hide() end
@@ -589,7 +755,7 @@ function Raid:CreateUI()
     self.bossRail.BottomLine:SetPoint("BOTTOMLEFT", 0, 0)
     self.bossRail.BottomLine:SetPoint("BOTTOMRIGHT", 0, 0)
     SetPixelHeight(self.bossRail.BottomLine, 1)
-    self.bossRail.BottomLine:SetVertexColor(.12, .28, .38, .9)
+    self.bossRail.BottomLine:SetVertexColor(unpack(THEME.dividerStrong))
     assignmentPanel.Watermark =
         assignmentPanel:CreateTexture(nil, "BACKGROUND")
     assignmentPanel.Watermark:SetTexture(
@@ -616,7 +782,7 @@ function Raid:CreateUI()
     self.bossSettingsButton.Cog =
         self.bossSettingsButton:CreateTexture(nil, "OVERLAY")
     self.bossSettingsButton.Cog:SetTexture(
-        "Interface\\Buttons\\UI-OptionsButton")
+        ICONS.SETTINGS)
     PixelSetSize(self.bossSettingsButton.Cog, 18, 18)
     self.bossSettingsButton.Cog:SetPoint("CENTER")
     self.bossSettingsButton:SetScript(
@@ -649,12 +815,11 @@ function Raid:CreateUI()
     self.activeBossTab = self.activeBossTab or "ASSIGNMENTS"
     self.bossTabs = {}
     local tabEntries = {
-        { key = "MARKERS", label = L.MARKERS,
-            icon = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8" },
+        { key = "MARKERS", label = L.MARKERS, icon = ICONS.MARKERS },
         { key = "ASSIGNMENTS", label = L.ASSIGNMENTS,
-            icon = "Interface\\Icons\\INV_Misc_Note_05" },
+            icon = ICONS.ASSIGNMENTS },
         { key = "MECHANICS", label = L.MECHANICS,
-            icon = "Interface\\Icons\\INV_Misc_Book_09" },
+            icon = ICONS.MECHANICS },
     }
     local previousTab
     for _, entry in ipairs(tabEntries) do
@@ -692,7 +857,7 @@ function Raid:CreateUI()
     PixelSetSize(
         assignmentPanel.ProgressTrack, ASSIGNMENT_ROW_WIDTH, 2)
     SetPixelHeight(assignmentPanel.ProgressTrack, 2)
-    assignmentPanel.ProgressTrack:SetVertexColor(.10, .16, .20, 1)
+    assignmentPanel.ProgressTrack:SetVertexColor(unpack(THEME.track))
     assignmentPanel.ProgressFill =
         assignmentPanel:CreateTexture(nil, "OVERLAY")
     assignmentPanel.ProgressFill:SetTexture(WHITE)
@@ -708,8 +873,7 @@ function Raid:CreateUI()
 
     local newRaid = Button(frame, L.NEW_RAID, 100, 30)
     newRaid:SetPoint("BOTTOMLEFT", 12, 14)
-    AddButtonIcon(
-        newRaid, "Interface\\Icons\\INV_Misc_GroupLooking", 16)
+    AddButtonIcon(newRaid, ICONS.NEW, 16)
     newRaid:SetScript("OnClick", function()
         Raid:RequestNewRaid()
     end)
@@ -719,16 +883,15 @@ function Raid:CreateUI()
     local clear = Button(frame, L.CLEAR_BOSS, 104, 30)
     self.clearPlanButton = clear
     clear:SetPoint("LEFT", newRaid, "RIGHT", 5, 0)
-    AddButtonIcon(
-        clear, "Interface\\Buttons\\UI-GroupLoot-Pass-Up", 16)
+    AddButtonIcon(clear, ICONS.DELETE, 16)
     clear:SetScript("OnClick", function() Raid:ClearPlan() end)
+    StyleButton(clear, "danger")
     AddButtonTooltip(
         clear, "Clear Boss",
         "Remove every player, healing target, and marker assignment from the current page.")
     local saveRaid = Button(frame, L.SAVE_RAID, 110, 30)
     saveRaid:SetPoint("LEFT", clear, "RIGHT", 5, 0)
-    AddButtonIcon(
-        saveRaid, "Interface\\Icons\\INV_Misc_Note_01", 16)
+    AddButtonIcon(saveRaid, ICONS.SAVE, 16)
     saveRaid:SetScript("OnClick", function() Raid:PromptSaveRaid() end)
     AddButtonTooltip(
         saveRaid, "Save Raid",
@@ -736,16 +899,15 @@ function Raid:CreateUI()
     local whisper = Button(frame, L.WHISPER, 114, 30)
     whisper:SetPoint("BOTTOMRIGHT", -163, 14)
     StyleButton(whisper, "default")
-    AddButtonIcon(whisper, "Interface\\Icons\\INV_Letter_15", 16)
+    AddButtonIcon(whisper, ICONS.WHISPER, 16)
     whisper:SetScript("OnClick", function() Raid:WhisperAssignments() end)
     AddButtonTooltip(
         whisper, "Whisper Roles",
         "Whisper each selected player their assignments for the current boss.")
     local announce = Button(frame, L.ANNOUNCE, 134, 30)
     announce:SetPoint("BOTTOMRIGHT", -24, 14)
-    StyleButton(announce, "default")
-    AddButtonIcon(
-        announce, "Interface\\Icons\\Ability_Warrior_BattleShout", 16)
+    StyleButton(announce, "primary")
+    AddButtonIcon(announce, ICONS.ANNOUNCE, 16)
     announce:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     announce:SetScript("OnClick", function(self, mouseButton)
         if mouseButton == "RightButton" then
@@ -757,6 +919,12 @@ function Raid:CreateUI()
     AddButtonTooltip(
         announce, "Announce Assignments",
         L.ANNOUNCE_ASSIGNMENTS_DESC .. L.ANNOUNCE_CHANNEL_PICKER_DESC)
+    frame.FooterGroupDivider = frame.StatusBg:CreateTexture(nil, "OVERLAY")
+    frame.FooterGroupDivider:SetTexture(WHITE)
+    frame.FooterGroupDivider:SetPoint(
+        "LEFT", saveRaid, "RIGHT", 10, 0)
+    frame.FooterGroupDivider:SetSize(Pixel(1), Pixel(24))
+    frame.FooterGroupDivider:SetVertexColor(unpack(THEME.border))
     self.workspaceFrames = {
         self.bossRail, rosterPanel, assignmentPanel,
     }
@@ -795,14 +963,39 @@ function Raid:CreateUI()
         "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
     frame.ResizeGrip:SetPushedTexture(
         "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
-    frame.ResizeGrip:SetScript("OnMouseDown", function(_, button)
+    frame.ResizeGrip:SetScript("OnMouseDown", function(grip, button)
         if button == "LeftButton" then
             frame.isUserResizing = true
-            frame:StartSizing("BOTTOMRIGHT")
+            local cursorX, cursorY = GetCursorPosition()
+            local scale = frame:GetEffectiveScale()
+            grip.resizeStartX = cursorX / scale
+            grip.resizeStartY = cursorY / scale
+            grip.resizeStartWidth = frame:GetWidth()
+            grip.resizeStartHeight = frame:GetHeight()
+
+            -- Keep the opposite corner fixed. Explicit cursor-space sizing
+            -- avoids StartSizing mixing physical and scaled UI coordinates.
+            local left, top = frame:GetLeft(), frame:GetTop()
+            frame:ClearAllPoints()
+            frame:SetPoint(
+                "TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+            grip:SetScript("OnUpdate", function(self)
+                local currentX, currentY = GetCursorPosition()
+                currentX, currentY = currentX / scale, currentY / scale
+                local width = math.max(860, math.min(1600,
+                    self.resizeStartWidth
+                        + currentX - self.resizeStartX))
+                local height = math.max(520, math.min(1200,
+                    self.resizeStartHeight
+                        + self.resizeStartY - currentY))
+                frame:SetSize(width, height)
+            end)
         end
     end)
-    frame.ResizeGrip:SetScript("OnMouseUp", function()
-        frame:StopMovingOrSizing()
+    frame.ResizeGrip:SetScript("OnMouseUp", function(grip)
+        grip:SetScript("OnUpdate", nil)
+        grip.resizeStartX, grip.resizeStartY = nil, nil
+        grip.resizeStartWidth, grip.resizeStartHeight = nil, nil
         frame.isUserResizing = nil
         local snappedWidth =
             PixelForRegion(frame, frame:GetWidth())
@@ -815,6 +1008,7 @@ function Raid:CreateUI()
             math.floor(frame:GetWidth() + .5)
         Raid.db.window.height =
             math.floor(frame:GetHeight() + .5)
+        SaveWindowCenterPosition()
         Raid:UpdateWindowLayout()
         Raid:RefreshAssignments()
         Raid:ApplyPixelSnapping()
@@ -896,7 +1090,7 @@ function Raid:InitializeDataBroker()
     self.dataBroker = dataBroker:NewDataObject("LunaRaids", {
         type = "launcher",
         label = "LunaRaids",
-        icon = "Interface\\Icons\\INV_BannerPVP_02",
+        icon = ICONS.BRAND,
         OnClick = function(_, button)
             if button == "RightButton" then
                 Raid:OpenSettings()

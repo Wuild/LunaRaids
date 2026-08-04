@@ -118,9 +118,10 @@ local defaults = {
     plans = {},
     window = {
         point = "CENTER", x = 0, y = 0,
-        width = 900, height = 650,
+        width = 900, height = 650, rosterWidth = 300,
     },
     hudScale = 1,
+    hudOpacity = .92,
     quickBar = {
         point = "CENTER", x = 0, y = 0, hide = false,
         iconOnly = false, visibility = "GROUP",
@@ -321,6 +322,12 @@ function Raid:PrepareDatabase(database)
             database[key] = nil
         end
     end
+    if rawget(database, "hudOpacity") == nil then
+        local mechanics = rawget(database, "mechanicsHUD")
+        if type(mechanics) == "table" then
+            database.hudOpacity = tonumber(mechanics.opacity)
+        end
+    end
     local migrateWindowSize =
         rawget(database, "windowSizeVersion") ~= 2
     Merge(database, defaults)
@@ -344,7 +351,7 @@ function Raid:ResetAllSettings()
     local keys = {
         "window", "quickBar", "readyCheck", "assignmentInfo", "mechanicsHUD",
         "raidCooldowns", "raidAdmin", "minimap",
-        "announcementChannel", "messageDelay", "hudScale",
+        "announcementChannel", "messageDelay", "hudScale", "hudOpacity",
     }
     for _, key in ipairs(keys) do
         local source = defaults[key]

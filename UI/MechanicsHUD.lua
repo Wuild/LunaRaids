@@ -1,6 +1,7 @@
 local _, Raid = ...
 local UI = Raid.UI
 local L = Raid.L
+local THEME = UI.THEME
 
 local WHITE = UI.WHITE
 local ACCENT = UI.ACCENT
@@ -39,11 +40,16 @@ function Raid:CreateMechanicsHUD()
     frame.Header:SetPoint("TOPRIGHT")
     frame.Header:SetHeight(30)
     frame.Header:SetBackdrop({
-        bgFile = WHITE, edgeFile = WHITE, edgeSize = 1,
+        bgFile = WHITE,
     })
-    frame.Header:SetBackdropColor(.025, .070, .090, .98)
-    frame.Header:SetBackdropBorderColor(.12, .38, .48, .9)
-    frame.Title = Font(frame.Header, 10, "accent", L.MECHANICS_HUD_TITLE)
+    frame.Header:SetBackdropColor(unpack(THEME.header))
+    frame.HeaderLine = frame.Header:CreateTexture(nil, "OVERLAY")
+    frame.HeaderLine:SetTexture(WHITE)
+    frame.HeaderLine:SetPoint("BOTTOMLEFT")
+    frame.HeaderLine:SetPoint("BOTTOMRIGHT")
+    frame.HeaderLine:SetHeight(1)
+    frame.HeaderLine:SetVertexColor(unpack(THEME.dividerStrong))
+    frame.Title = Font(frame.Header, 11, "accent", L.MECHANICS_HUD_TITLE)
     frame.Title:SetPoint("LEFT", 10, 0)
     frame.Boss = Font(frame.Header, 11, "text", "")
     frame.Boss:SetPoint("RIGHT", -32, 0)
@@ -57,7 +63,7 @@ function Raid:CreateMechanicsHUD()
         self.Text:SetTextColor(1, .35, .35, 1)
     end)
     frame.Close:SetScript("OnLeave", function(self)
-        self.Text:SetTextColor(.56, .66, .72, 1)
+        self.Text:SetTextColor(unpack(THEME.muted))
     end)
     frame.Close:SetScript("OnClick", function()
         Raid:GetMechanicsHUDSettings().enabled = false
@@ -91,7 +97,7 @@ function Raid:RefreshMechanicsHUD()
     end
     frame:SetWidth(settings.width or 430)
     frame:SetScale(self:GetHUDScale())
-    frame:SetAlpha(settings.opacity or .92)
+    frame:SetAlpha(self:GetHUDOpacity())
     frame.Header:SetShown(settings.showTitle ~= false)
     frame.Boss:SetText(encounter.name)
     local y = settings.showTitle == false and 0 or 36
@@ -104,22 +110,23 @@ function Raid:RefreshMechanicsHUD()
             card:SetBackdrop({
                 bgFile = WHITE, edgeFile = WHITE, edgeSize = 1,
             })
-            card:SetBackdropColor(.025, .050, .065, .97)
-            card:SetBackdropBorderColor(.10, .24, .30, .95)
+            card:SetBackdropColor(unpack(THEME.surface))
+            card:SetBackdropBorderColor(unpack(THEME.borderSoft))
             card.Accent = card:CreateTexture(nil, "ARTWORK")
             card.Accent:SetTexture(WHITE)
             card.Accent:SetPoint("TOPLEFT", 1, -1)
             card.Accent:SetPoint("BOTTOMLEFT", 1, 1)
-            card.Accent:SetWidth(3)
+            card.Accent:SetWidth(2)
             card.Accent:SetVertexColor(unpack(ACCENT))
             card.Number = Font(card, 12, "accent", "")
             card.Number:SetPoint("LEFT", 12, 0)
             card.Number:SetWidth(20)
             card.Number:SetJustifyH("CENTER")
             card.Text = Font(card, 10, "text", "")
-            card.Text:SetPoint("TOPLEFT", 42, -9)
+            card.Text:SetPoint("LEFT", 42, 0)
+            card.Text:SetPoint("RIGHT", -12, 0)
             card.Text:SetJustifyH("LEFT")
-            card.Text:SetJustifyV("TOP")
+            card.Text:SetJustifyV("MIDDLE")
             card.Text:SetWordWrap(true)
             frame.Cards[index] = card
         end
@@ -133,11 +140,11 @@ function Raid:RefreshMechanicsHUD()
             and card.Text:GetStringHeight() or 28
         local cardHeight = math.max(40, math.ceil(textHeight) + 18)
         card:SetHeight(cardHeight)
-        card.Text:SetHeight(cardHeight - 14)
+        card.Text:SetHeight(cardHeight)
         card:Show()
-        y = y + cardHeight + 7
+        y = y + cardHeight + 4
     end
     for index = limit + 1, #frame.Cards do frame.Cards[index]:Hide() end
-    frame:SetHeight(math.max(1, y - 7))
+    frame:SetHeight(math.max(1, y - 4))
     frame:Show()
 end

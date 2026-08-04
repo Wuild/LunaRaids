@@ -1532,7 +1532,9 @@ function Raid:ApplyAutoMarkers(event)
 	then
 		return
 	end
+	local encounter = self:GetEncounter()
 	local targets = self:GetEncounterTargets()
+	local autoMarkerTargets = encounter and encounter.autoMarkerTargets
 	local byName = {}
 	for index, name in ipairs(targets) do
 		byName[name] = index
@@ -1547,18 +1549,16 @@ function Raid:ApplyAutoMarkers(event)
 		if UnitExists(unit) and not UnitIsFriend("player", unit) then
 			local name = UnitName(unit)
 			local targetIndex = name and byName[name]
-			local markerIndex =
-				targetIndex and self:GetMarkerAssignment(targetIndex)
+			local mayAutoMark = targetIndex and (
+				not autoMarkerTargets
+				or autoMarkerTargets[targetIndex] ~= false)
+			local markerIndex = mayAutoMark
+				and self:GetMarkerAssignment(targetIndex)
 			local marker = markerIndex and self.markers[markerIndex]
-			if marker and (
-			not GetRaidTargetIndex
-			or GetRaidTargetIndex(unit) ~= marker.icon
-			) then
+			local currentMarker = GetRaidTargetIndex
+				and GetRaidTargetIndex(unit)
+			if marker and not currentMarker then
 				pcall(SetRaidTarget, unit, marker.icon)
-			elseif not marker and GetRaidTargetIndex
-			and GetRaidTargetIndex(unit)
-			then
-				pcall(SetRaidTarget, unit, 0)
 			end
 		end
 	end
@@ -1606,6 +1606,7 @@ function Raid:CompleteRaid()
 	end
 	local raid = self:GetRaid()
 	if self.QueueSync and self:IsLocalRaidEditor() then
+		if self.DiscardPendingSync then self:DiscardPendingSync() end
 		self:QueueSync("CLOSE", { raid.key })
 	end
 	self.db.raidLocked = false
@@ -1634,6 +1635,7 @@ function Raid:ClearCurrentRaidSession()
 	if self.db.raidLocked and self.QueueSync
 	and self:IsLocalRaidEditor()
 	then
+		if self.DiscardPendingSync then self:DiscardPendingSync() end
 		self:QueueSync("CLOSE", { raid.key })
 	end
 	self.db.plans[raid.key] = nil
@@ -1673,6 +1675,7 @@ function Raid:BeginRaid(raidKey)
 	if not raid then
 		return false
 	end
+	if self.DiscardPendingSync then self:DiscardPendingSync() end
 	self.raidSelectionUnlocked = true
 	self.db.activeRaid = raid.key
 	self.db.activeExpansion = raid.expansion
@@ -1716,6 +1719,9 @@ function Raid:BeginRaid(raidKey)
 	end
 	if self.SendPlanSnapshot then
 		self:SendPlanSnapshot()
+	end
+	if self.EnterBossUI then
+		self:EnterBossUI("ASSIGNMENTS")
 	end
 	self:Print(self:Localize("PLAN_STARTED", raid.name))
 	return true
@@ -1819,6 +1825,7 @@ function Raid:LoadSavedRaid(id)
 	if not raid then
 		return false
 	end
+	if self.DiscardPendingSync then self:DiscardPendingSync() end
 	self.db.plans[raid.key] = Copy(saved.plans or {})
 	if self.simulation.enabled then
 		self.simulation.plans = self.simulation.plans or {}
@@ -1856,6 +1863,9 @@ function Raid:LoadSavedRaid(id)
 	end
 	if self.SendPlanSnapshot then
 		self:SendPlanSnapshot()
+	end
+	if self.EnterBossUI then
+		self:EnterBossUI("ASSIGNMENTS")
 	end
 	self:Print(self:Localize("RAID_PLAN_LOADED", saved.name))
 	return true

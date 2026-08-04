@@ -1,6 +1,8 @@
 local _, Raid = ...
 local UI = Raid.UI
+local ICONS = UI.ICONS
 local L = Raid.L
+local THEME = UI.THEME
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -31,7 +33,7 @@ local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
 local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
 local CreateScrollArea = UI.CreateScrollArea
-local ROW_SEPARATOR = { .085, .105, .12, 1 }
+local ROW_SEPARATOR = THEME.borderSoft
 
 local function UseRowSeparator(frame)
     if not frame.PixelBorders then return end
@@ -98,7 +100,7 @@ function Raid:CreateAssignmentSlot(index)
         end
     end)
     slot.HealingTarget:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(.18, .18, .18, .95)
+        self:SetBackdropColor(unpack(THEME.surfaceHover))
         self:SetBackdropBorderColor(unpack(ACCENT))
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(Raid.L.HEALING_TARGET)
@@ -405,9 +407,9 @@ function Raid:RefreshFooterLayout()
         button:ClearAllPoints()
         if button:IsShown() then
             if previous then
-                button:SetPoint("LEFT", previous, "RIGHT", 5, 0)
+                button:SetPoint("LEFT", previous, "RIGHT", 4, 0)
             else
-                button:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMLEFT", 12, 14)
+                button:SetPoint("BOTTOMLEFT", self.frame, "BOTTOMLEFT", 10, 14)
             end
             previous = button
         end
@@ -417,7 +419,7 @@ function Raid:RefreshFooterLayout()
         button:ClearAllPoints()
         if button:IsShown() then
             if previous then
-                button:SetPoint("RIGHT", previous, "LEFT", -5, 0)
+                button:SetPoint("RIGHT", previous, "LEFT", -4, 0)
             else
                 button:SetPoint(
                     "BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -34, 14)
@@ -435,9 +437,9 @@ function Raid:RefreshFooterLayout()
     if gearWorkspace then hasFooter = nil end
     local bottomInset = hasFooter and 58 or 1
     self.rosterPanel:ClearAllPoints()
-    self.rosterPanel:SetPoint("TOPLEFT", 1, -46)
+    self.rosterPanel:SetPoint("TOPLEFT", 1, -88)
     self.rosterPanel:SetPoint("BOTTOMLEFT", 1, bottomInset)
-    self.rosterPanel:SetWidth(ROSTER_WIDTH)
+    self.rosterPanel:SetWidth(self:GetRosterPanelWidth())
 
     local fullWidth = self.raidPickerActive
         or self.workspaceMode == "GROUPS"
@@ -446,7 +448,7 @@ function Raid:RefreshFooterLayout()
         or self.workspaceMode == "ABOUT"
     self.assignmentPanel:ClearAllPoints()
     if fullWidth then
-        self.assignmentPanel:SetPoint("TOPLEFT", 1, -46)
+        self.assignmentPanel:SetPoint("TOPLEFT", 1, -88)
     else
         self.assignmentPanel:SetPoint(
             "TOPLEFT", self.rosterPanel, "TOPRIGHT", 0, 0)
@@ -464,7 +466,7 @@ function Raid:RefreshFooterLayout()
     if self.assignmentPanel.Watermark then
         self.assignmentPanel.Watermark:Hide()
     end
-    self.rosterPanel:SetBackdropColor(.018, .033, .047, .98)
+    self.rosterPanel:SetBackdropColor(unpack(THEME.surface))
     self.rosterPanel:SetBackdropBorderColor(0, 0, 0, 0)
     if self.rosterPanel.InnerGlow then
         self.rosterPanel.InnerGlow:Hide()
@@ -478,12 +480,16 @@ function Raid:RefreshFooterLayout()
 
     if self.frame.DarkInset then
         self.frame.DarkInset:ClearAllPoints()
-        self.frame.DarkInset:SetPoint("TOPLEFT", 1, -46)
+        self.frame.DarkInset:SetPoint("TOPLEFT", 1, -88)
         self.frame.DarkInset:SetPoint(
             "BOTTOMRIGHT", -1, hasFooter and 58 or 1)
     end
     if self.frame.StatusBg then
         self.frame.StatusBg:SetShown(hasFooter or false)
+    end
+    if self.frame.FooterGroupDivider then
+        self.frame.FooterGroupDivider:SetShown(
+            hasFooter and self.workspaceMode == "ASSIGNMENTS")
     end
 end
 
@@ -554,18 +560,18 @@ function Raid:RefreshWorkspaceNavigation()
             or settings and "SETTINGS"
             or "ASSIGNMENTS")
         button.baseColor = selected
-            and { .060, .090, .110, .98 }
-            or { .035, .043, .052, .98 }
+            and { unpack(THEME.surfaceSelected) }
+            or { unpack(THEME.content) }
         button.baseBorder = selected
-            and { .24, .34, .40, 1 }
-            or { unpack(BORDER) }
+            and { unpack(ACCENT) }
+            or { 0, 0, 0, 0 }
         button:SetBackdropColor(unpack(button.baseColor))
         button:SetBackdropBorderColor(unpack(button.baseBorder))
-        button.ActiveBar:SetShown(selected)
+        button.ActiveBar:Hide()
         button.Text:SetTextColor(
-            selected and .94 or .66,
-            selected and .96 or .70,
-            selected and .98 or .74, 1)
+            selected and 1 or .70,
+            selected and .86 or .67,
+            selected and .40 or .57, 1)
         button.Icon:SetAlpha(selected and 1 or .72)
         button:SetEnabled(true)
         button:SetAlpha(1)
@@ -615,10 +621,13 @@ function Raid:RefreshWorkspaceNavigation()
             not picker and status and workspaceVisible)
     end
     if self.assignmentScroll then
+        local usesSharedScroll = not status and not gear and not about
+        self.assignmentScroll:SetShown(
+            usesSharedScroll and workspaceVisible and not picker)
         self.assignmentScroll:ClearAllPoints()
         self.assignmentScroll:SetPoint(
             "TOPLEFT", 6,
-            (groups or status or gear or about) and -8 or -84)
+            groups and -8 or -84)
         self.assignmentScroll:SetPoint("BOTTOMRIGHT", -6, 8)
     end
     if self.raidStatusView then
@@ -846,21 +855,22 @@ function Raid:RefreshBossTabs()
     local active = self.activeBossTab or "ASSIGNMENTS"
     for key, button in pairs(self.bossTabs) do
         local selected = key == active
+        local hovered = not selected and button.IsMouseOver
+            and button:IsMouseOver()
+        local surface = selected and THEME.surfaceSelected
+            or hovered and THEME.surfaceHover
+            or THEME.surfaceAlt
         button:SetBackdropColor(
-            selected and .065 or .035,
-            selected and .075 or .043,
-            selected and .085 or .052, .98)
-        button.baseColor = selected
-            and { .065, .075, .085, .98 }
-            or { .035, .043, .052, .98 }
-        button.baseBorder = selected
+            unpack(surface))
+        button.baseColor = { unpack(surface) }
+        button.baseBorder = (selected or hovered)
             and { unpack(ACCENT) }
-            or { unpack(BORDER) }
+            or { 0, 0, 0, 0 }
         button:SetBackdropBorderColor(unpack(button.baseBorder))
         button.Text:SetTextColor(
-            selected and ACCENT[1] or .68,
-            selected and ACCENT[2] or .68,
-            selected and ACCENT[3] or .68, 1)
+            (selected or hovered) and ACCENT[1] or THEME.text[1],
+            (selected or hovered) and ACCENT[2] or THEME.text[2],
+            (selected or hovered) and ACCENT[3] or THEME.text[3], 1)
         button.ActiveLine:SetShown(selected)
     end
 end
@@ -910,7 +920,7 @@ function Raid:RefreshMechanics()
             line:SetWidth(
                 self.assignmentRowWidth or ASSIGNMENT_ROW_WIDTH)
             line:SetBackdrop({ bgFile = WHITE })
-            line:SetBackdropColor(.10, .10, .10, .82)
+            line:SetBackdropColor(unpack(THEME.surface))
             line.Number = Font(line, 14, "accent", "")
             line.Number:SetPoint("TOPLEFT", 10, -10)
             line.Text = Font(line, 10, "text", "")
@@ -950,7 +960,7 @@ function Raid:CreateRaidGroupFrame(groupIndex)
         edgeSize = Pixel(1),
     })
     InstallPixelBorder(group)
-    group:SetBackdropColor(.018, .022, .026, .72)
+    group:SetBackdropColor(unpack(THEME.content))
     group:SetBackdropBorderColor(0, 0, 0, 0)
     group.GroupIndex = groupIndex
     group.HeaderBg = group:CreateTexture(nil, "BACKGROUND")
@@ -958,13 +968,13 @@ function Raid:CreateRaidGroupFrame(groupIndex)
     group.HeaderBg:SetPoint("TOPLEFT", 0, 0)
     group.HeaderBg:SetPoint("TOPRIGHT", 0, 0)
     group.HeaderBg:SetHeight(28)
-    group.HeaderBg:SetVertexColor(.038, .046, .055, .96)
+    group.HeaderBg:SetVertexColor(unpack(THEME.header))
     group.Accent = group:CreateTexture(nil, "ARTWORK")
     group.Accent:SetTexture(WHITE)
     group.Accent:SetPoint("TOPLEFT", 0, 0)
     group.Accent:SetPoint("BOTTOMLEFT", group.HeaderBg, "BOTTOMLEFT", 0, 0)
     SetPixelWidth(group.Accent, 2)
-    group.Accent:SetVertexColor(.25, .30, .34, 1)
+    group.Accent:SetVertexColor(unpack(THEME.accent))
     group.HeaderLine = group:CreateTexture(nil, "ARTWORK")
     group.HeaderLine:SetTexture(WHITE)
     group.HeaderLine:SetPoint(
@@ -972,13 +982,13 @@ function Raid:CreateRaidGroupFrame(groupIndex)
     group.HeaderLine:SetPoint(
         "BOTTOMRIGHT", group.HeaderBg, "BOTTOMRIGHT", 0, 0)
     SetPixelHeight(group.HeaderLine, 1)
-    group.HeaderLine:SetVertexColor(.10, .13, .15, .9)
+    group.HeaderLine:SetVertexColor(unpack(THEME.divider))
     group.Divider = group:CreateTexture(nil, "BACKGROUND")
     group.Divider:SetTexture(WHITE)
     group.Divider:SetPoint("TOPRIGHT", 0, 0)
     group.Divider:SetPoint("BOTTOMRIGHT", 0, 0)
     SetPixelWidth(group.Divider, 1)
-    group.Divider:SetVertexColor(.09, .11, .13, .65)
+    group.Divider:SetVertexColor(unpack(THEME.borderSoft))
     group.Title = Font(group, 10, "text",
         Raid:Localize("GROUP_NUMBER", groupIndex))
     group.Title:SetPoint("LEFT", group.HeaderBg, "LEFT", 10, 0)
@@ -1018,6 +1028,10 @@ function Raid:CreateRaidGroupFrame(groupIndex)
         slot.Assistant:SetTexture(
             "Interface\\GroupFrame\\UI-Group-AssistantIcon")
         PixelSetSize(slot.Assistant, 14, 14)
+        slot.MasterLooter = slot:CreateTexture(nil, "ARTWORK")
+        slot.MasterLooter:SetTexture(
+            "Interface\\GroupFrame\\UI-Group-MasterLooter")
+        PixelSetSize(slot.MasterLooter, 14, 14)
         slot.MainTank = slot:CreateTexture(nil, "ARTWORK")
         slot.MainTank:SetTexture(
             "Interface\\GroupFrame\\UI-Group-MainTankIcon")
@@ -1066,14 +1080,21 @@ function Raid:CreateRaidGroupFrame(groupIndex)
             ResetCursor()
         end)
         slot:SetScript("OnEnter", function(self)
-            self:SetBackdropColor(.065, .072, .078, .98)
+            self:SetBackdropColor(unpack(THEME.surfaceHover))
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             if self.player then
                 GameTooltip:SetText(self.player.name)
                 if self.player.leader then
                     GameTooltip:AddLine(Raid.L.RAID_LEADER, .95, .78, .25)
                 elseif self.player.assistant then
-                    GameTooltip:AddLine(Raid.L.RAID_ASSISTANT, .55, .78, 1)
+                    GameTooltip:AddLine(
+                        Raid.L.RAID_ASSISTANT,
+                        ACCENT[1], ACCENT[2], ACCENT[3])
+                end
+                if self.player.masterLooter then
+                    GameTooltip:AddLine(
+                        MASTER_LOOTER or "Master Looter",
+                        ACCENT[1], ACCENT[2], ACCENT[3])
                 end
                 if self.player.raidAssignment == "MAINTANK" then
                     GameTooltip:AddLine(Raid.L.MAIN_TANK, .35, .75, 1)
@@ -1108,7 +1129,7 @@ function Raid:CreateRaidGroupFrame(groupIndex)
         edgeSize = Pixel(1),
     })
     InstallPixelBorder(group.Outline)
-    group.Outline:SetBackdropBorderColor(.10, .13, .15, 1)
+    group.Outline:SetBackdropBorderColor(unpack(THEME.divider))
     group.Outline:SetFrameLevel(group:GetFrameLevel() + 50)
     group.Outline:EnableMouse(false)
     self.raidGroupFrames[groupIndex] = group
@@ -1127,7 +1148,7 @@ function Raid:CreateRaidGroupQuickActions()
     local actions = {
         {
             label = self.L.ACTION_READY_CHECK,
-            icon = "Interface\\RaidFrame\\ReadyCheck-Ready",
+            icon = ICONS.READY,
             title = self.L.READY_CHECK,
             detail = self.L.READY_CHECK_DESC,
             action = function() Raid:StartReadyCheck() end,
@@ -1137,21 +1158,21 @@ function Raid:CreateRaidGroupQuickActions()
         },
         {
             label = self.L.ACTION_ROLE_CHECK,
-            icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",
+            icon = ICONS.ROLES,
             title = self.L.ROLE_CHECK,
             detail = self.L.ROLE_CHECK_DESC,
             action = function() Raid:StartRoleCheck() end,
         },
         {
             label = self.L.ACTION_PULL_10,
-            icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+            icon = ICONS.COOLDOWNS,
             title = self.L.PULL_TIMER,
             detail = self.L.PULL_TIMER_DESC,
             action = function() Raid:StartPullCountdown(10) end,
         },
         {
             label = self.L.ACTION_BREAK_5,
-            icon = "Interface\\Icons\\INV_Drink_05",
+            icon = ICONS.BREAK,
             title = self.L.BREAK_TIMER,
             detail = self.L.BREAK_TIMER_DESC,
             action = function() Raid:StartBreakTimer(5) end,
@@ -1299,6 +1320,7 @@ function Raid:RefreshRaidGroups()
                 slot.Leader:SetShown(player.leader or false)
                 slot.Assistant:SetShown(
                     not player.leader and player.assistant or false)
+                slot.MasterLooter:SetShown(player.masterLooter or false)
                 slot.MainTank:SetShown(
                     player.raidAssignment == "MAINTANK")
                 slot.MainAssist:SetShown(
@@ -1306,7 +1328,7 @@ function Raid:RefreshRaidGroups()
                 local rightOffset = -7
                 for _, icon in ipairs({
                     slot.Role, slot.MainTank, slot.MainAssist,
-                    slot.Leader, slot.Assistant,
+                    slot.Leader, slot.Assistant, slot.MasterLooter,
                 }) do
                     icon:ClearAllPoints()
                     if icon:IsShown() then
@@ -1325,7 +1347,7 @@ function Raid:RefreshRaidGroups()
                 slot.Text:SetPoint("LEFT", 17, 0)
                 slot.Text:SetPoint(
                     "RIGHT", slot, "RIGHT", rightOffset - 5, 0)
-                slot.baseColor = { .044, .050, .056, .98 }
+                slot.baseColor = { unpack(THEME.surfaceAlt) }
                 slot:SetAlpha(
                     unavailable and (player.manual and .72 or .48) or 1)
             else
@@ -1335,6 +1357,7 @@ function Raid:RefreshRaidGroups()
                 slot.Role:Hide()
                 slot.Leader:Hide()
                 slot.Assistant:Hide()
+                slot.MasterLooter:Hide()
                 slot.MainTank:Hide()
                 slot.MainAssist:Hide()
                 slot.Status:SetText("")
@@ -1342,7 +1365,7 @@ function Raid:RefreshRaidGroups()
                 slot.Text:ClearAllPoints()
                 slot.Text:SetPoint("LEFT", 17, 0)
                 slot.Text:SetPoint("RIGHT", -7, 0)
-                slot.baseColor = { .027, .032, .037, .94 }
+                slot.baseColor = { unpack(THEME.content) }
                 slot:SetAlpha(1)
             end
             slot.baseBorder = { unpack(ROW_SEPARATOR) }

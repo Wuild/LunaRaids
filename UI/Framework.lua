@@ -7,12 +7,84 @@ local ASSIGNMENT_ROW_WIDTH = 674
 local BOSS_RAIL_WIDTH, BOSS_BUTTON_SIZE = 48, 38
 local NAV_RAIL_WIDTH = 116
 local BOSS_RAIL_GAP = 5
--- Keep colour functional. Accent identifies the current view or primary
--- action; it should not be the default decoration for every surface.
-local ACCENT = { .20, .62, .82, 1 }
-local BORDER = { .12, .16, .20, 1 }
-local MUTED = { .54, .59, .64, 1 }
+-- Set this one RGB value to recolour the complete structural UI. All neutral
+-- surfaces below are derived from it. A caller may alternatively provide a
+-- complete Raid.UITheme table before Framework.lua loads.
+Raid.UIThemeAccent = Raid.UIThemeAccent or { .82, .64, .22 }
+local BASE = Raid.UIThemeAccent
+local function Tone(neutral, influence, alpha)
+    return {
+        neutral + (BASE[1] * influence),
+        neutral + (BASE[2] * influence),
+        neutral + (BASE[3] * influence),
+        alpha or 1,
+    }
+end
+Raid.UITheme = Raid.UITheme or {
+    accent = { BASE[1], BASE[2], BASE[3], 1 },
+    accentText = Tone(.72, .30, 1),
+    text = Tone(.72, .18, 1),
+    muted = Tone(.48, .18, 1),
+    border = Tone(.07, .28, 1),
+    borderSoft = Tone(.045, .17, .90),
+    window = Tone(.014, .017, .99),
+    content = Tone(.010, .012, .98),
+    surface = Tone(.025, .024, .98),
+    surfaceAlt = Tone(.028, .030, .96),
+    surfaceRaised = Tone(.036, .042, .98),
+    surfaceHover = Tone(.045, .085, .98),
+    surfaceSelected = Tone(.030, .17, .98),
+    header = Tone(.040, .045, .98),
+    tableHeader = Tone(.045, .055, 1),
+    tableHeaderAlt = Tone(.040, .045, 1),
+    row = Tone(.025, .022, .96),
+    rowAlt = Tone(.028, .030, .96),
+    footer = Tone(.028, .028, .99),
+    divider = Tone(.04, .26, .90),
+    dividerStrong = Tone(.05, .52, 1),
+    track = Tone(.040, .045, 1),
+    scrollbarTrack = Tone(.030, .032, .92),
+    scrollbarThumb = Tone(.02, .84, .88),
+    scrollbarHover = Tone(.08, 1.02, 1),
+    positive = { .08, .13, .075, .98 },
+    positiveBorder = { .30, .48, .22, 1 },
+    danger = { .16, .065, .045, .98 },
+    dangerBorder = { .55, .24, .14, 1 },
+}
+local THEME = Raid.UITheme
+local ACCENT = THEME.accent
+local BORDER = THEME.border
+local MUTED = THEME.muted
 local WHITE = "Interface\\Buttons\\WHITE8X8"
+local ICON_ROOT = "Interface\\AddOns\\LunaRaids\\Assets\\Icons\\"
+local BRAND_ROOT = "Interface\\AddOns\\LunaRaids\\Assets\\Brand\\"
+local ICONS = {
+    ABOUT = ICON_ROOT .. "circle-question-mark",
+    ANNOUNCE = ICON_ROOT .. "megaphone",
+    ASSIGNMENTS = ICON_ROOT .. "clipboard-list",
+    BREAK = ICON_ROOT .. "coffee",
+    BRAND = BRAND_ROOT .. "lunaraids-icon-64",
+    BRAND_LARGE = BRAND_ROOT .. "lunaraids-icon-128",
+    CHECK = ICON_ROOT .. "circle-check-big",
+    COOLDOWNS = ICON_ROOT .. "timer",
+    DELETE = ICON_ROOT .. "trash-2",
+    GEAR = ICON_ROOT .. "shirt",
+    GRIP = ICON_ROOT .. "grip-vertical",
+    GROUPS = ICON_ROOT .. "users",
+    HELP = ICON_ROOT .. "circle-question-mark",
+    MARKERS = ICON_ROOT .. "tags",
+    MECHANICS = ICON_ROOT .. "book-open",
+    NEW = ICON_ROOT .. "plus",
+    NEXT = ICON_ROOT .. "chevron-right",
+    PLAN = ICON_ROOT .. "notebook-tabs",
+    PREVIOUS = ICON_ROOT .. "chevron-left",
+    READY = ICON_ROOT .. "circle-check-big",
+    ROLES = ICON_ROOT .. "shield-check",
+    SAVE = ICON_ROOT .. "save",
+    SETTINGS = ICON_ROOT .. "settings",
+    STATUS = ICON_ROOT .. "list-checks",
+    WHISPER = ICON_ROOT .. "message-square",
+}
 local FONT_PATH = "Interface\\AddOns\\LunaRaids\\Assets\\Expressway.ttf"
 local fontObjects, fontObjectSerial = {}, 0
 local ROLE_TEXTURE =
@@ -207,13 +279,6 @@ local function IsMainWindowRegion(region)
         current = current.GetParent and current:GetParent() or nil
     end
     return false
-end
-
-local function MainWindowDensity(minimum)
-    local scale = UIParent and UIParent:GetEffectiveScale() or 1
-    if not scale or scale <= .70 then return 1 end
-    local progress = math.min(1, (scale - .70) / .30)
-    return 1 - ((1 - minimum) * progress)
 end
 
 local function Pixel(value)
@@ -415,10 +480,13 @@ local function Font(parent, size, color, text)
         size and size <= 9 and "GameFontHighlightSmall"
             or "GameFontHighlight")
     if size and IsMainWindowRegion(parent) then
-        size = math.max(7, size * MainWindowDensity(.82))
+        -- Main-window typography must remain readable independently of the
+        -- user's effective UI scale. Layout pixels can snap; type must not
+        -- be density-compressed a second time.
+        size = math.max(9, size + 1)
     end
     if size then
-        font:SetFontObject(GetFontObject(Pixel(size), "MONOCHROME"))
+        font:SetFontObject(GetFontObject(Pixel(size), "OUTLINE"))
     end
     font:SetShadowOffset(0, 0)
     font:SetShadowColor(0, 0, 0, 0)
@@ -427,7 +495,7 @@ local function Font(parent, size, color, text)
     elseif color == "muted" then
         font:SetTextColor(unpack(MUTED))
     else
-        font:SetTextColor(.90, .90, .90, 1)
+        font:SetTextColor(unpack(THEME.text))
     end
     font:SetText(text or "")
     return font
@@ -466,10 +534,6 @@ end
 
 local function Button(parent, text, width, height, template)
     local button = BackdropFrame("Button", nil, parent, template)
-    if IsMainWindowRegion(parent) then
-        height = math.max(
-            18, height * MainWindowDensity(.86))
-    end
     PixelSetSize(button, width, height)
     button:SetBackdrop({
         bgFile = WHITE,
@@ -477,15 +541,17 @@ local function Button(parent, text, width, height, template)
         edgeSize = Pixel(1),
     })
     InstallPixelBorder(button)
-    button.baseColor = { .045, .055, .066, .98 }
+    button.baseColor = { unpack(THEME.surfaceRaised) }
     button.baseBorder = { unpack(BORDER) }
     button:SetBackdropColor(unpack(button.baseColor))
     button:SetBackdropBorderColor(unpack(button.baseBorder))
     button.Text = Font(button, 10, "text", text)
     button.Text:SetPoint("CENTER")
     button:HookScript("OnEnter", function(self)
-        self:SetBackdropColor(.075, .09, .105, .98)
-        self:SetBackdropBorderColor(.25, .31, .36, 1)
+        self:SetBackdropColor(unpack(THEME.surfaceHover))
+        if not self.borderless then
+            self:SetBackdropBorderColor(unpack(THEME.accent))
+        end
     end)
     button:HookScript("OnLeave", function(self)
         self:SetBackdropColor(unpack(self.baseColor))
@@ -496,19 +562,19 @@ end
 
 local function StyleButton(button, style)
     if style == "primary" then
-        button.baseColor = { .055, .19, .26, .98 }
+        button.baseColor = { unpack(THEME.surfaceSelected) }
         button.baseBorder = { unpack(ACCENT) }
-        button.Text:SetTextColor(.92, .98, 1, 1)
+        button.Text:SetTextColor(unpack(THEME.accentText))
     elseif style == "positive" then
-        button.baseColor = { .045, .14, .105, .98 }
-        button.baseBorder = { .18, .46, .33, 1 }
+        button.baseColor = { unpack(THEME.positive) }
+        button.baseBorder = { unpack(THEME.positiveBorder) }
     elseif style == "danger" then
-        button.baseColor = { .15, .055, .06, .98 }
-        button.baseBorder = { .50, .20, .22, 1 }
+        button.baseColor = { unpack(THEME.danger) }
+        button.baseBorder = { unpack(THEME.dangerBorder) }
     else
-        button.baseColor = { .045, .055, .066, .98 }
+        button.baseColor = { unpack(THEME.surfaceRaised) }
         button.baseBorder = { unpack(BORDER) }
-        button.Text:SetTextColor(.90, .90, .90, 1)
+        button.Text:SetTextColor(unpack(THEME.text))
     end
     button:SetBackdropColor(unpack(button.baseColor))
     button:SetBackdropBorderColor(unpack(button.baseBorder))
@@ -516,9 +582,6 @@ end
 
 local function AddButtonIcon(button, texture, size)
     size = size or 18
-    if IsMainWindowRegion(button) then
-        size = size * MainWindowDensity(.84)
-    end
     local left = size <= 16 and 8 or 10
     button.ActionIcon = button:CreateTexture(nil, "OVERLAY")
     button.ActionIcon:SetTexture(texture)
@@ -534,8 +597,7 @@ local function AddDropdownArrow(button)
     button.DropdownArrow = button:CreateTexture(nil, "OVERLAY")
     button.DropdownArrow:SetTexture(
         "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up")
-    local size = IsMainWindowRegion(button)
-        and 18 * MainWindowDensity(.84) or 18
+    local size = 18
     PixelSetSize(button.DropdownArrow, size, size)
     button.DropdownArrow:SetPoint("RIGHT", -6, 0)
     button.Text:ClearAllPoints()
@@ -580,21 +642,82 @@ local function Panel(parent)
         edgeSize = Pixel(1),
     })
     InstallPixelBorder(panel)
-    panel:SetBackdropColor(.025, .031, .038, .98)
+    panel:SetBackdropColor(unpack(THEME.surface))
     panel:SetBackdropBorderColor(unpack(BORDER))
     panel.InnerGlow = panel:CreateTexture(nil, "BACKGROUND")
     panel.InnerGlow:SetTexture(WHITE)
     panel.InnerGlow:SetPoint("TOPLEFT", 1, -1)
     panel.InnerGlow:SetPoint("TOPRIGHT", -1, -1)
     panel.InnerGlow:SetHeight(42)
-    panel.InnerGlow:SetVertexColor(.08, .10, .12, .10)
+    panel.InnerGlow:SetVertexColor(
+        THEME.accent[1], THEME.accent[2], THEME.accent[3], .08)
     panel.TopLine = panel:CreateTexture(nil, "ARTWORK")
     panel.TopLine:SetTexture(WHITE)
     panel.TopLine:SetPoint("TOPLEFT", 1, -1)
     panel.TopLine:SetPoint("TOPRIGHT", -1, -1)
     SetPixelHeight(panel.TopLine, 1)
-    panel.TopLine:SetVertexColor(.20, .24, .28, .55)
+    panel.TopLine:SetVertexColor(
+        THEME.dividerStrong[1], THEME.dividerStrong[2],
+        THEME.dividerStrong[3], .55)
     return panel
+end
+
+-- Public construction vocabulary. Keep the lower-level names available for
+-- compatibility, but use these helpers for new UI so pages share one visual
+-- system instead of styling frames ad hoc.
+local function MakeButton(parent, text, width, height, template)
+    return Button(parent, text, width, height, template)
+end
+
+local function MakeCard(parent)
+    return Panel(parent)
+end
+
+local function MakePage(parent)
+    local page = BackdropFrame("Frame", nil, parent)
+    page:SetBackdrop({ bgFile = WHITE })
+    page:SetBackdropColor(unpack(THEME.content))
+    page:Hide()
+    return page
+end
+
+local function MakeFooter(parent, height)
+    local footer = CreateFrame("Frame", nil, parent)
+    footer:SetHeight(height or 50)
+    footer.Background = footer:CreateTexture(nil, "BACKGROUND")
+    footer.Background:SetTexture(WHITE)
+    footer.Background:SetAllPoints()
+    footer.Background:SetVertexColor(unpack(THEME.footer))
+    footer.TopLine = footer:CreateTexture(nil, "ARTWORK")
+    footer.TopLine:SetTexture(WHITE)
+    footer.TopLine:SetPoint("TOPLEFT")
+    footer.TopLine:SetPoint("TOPRIGHT")
+    SetPixelHeight(footer.TopLine, 1)
+    footer.TopLine:SetVertexColor(unpack(THEME.dividerStrong))
+    footer.InnerLine = footer:CreateTexture(nil, "ARTWORK")
+    footer.InnerLine:SetTexture(WHITE)
+    footer.InnerLine:SetPoint("TOPLEFT", 1, -2)
+    footer.InnerLine:SetPoint("TOPRIGHT", -1, -2)
+    SetPixelHeight(footer.InnerLine, 1)
+    footer.InnerLine:SetVertexColor(
+        THEME.divider[1], THEME.divider[2], THEME.divider[3], .75)
+    return footer
+end
+
+local function RegisterPage(owner, key, page)
+    owner.uiPages = owner.uiPages or {}
+    owner.uiPages[key] = page
+    page.pageKey = key
+    return page
+end
+
+local function ShowPage(owner, key)
+    local active = owner.uiPages and owner.uiPages[key]
+    for _, page in pairs(owner.uiPages or {}) do
+        page:SetShown(page == active)
+    end
+    owner.activeUIPage = active and key or nil
+    return active
 end
 
 local function SectionHeader(panel, title, subtitle, rightInset)
@@ -603,14 +726,14 @@ local function SectionHeader(panel, title, subtitle, rightInset)
     panel.SectionHeader:SetPoint("TOPLEFT", 1, -1)
     panel.SectionHeader:SetPoint("TOPRIGHT", -1, -1)
     panel.SectionHeader:SetHeight(31)
-    panel.SectionHeader:SetVertexColor(.035, .043, .052, .98)
+    panel.SectionHeader:SetVertexColor(unpack(THEME.header))
     panel.SectionAccent = panel:CreateTexture(nil, "OVERLAY")
     panel.SectionAccent:SetTexture(WHITE)
     panel.SectionAccent:SetPoint("TOPLEFT", 1, -1)
     panel.SectionAccent:SetPoint(
         "BOTTOMLEFT", panel.SectionHeader, "BOTTOMLEFT", 0, 0)
     SetPixelWidth(panel.SectionAccent, 2)
-    panel.SectionAccent:SetVertexColor(.27, .34, .40, 1)
+    panel.SectionAccent:SetVertexColor(unpack(ACCENT))
     panel.SectionDivider = panel:CreateTexture(nil, "OVERLAY")
     panel.SectionDivider:SetTexture(WHITE)
     panel.SectionDivider:SetPoint(
@@ -618,7 +741,7 @@ local function SectionHeader(panel, title, subtitle, rightInset)
     panel.SectionDivider:SetPoint(
         "BOTTOMRIGHT", panel.SectionHeader, "BOTTOMRIGHT", 0, 0)
     SetPixelHeight(panel.SectionDivider, 1)
-    panel.SectionDivider:SetVertexColor(.13, .17, .20, 1)
+    panel.SectionDivider:SetVertexColor(unpack(THEME.border))
     panel.Title = Font(panel, 10, "text", title)
     panel.Title:SetPoint("LEFT", panel.SectionHeader, "LEFT", 13, 0)
     if subtitle then
@@ -633,17 +756,16 @@ end
 
 local function EditField(parent, width, placeholder)
     local field = BackdropFrame("EditBox", nil, parent)
-    local height = IsMainWindowRegion(parent)
-        and 28 * MainWindowDensity(.86) or 28
+    local height = 28
     PixelSetSize(field, width, height)
     field:SetBackdrop({
         bgFile = WHITE, edgeFile = WHITE, edgeSize = Pixel(1),
     })
     InstallPixelBorder(field)
-    field:SetBackdropColor(.025, .04, .055, .98)
+    field:SetBackdropColor(unpack(THEME.content))
     field:SetBackdropBorderColor(unpack(BORDER))
     field:SetAutoFocus(false)
-    field:SetFontObject(GetFontObject(Pixel(9), "MONOCHROMEOUTLINE"))
+    field:SetFontObject(GetFontObject(Pixel(10), "OUTLINE"))
     field:SetTextInsets(9, 9, 0, 0)
     field:SetMaxLetters(240)
     field.Placeholder = Font(field, 9, "muted", placeholder or "")
@@ -680,7 +802,7 @@ local function Slider(
     slider.Track:SetPoint("LEFT", 4, 0)
     slider.Track:SetPoint("RIGHT", -4, 0)
     SetPixelHeight(slider.Track, 4)
-    slider.Track:SetVertexColor(.035, .075, .10, 1)
+    slider.Track:SetVertexColor(unpack(THEME.track))
     slider.Fill = slider:CreateTexture(nil, "ARTWORK")
     slider.Fill:SetTexture(WHITE)
     slider.Fill:SetPoint("LEFT", slider.Track, "LEFT", 0, 0)
@@ -691,7 +813,7 @@ local function Slider(
     slider.Thumb:SetBackdrop({
         bgFile = WHITE, edgeFile = WHITE, edgeSize = Pixel(1),
     })
-    slider.Thumb:SetBackdropColor(.08, .28, .39, 1)
+    slider.Thumb:SetBackdropColor(unpack(THEME.surfaceSelected))
     slider.Thumb:SetBackdropBorderColor(unpack(ACCENT))
     slider.Value = Font(slider, 9, "accent", "")
     slider.Value:SetPoint("BOTTOM", slider, "TOP", 0, -1)
@@ -916,14 +1038,13 @@ end
 local function GetClassRowColor(class, alternate)
     local color = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     if not color then
-        return alternate and .035 or .028,
-            alternate and .052 or .043,
-            alternate and .066 or .057, .96
+        local base = alternate and THEME.rowAlt or THEME.row
+        return unpack(base)
     end
-    local strength = alternate and .18 or .145
-    return .014 + (color.r * strength),
-        .019 + (color.g * strength),
-        .023 + (color.b * strength), .96
+    local strength = alternate and .105 or .08
+    return THEME.content[1] + (color.r * strength),
+        THEME.content[2] + (color.g * strength),
+        THEME.content[3] + (color.b * strength), THEME.row[4]
 end
 
 local function CreateScrollArea(parent)
@@ -941,7 +1062,7 @@ local function CreateScrollArea(parent)
     track.Background = track:CreateTexture(nil, "BACKGROUND")
     track.Background:SetAllPoints()
     track.Background:SetTexture(WHITE)
-    track.Background:SetVertexColor(.025, .045, .06, .92)
+    track.Background:SetVertexColor(unpack(THEME.scrollbarTrack))
 
     local thumb = CreateFrame("Button", nil, track)
     thumb:SetFrameLevel(track:GetFrameLevel() + 1)
@@ -951,7 +1072,7 @@ local function CreateScrollArea(parent)
     thumb.Texture = thumb:CreateTexture(nil, "ARTWORK")
     thumb.Texture:SetAllPoints()
     thumb.Texture:SetTexture(WHITE)
-    thumb.Texture:SetVertexColor(.18, .70, 1, .88)
+    thumb.Texture:SetVertexColor(unpack(THEME.scrollbarThumb))
     thumb:RegisterForDrag("LeftButton")
     scroll.Scrollbar = track
     scroll.ScrollThumb = thumb
@@ -1002,11 +1123,11 @@ local function CreateScrollArea(parent)
     end
 
     thumb:SetScript("OnEnter", function(self)
-        self.Texture:SetVertexColor(.42, .82, 1, 1)
+        self.Texture:SetVertexColor(unpack(THEME.scrollbarHover))
     end)
     thumb:SetScript("OnLeave", function(self)
         if not self.dragging then
-            self.Texture:SetVertexColor(.18, .70, 1, .88)
+            self.Texture:SetVertexColor(unpack(THEME.scrollbarThumb))
         end
     end)
     thumb:SetScript("OnDragStart", function(self)
@@ -1033,7 +1154,7 @@ local function CreateScrollArea(parent)
     thumb:SetScript("OnDragStop", function(self)
         self.dragging = nil
         self:SetScript("OnUpdate", nil)
-        self.Texture:SetVertexColor(.18, .70, 1, .88)
+        self.Texture:SetVertexColor(unpack(THEME.scrollbarThumb))
         UpdateScrollbar()
     end)
     scroll:SetScript("OnMouseWheel", function(self, delta)
@@ -1052,6 +1173,8 @@ local function CreateScrollArea(parent)
 end
 
 Raid.UI = {
+    THEME = THEME,
+    ICONS = ICONS,
     ROW_HEIGHT = ROW_HEIGHT,
     FRAME_WIDTH = FRAME_WIDTH,
     FRAME_HEIGHT = FRAME_HEIGHT,
@@ -1087,11 +1210,17 @@ Raid.UI = {
     Font = Font,
     InstallPixelBorder = InstallPixelBorder,
     Button = Button,
+    MakeButton = MakeButton,
     StyleButton = StyleButton,
     AddButtonIcon = AddButtonIcon,
     AddDropdownArrow = AddDropdownArrow,
     AddButtonTooltip = AddButtonTooltip,
     Panel = Panel,
+    MakeCard = MakeCard,
+    MakePage = MakePage,
+    MakeFooter = MakeFooter,
+    RegisterPage = RegisterPage,
+    ShowPage = ShowPage,
     SectionHeader = SectionHeader,
     EditField = EditField,
     GetFontObject = GetFontObject,

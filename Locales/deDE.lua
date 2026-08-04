@@ -2,6 +2,8 @@ local L = LibStub("AceLocale-3.0"):NewLocale("LunaRaids", "deDE")
 if not L then return end
 
 L.SETTINGS_GENERAL = "ALLGEMEIN"
+L.SETTINGS_INTERFACE = "OBERFLÄCHE"
+L.SETTINGS_HUDS = "HUDS"
 L.SETTINGS_TITLE = "ADDON-EINSTELLUNGEN"
 L.SETTINGS_INTRO = "Oberfläche, Kommunikation und Automatisierung"
 L.SETTINGS_RAID_ADMIN = "RAIDLEITUNG"
@@ -12,6 +14,8 @@ L.SETTINGS_SUBTITLE_COOLDOWNS = "Sichtbarkeit und verfolgte Raid-Abklingzeiten"
 L.MECHANICS_HUD_TITLE = "AKTUELLER BOSS"
 L.MECHANICS_HUD_SECTION = "MECHANIK-HUD"
 L.MECHANICS_HUD_SECTION_DESC = "Mechanikhinweise zum aktuellen Boss als bewegliche Karten."
+L.HUD_OPACITY = "HUD-Deckkraft"
+L.HUD_OPACITY_DESC = "Deckkraft der Schnellleiste, deiner Zuweisungen und des aktuellen Bossguides."
 L.MECHANICS_HUD_ENABLED = "Mechanikkarten aktiviert"
 L.MECHANICS_HUD_ENABLED_DESC = "Aktiviert oder deaktiviert die Mechanikkarten vollständig."
 L.MECHANICS_HUD_VISIBILITY = "Sichtbarkeit"

@@ -1,6 +1,8 @@
 local _, Raid = ...
 local UI = Raid.UI
+local ICONS = UI.ICONS
 local L = Raid.L
+local THEME = UI.THEME
 
 local ROW_HEIGHT = UI.ROW_HEIGHT
 local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
@@ -31,6 +33,16 @@ local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
 local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
 local CreateScrollArea = UI.CreateScrollArea
+
+local function StyleQuickButton(button)
+    button.borderless = true
+    button.baseColor = { unpack(THEME.surface) }
+    button.baseBorder = { 0, 0, 0, 0 }
+    button:SetBackdropColor(unpack(button.baseColor))
+    button:SetBackdropBorderColor(0, 0, 0, 0)
+    button.Text:SetTextColor(unpack(THEME.text))
+end
+
 function Raid:CreateQuickActionBar()
     if self.quickActionBar then return self.quickActionBar end
     local saved = self.db.quickBar
@@ -45,6 +57,12 @@ function Raid:CreateQuickActionBar()
     bar:SetMovable(true)
     bar:EnableMouse(true)
 
+    bar.HandleBackground = bar:CreateTexture(nil, "ARTWORK")
+    bar.HandleBackground:SetTexture(WHITE)
+    bar.HandleBackground:SetPoint("TOPLEFT", 1, -1)
+    bar.HandleBackground:SetPoint("BOTTOMLEFT", 1, 1)
+    bar.HandleBackground:SetWidth(88)
+    bar.HandleBackground:SetVertexColor(unpack(THEME.header))
     bar.Handle = CreateFrame("Frame", nil, bar)
     bar.Handle:SetPoint("TOPLEFT", 1, -1)
     bar.Handle:SetPoint("BOTTOMLEFT", 1, 1)
@@ -78,7 +96,7 @@ function Raid:CreateQuickActionBar()
     bar.Handle:HookScript(
         "OnLeave", function() GameTooltip:Hide() end)
     bar.Handle.Icon = bar.Handle:CreateTexture(nil, "ARTWORK")
-    bar.Handle.Icon:SetTexture("Interface\\Icons\\INV_BannerPVP_02")
+    bar.Handle.Icon:SetTexture(ICONS.BRAND)
     PixelSetSize(bar.Handle.Icon, 22, 22)
     bar.Handle.Icon:SetPoint("LEFT", 8, 0)
     bar.Handle.Title = Font(bar.Handle, 9, "accent", L.RAID_TOOLS_COMPACT)
@@ -87,7 +105,7 @@ function Raid:CreateQuickActionBar()
     local actions = {
         {
             label = L.ACTION_READY,
-            icon = "Interface\\RaidFrame\\ReadyCheck-Ready",
+            icon = ICONS.READY,
             title = L.READY_CHECK,
             detail = L.READY_CHECK_DESC,
             action = function() Raid:StartReadyCheck() end,
@@ -97,21 +115,21 @@ function Raid:CreateQuickActionBar()
         },
         {
             label = L.ACTION_ROLES,
-            icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing",
+            icon = ICONS.ROLES,
             title = L.ROLE_CHECK,
             detail = L.ROLE_CHECK_DESC,
             action = function() Raid:StartRoleCheck() end,
         },
         {
             label = L.ACTION_PULL_10,
-            icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+            icon = ICONS.COOLDOWNS,
             title = L.PULL_TIMER,
             detail = L.PULL_TIMER_DESC,
             action = function() Raid:StartPullCountdown(10) end,
         },
         {
             label = L.ACTION_BREAK_5,
-            icon = "Interface\\Icons\\INV_Drink_05",
+            icon = ICONS.BREAK,
             title = L.BREAK_TIMER,
             detail = L.BREAK_TIMER_DESC,
             action = function() Raid:StartBreakTimer(5) end,
@@ -133,7 +151,7 @@ function Raid:CreateQuickActionBar()
         },
         {
             label = L.ACTION_ASSIGN,
-            icon = "Interface\\Icons\\INV_Misc_Note_05",
+            icon = ICONS.ASSIGNMENTS,
             title = L.RAID_ASSIGNMENTS,
             detail = L.RAID_ASSIGNMENTS_DESC,
             action = function()
@@ -155,7 +173,7 @@ function Raid:CreateQuickActionBar()
         if previous then
             button:SetPoint("LEFT", previous, "RIGHT", 4, 0)
         else
-            button:SetPoint("LEFT", bar.Handle, "RIGHT", 4, 0)
+            button:SetPoint("LEFT", bar.Handle, "RIGHT", 2, 0)
         end
         AddButtonIcon(button, entry.icon, 16)
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -174,7 +192,7 @@ function Raid:CreateQuickActionBar()
                 or rightAction
                     and L.RIGHT_CLICK_PIN_RESULTS
                 or ""))
-        if index == 1 then StyleButton(button, "primary") end
+        StyleQuickButton(button)
         bar.Actions[index] = button
         previous = button
     end
@@ -185,13 +203,20 @@ function Raid:CreateQuickActionBar()
         bar.BossNav:CreateTexture(nil, "BACKGROUND")
     bar.BossNav.Background:SetTexture(WHITE)
     bar.BossNav.Background:SetAllPoints()
-    bar.BossNav.Background:SetVertexColor(.018, .045, .062, .92)
+    bar.BossNav.Background:SetVertexColor(unpack(THEME.footer))
+    bar.BossNav.TopLine = bar.BossNav:CreateTexture(nil, "ARTWORK")
+    bar.BossNav.TopLine:SetTexture(WHITE)
+    bar.BossNav.TopLine:SetPoint("TOPLEFT")
+    bar.BossNav.TopLine:SetPoint("TOPRIGHT")
+    SetPixelHeight(bar.BossNav.TopLine, 1)
+    bar.BossNav.TopLine:SetVertexColor(unpack(THEME.border))
     bar.BossNav.Previous = Button(bar.BossNav, "", 28, 24)
+    StyleQuickButton(bar.BossNav.Previous)
     bar.BossNav.Previous:SetPoint("LEFT", 4, -1)
     bar.BossNav.Previous.Icon =
         bar.BossNav.Previous:CreateTexture(nil, "ARTWORK")
     bar.BossNav.Previous.Icon:SetTexture(
-        "Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
+        ICONS.PREVIOUS)
     PixelSetSize(bar.BossNav.Previous.Icon, 16, 16)
     bar.BossNav.Previous.Icon:SetPoint("CENTER")
     bar.BossNav.Previous:SetScript(
@@ -201,11 +226,12 @@ function Raid:CreateQuickActionBar()
         bar.BossNav.Previous, L.PREVIOUS_BOSS,
         L.PREVIOUS_BOSS_DESC)
     bar.BossNav.Next = Button(bar.BossNav, "", 28, 24)
+    StyleQuickButton(bar.BossNav.Next)
     bar.BossNav.Next:SetPoint("RIGHT", -4, -1)
     bar.BossNav.Next.Icon =
         bar.BossNav.Next:CreateTexture(nil, "ARTWORK")
     bar.BossNav.Next.Icon:SetTexture(
-        "Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
+        ICONS.NEXT)
     PixelSetSize(bar.BossNav.Next.Icon, 16, 16)
     bar.BossNav.Next.Icon:SetPoint("CENTER")
     bar.BossNav.Next:SetScript(
@@ -217,10 +243,8 @@ function Raid:CreateQuickActionBar()
     bar.BossNav.Announce = Button(bar.BossNav, "", 28, 24)
     bar.BossNav.Announce:SetPoint(
         "RIGHT", bar.BossNav.Next, "LEFT", -4, 0)
-    StyleButton(bar.BossNav.Announce, "primary")
-    AddButtonIcon(
-        bar.BossNav.Announce,
-        "Interface\\Icons\\Ability_Warrior_BattleShout", 15)
+    StyleQuickButton(bar.BossNav.Announce)
+    AddButtonIcon(bar.BossNav.Announce, ICONS.ANNOUNCE, 15)
     bar.BossNav.Announce.ActionIcon:ClearAllPoints()
     bar.BossNav.Announce.ActionIcon:SetPoint("CENTER")
     bar.BossNav.Announce:RegisterForClicks(
@@ -255,6 +279,7 @@ end
 function Raid:RefreshQuickActionBar()
     local bar = self:CreateQuickActionBar()
     local settings = self.db.quickBar
+    bar:SetAlpha(self:GetHUDOpacity())
     local iconOnly = settings.iconOnly
     local buttonWidth = iconOnly and 38 or 106
     local actionCount = #(bar.Actions or {})
@@ -291,6 +316,10 @@ function Raid:RefreshQuickActionBar()
     bar.Handle:ClearAllPoints()
     bar.Handle:SetPoint("TOPLEFT", 1, -1)
     bar.Handle:SetPoint(
+        "BOTTOMLEFT", 1, showBossNav and 35 or 1)
+    bar.HandleBackground:ClearAllPoints()
+    bar.HandleBackground:SetPoint("TOPLEFT", 1, -1)
+    bar.HandleBackground:SetPoint(
         "BOTTOMLEFT", 1, showBossNav and 35 or 1)
     bar.BossNav:SetShown(showBossNav)
     if showBossNav then
