@@ -353,10 +353,7 @@ function Raid:RefreshQuickActionBar()
         bar.BossNav.Previous:SetAlpha(hasPrevious and 1 or .35)
         bar.BossNav.Next:SetAlpha(hasNext and 1 or .35)
     end
-    local grouped = self:IsInLiveGroup()
-    local authorized = isSimulated or grouped and (
-        UnitIsGroupLeader and UnitIsGroupLeader("player")
-        or UnitIsGroupAssistant and UnitIsGroupAssistant("player"))
+    local authorized = self:CanUseRaidControls()
     local visibility = settings.visibility or "GROUP"
     local allowed = visibility == "ALWAYS"
         or visibility == "GROUP" and authorized

@@ -10,9 +10,8 @@ if developmentVersion then
     addonVersion = "dev"
 end
 Raid.version = addonVersion
--- Older protocol-8 builds compare this field literally against their
--- hard-coded 0.1.0 value. Keep the handshake identity stable; the actual TOC
--- version is informational, while PROTOCOL determines wire compatibility.
+-- Older builds compare this handshake field literally. Keep it stable; the
+-- TOC version remains informational and calls are parsed by message kind.
 Raid.syncVersion = "0.1.0"
 Raid.roster = {}
 Raid.messageQueue = {}
@@ -256,6 +255,21 @@ function Raid:GetGroupContext()
     return "SOLO"
 end
 
+function Raid:IsGroupAssistant()
+    if UnitIsGroupAssistant and UnitIsGroupAssistant("player") then
+        return true
+    end
+    return IsRaidOfficer and IsRaidOfficer() or false
+end
+
+function Raid:CanUseRaidControls()
+    if self:IsSimulating() then return true end
+    if not self:IsInLiveGroup() then return false end
+    return UnitIsGroupLeader and UnitIsGroupLeader("player")
+        or self:IsGroupAssistant()
+        or false
+end
+
 function Raid:RequireRaidEditor()
     if self.IsLocalRaidEditor and self:IsLocalRaidEditor() then
         return true
@@ -267,19 +281,13 @@ end
 
 function Raid:CanEditRaidGroups()
     if self.db and self.db.raidReadOnly then return false end
-    if self:IsInLiveRaid() then
-        return UnitIsGroupLeader
-                and UnitIsGroupLeader("player")
-            or IsRaidLeader and IsRaidLeader()
-            or false
-    end
-    return self:IsSimulating()
+    return self:IsInRaidContext() and self:CanUseRaidControls()
 end
 
 function Raid:RequireRaidGroupEditor()
     if self:CanEditRaidGroups() then return true end
     self:Print(
-        "Only the raid leader can change raid groups.")
+        "Only the raid leader or an assistant can change raid groups.")
     return false
 end
 

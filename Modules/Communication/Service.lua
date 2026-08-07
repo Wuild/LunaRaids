@@ -1,7 +1,9 @@
 local _, Raid = ...
 
 local PREFIX = "LunaRaids"
-local PROTOCOL = "9"
+-- Preserve the legacy first field so existing clients keep their field
+-- offsets. It is framing metadata only; inbound calls are not version-gated.
+local WIRE_HEADER = "8"
 
 local KIND_TO_WIRE = {
     HELLO = "H", PROFILE = "P", INTEL = "I", CHECK = "k",
@@ -217,53 +219,6 @@ local function SamePlayer(left, right)
     return PlayerName(left):lower() == PlayerName(right):lower()
 end
 
-local function CompareVersions(left, right)
-    local leftParts, rightParts = {}, {}
-    for value in tostring(left or ""):gmatch("%d+") do
-        leftParts[#leftParts + 1] = tonumber(value)
-    end
-    for value in tostring(right or ""):gmatch("%d+") do
-        rightParts[#rightParts + 1] = tonumber(value)
-    end
-    local count = math.max(#leftParts, #rightParts)
-    for index = 1, count do
-        local a, b = leftParts[index] or 0, rightParts[index] or 0
-        if a ~= b then return a < b and -1 or 1 end
-    end
-    return 0
-end
-
-function Raid:WarnIncompatiblePeer(sender, version, protocol)
-    self.incompatibleWarnings = self.incompatibleWarnings or {}
-    local key = tostring(sender) .. ":" .. tostring(version or protocol)
-    if self.incompatibleWarnings[key] then return end
-    self.incompatibleWarnings[key] = true
-    local localVersion = self.version or "unknown"
-    local comparison = version
-        and CompareVersions(version, localVersion)
-        or (
-            tonumber(protocol) and tonumber(PROTOCOL)
-            and (
-                tonumber(protocol) < tonumber(PROTOCOL) and -1
-                or tonumber(protocol) > tonumber(PROTOCOL) and 1
-                or 0)
-            or 0)
-    if comparison > 0 then
-        if not self.updateAvailableNotified then
-            self.updateAvailableNotified = true
-            local available = version
-                and ("version " .. version)
-                or ("a newer protocol (" .. tostring(protocol) .. ")")
-            self:Print(self:Localize(
-                "UPDATE_AVAILABLE", available, localVersion))
-        end
-    else
-        self:Print(self:Localize("INCOMPATIBLE_VERSION",
-            PlayerName(sender),
-            version or ("protocol " .. tostring(protocol))))
-    end
-end
-
 local function AssignmentLabel(raid, encounterIndex, key)
     if not raid or not key then return "Unknown Assignment" end
     local healerIndex = key:match("^S:healer%.raid%.(%d+)$")
@@ -344,7 +299,7 @@ function Raid:QueueSync(kind, values, distribution, target, priority)
     if not self.syncQueue or not self.syncFrame then return end
     self.syncSequence = (self.syncSequence or 0) + 1
     local fields = {
-        PROTOCOL,
+        WIRE_HEADER,
         KIND_TO_WIRE[kind] or kind,
         Base36(self.syncSequence),
     }
@@ -758,8 +713,7 @@ function Raid:ApplyPeerSelection(
 	end
     if leader then self.activeRaidLeader = leader end
     self:ApplyRaidComposition(raid)
-    local isAssistant = UnitIsGroupAssistant
-        and UnitIsGroupAssistant("player")
+    local isAssistant = self:IsGroupAssistant()
     local inCombat = InCombatLockdown and InCombatLockdown()
     if isAssistant and not inCombat
         and not continuingCurrentRaid and self.EnterBossUI
@@ -847,10 +801,6 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         or UnitName("player")
     if SamePlayer(sender, ownName) then return end
     local fields = Fields(message)
-    if fields[1] ~= PROTOCOL then
-        self:WarnIncompatiblePeer(sender, nil, fields[1])
-        return
-    end
     local raidSessionID
     local last = fields[#fields]
     if last and last:sub(1, 1) == "@" then
@@ -862,15 +812,15 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     local sequence = tonumber(fields[3]) or 0
     if kind == "HELLO" then
         self.peerHelloSequences = self.peerHelloSequences or {}
-        local previousHello = self.peerHelloSequences[sender]
-        if previousHello and sequence <= previousHello then
-            self:ClearSentSyncFingerprints(sender)
-        end
+        -- A handshake starts a fresh synchronization opportunity. Always
+        -- invalidate recipient caches: a prior transmission may have been
+        -- dropped or rejected, and an empty authoritative snapshot must still
+        -- clear stale assignments and manual players on the peer.
+        self:ClearSentSyncFingerprints(sender)
         self.peerHelloSequences[sender] = sequence
         self.compatiblePeers = self.compatiblePeers or {}
-        -- The protocol check above determines wire compatibility. Display
-        -- versions may differ (or be an unexpanded packager token) without
-        -- making otherwise compatible messages unsafe.
+        -- A successful HELLO establishes the peer. Display versions and the
+        -- legacy wire-header value are informational only.
         self.compatiblePeers[sender] = true
         self.peerSequences = self.peerSequences or {}
         self.peerSequences[sender] = 0
@@ -896,23 +846,19 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         end
         return
     end
-    if kind ~= "COOLDOWN"
-        and (not raidSessionID or raidSessionID == "")
-    then
-        return
-    end
-    -- SELECT is the only non-handshake message accepted without an active
-    -- local session; it creates the opt-in discovery toast. Everything else
-    -- waits until a raid has explicitly been joined or created.
+    -- Session-aware calls retain their stale-session protection. Calls from
+    -- older clients without a session suffix continue through the legacy
+    -- authority and sequence checks below.
     local offeredClose = kind == "CLOSE" and self.availableLeaderRaid
         and SamePlayer(self.availableLeaderRaid.sender, sender)
         and self.availableLeaderRaid.raidSessionID == raidSessionID
-    if kind ~= "SELECT" and kind ~= "COOLDOWN" and not offeredClose
-        and not self:IsRaidSyncActive()
+    if raidSessionID and kind ~= "SELECT" and kind ~= "COOLDOWN"
+        and not offeredClose and not self:IsRaidSyncActive()
     then
         return
     end
-    if kind ~= "SELECT" and kind ~= "COOLDOWN" and not offeredClose
+    if raidSessionID and kind ~= "SELECT" and kind ~= "COOLDOWN"
+        and not offeredClose
         and raidSessionID ~= self.db.activeRaidSessionID
     then
         return
@@ -974,8 +920,13 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     if sequence <= (self.peerSequences[sender] or 0) then return end
     self.peerSequences[sender] = sequence
     if kind == "SELECT" then
-        self:OfferLeaderRaid(
-            sender, fields[4], tonumber(fields[5]), raidSessionID)
+        if raidSessionID and raidSessionID ~= "" then
+            self:OfferLeaderRaid(
+                sender, fields[4], tonumber(fields[5]), raidSessionID)
+        else
+            self:ApplyPeerSelection(
+                fields[4], tonumber(fields[5]), true, sender)
+        end
         return
     end
     local offer = self.availableLeaderRaid
@@ -1380,8 +1331,7 @@ function Raid:HandleGroupRosterUpdate()
         local joinedWithActiveRaid = joinedGroup
             and Raid.db.raidLocked
             and not Raid.db.raidReadOnly
-        local isAssistant = UnitIsGroupAssistant
-            and UnitIsGroupAssistant("player") or false
+        local isAssistant = Raid:IsGroupAssistant()
         local isLeader = UnitIsGroupLeader
             and UnitIsGroupLeader("player") or false
         local becameAssistant = inGroup and isAssistant and not isLeader
@@ -1463,8 +1413,7 @@ function Raid:InitializeCommunication()
         self.communicationWasInGroup = self:IsInLiveGroup()
     end
     if self.communicationWasAssistant == nil then
-        self.communicationWasAssistant = UnitIsGroupAssistant
-            and UnitIsGroupAssistant("player") or false
+        self.communicationWasAssistant = self:IsGroupAssistant()
     end
     if self.syncFrame then return end
     self.syncFrame = CreateFrame("Frame")

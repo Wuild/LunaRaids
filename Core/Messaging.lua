@@ -57,7 +57,7 @@ function Raid:GetGroupChannel()
         return configured
     end
     if self:IsInLiveRaid() then
-        return self:IsLocalRaidEditor() and "RAID_WARNING" or "RAID"
+        return self:CanUseRaidControls() and "RAID_WARNING" or "RAID"
     elseif self:IsInLiveGroup() then
         return "PARTY"
     end
@@ -65,7 +65,7 @@ function Raid:GetGroupChannel()
 end
 
 function Raid:AnnounceAssignments(channelOverride)
-    if not self:RequireRaidEditor() then return end
+    if not self:CanUseRaidControls() then return end
     wipe(self.messageQueue)
     local channel = channelOverride or self:GetGroupChannel()
     local encounter = self:GetEncounter()

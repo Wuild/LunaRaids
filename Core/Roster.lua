@@ -393,7 +393,7 @@ function Raid:MoveRosterPlayer(player, subgroup, target)
 end
 
 function Raid:StartRoleCheck()
-    if not self:IsLocalRaidEditor() then
+    if not self:CanUseRaidControls() then
         self:Print(self.L.ROLE_CHECK_REQUIRES_LEADERSHIP)
         return
     end
@@ -421,7 +421,7 @@ function Raid:StartRoleCheck()
 end
 
 function Raid:StartReadyCheck()
-    if not self:IsLocalRaidEditor() then
+    if not self:CanUseRaidControls() then
         self:Print(self.L.READY_CHECK_REQUIRES_LEADERSHIP)
         return
     end
@@ -456,7 +456,7 @@ end
 
 function Raid:StartPullCountdown(seconds)
     seconds = math.max(1, math.min(30, tonumber(seconds) or 10))
-    if not self:IsLocalRaidEditor() then
+    if not self:CanUseRaidControls() then
         self:Print(self.L.PULL_TIMER_REQUIRES_LEADERSHIP)
         return
     end
@@ -498,7 +498,7 @@ end
 function Raid:StartBreakTimer(minutes)
     minutes = math.max(1, math.min(
         60, math.floor(tonumber(minutes) or 5)))
-    if not self:IsLocalRaidEditor() then
+    if not self:CanUseRaidControls() then
         self:Print(self.L.BREAK_TIMER_REQUIRES_LEADERSHIP)
         return
     end
