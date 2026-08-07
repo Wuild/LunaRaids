@@ -168,7 +168,7 @@ function Raid:GetReadyCheckAuras(unit, force)
 end
 
 function Raid:BroadcastReadyCheckStatus()
-    if not self.QueueSync or not IsInGroup or not IsInGroup() then return end
+    if not self.QueueSync or not self:IsInLiveGroup() then return end
     local checks = self:GetReadyCheckAuras("player", true)
     if not checks then return end
     local mask = 0

@@ -22,6 +22,10 @@ function Cooldowns:OnEnable()
     self:RegisterEvent("SPELL_UPDATE_COOLDOWN", function()
         Raid:HandleLocalRaidCooldownUpdate()
     end)
+    self:RegisterEvent("GROUP_ROSTER_UPDATE", function()
+        Raid:RefreshRaidCooldowns()
+        Raid:BroadcastLocalRaidCooldowns(nil, true)
+    end)
     Raid:InitializeRaidCooldowns()
 end
 

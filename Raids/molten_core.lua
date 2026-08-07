@@ -11,7 +11,7 @@ local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = tru
 
 local raid = Raid:RegisterRaid({
     expansion = "VANILLA",
-    key = "molten_core", name = "Molten Core", size = 40,
+    key = "molten_core", name = "Molten Core", size = 40, instanceID = 409,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\molten_core",
     guides = {
         ["Lucifron"] = {

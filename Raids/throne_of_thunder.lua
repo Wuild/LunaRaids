@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\throne_of_thund
 
 Raid:RegisterRaid({
     expansion = "MOP",
-    key = "throne_of_thunder", name = "Throne of Thunder", size = 25,
+    key = "throne_of_thunder", name = "Throne of Thunder", size = 25, instanceID = 1098,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

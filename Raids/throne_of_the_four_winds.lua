@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\throne_of_the_f
 
 Raid:RegisterRaid({
     expansion = "CATA",
-    key = "throne_of_the_four_winds", name = "Throne of the Four Winds", size = 25,
+    key = "throne_of_the_four_winds", name = "Throne of the Four Winds", size = 25, instanceID = 754,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

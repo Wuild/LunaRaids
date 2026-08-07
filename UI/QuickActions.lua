@@ -150,6 +150,19 @@ function Raid:CreateQuickActionBar()
             rightDetail = L.RIGHT_CLICK_BREAK,
         },
         {
+            label = L.ANNOUNCE,
+            icon = ICONS.ANNOUNCE,
+            title = L.ANNOUNCE_ASSIGNMENTS,
+            detail = L.ANNOUNCE_ASSIGNMENTS_DESC,
+            action = function() Raid:AnnounceAssignments() end,
+            rightAction = function(button)
+                Raid:ShowAnnouncementChannelMenu(button, function(channel)
+                    Raid:AnnounceAssignments(channel)
+                end)
+            end,
+            rightDetail = L.ANNOUNCE_CHANNEL_PICKER_DESC,
+        },
+        {
             label = L.ACTION_ASSIGN,
             icon = ICONS.ASSIGNMENTS,
             title = L.RAID_ASSIGNMENTS,
@@ -266,6 +279,13 @@ function Raid:CreateQuickActionBar()
     PixelSetSize(bar.BossNav.BossIcon, 22, 22)
     bar.BossNav.BossIcon:SetPoint(
         "LEFT", bar.BossNav.Previous, "RIGHT", 7, -1)
+    bar.BossNav.Killed = bar.BossNav:CreateTexture(nil, "OVERLAY")
+    bar.BossNav.Killed:SetTexture(ICONS.CHECK)
+    PixelSetSize(bar.BossNav.Killed, 14, 14)
+    bar.BossNav.Killed:SetPoint(
+        "BOTTOMRIGHT", bar.BossNav.BossIcon, "BOTTOMRIGHT", 3, -3)
+    bar.BossNav.Killed:SetVertexColor(.22, .9, .55, 1)
+    bar.BossNav.Killed:Hide()
     bar.BossNav.Name = Font(bar.BossNav, 9, "accent", "")
     bar.BossNav.Name:SetPoint(
         "LEFT", bar.BossNav.BossIcon, "RIGHT", 6, -1)
@@ -307,10 +327,9 @@ function Raid:RefreshQuickActionBar()
             or tonumber(self.db.activeEncounter)) or nil
     local encounter = encounterIndex and encounterIndex >= 2
         and raid.encounters[encounterIndex] or nil
-    local isSimulated = self.simulation and self.simulation.enabled
-    local raidGroup = IsInRaid and IsInRaid() or false
+    local isSimulated = self:IsSimulating()
+    local raidGroup = self:IsInLiveRaid()
     local showBossNav = encounter
-        and (raidGroup or isSimulated)
         and self:IsLocalRaidEditor() or false
     bar:SetHeight(showBossNav and 76 or 42)
     bar.Handle:ClearAllPoints()
@@ -326,6 +345,7 @@ function Raid:RefreshQuickActionBar()
         bar.BossNav.BossIcon:SetTexture(
             encounter.icon or raid.icon or "Interface\\Icons\\INV_Sword_27")
         bar.BossNav.Name:SetText(encounter.name:upper())
+        bar.BossNav.Killed:SetShown(self:IsBossKilled(encounterIndex))
         local hasPrevious = encounterIndex > 2
         local hasNext = encounterIndex < #raid.encounters
         bar.BossNav.Previous:SetEnabled(hasPrevious)
@@ -333,7 +353,7 @@ function Raid:RefreshQuickActionBar()
         bar.BossNav.Previous:SetAlpha(hasPrevious and 1 or .35)
         bar.BossNav.Next:SetAlpha(hasNext and 1 or .35)
     end
-    local grouped = IsInGroup and IsInGroup() or false
+    local grouped = self:IsInLiveGroup()
     local authorized = isSimulated or grouped and (
         UnitIsGroupLeader and UnitIsGroupLeader("player")
         or UnitIsGroupAssistant and UnitIsGroupAssistant("player"))

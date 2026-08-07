@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\ruby_sanctum"
 
 Raid:RegisterRaid({
     expansion = "WOTLK",
-    key = "ruby_sanctum", name = "The Ruby Sanctum", size = 25,
+    key = "ruby_sanctum", name = "The Ruby Sanctum", size = 25, instanceID = 724,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

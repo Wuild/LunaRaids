@@ -31,7 +31,7 @@ end
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
-    key = "karazhan", name = "Karazhan", size = 10,
+    key = "karazhan", name = "Karazhan", size = 10, instanceID = 532,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\karazhan",
     guides = {
         ["Attumen the Huntsman"] = {

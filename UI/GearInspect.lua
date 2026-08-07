@@ -154,9 +154,6 @@ function Raid:StorePeerGearSnapshot(sender, links)
         and math.floor((totalLevel / levelCount) + .5) or nil
     data.complete = true
     self.gearInspectCache[player.guid or player.name] = data
-    if self.gearPeerWait then
-        self.gearPeerWait[player.guid or player.name] = nil
-    end
     if self.gearInspectView and self.gearInspectView:IsShown() then
         self:RefreshGearInspectView(false)
     end
@@ -165,7 +162,6 @@ end
 function Raid:QueueGearInspections()
     self.gearInspectQueue = {}
     self.gearInspectQueued = {}
-    self.gearPeerWait = self.gearPeerWait or {}
     local now = GetTime()
     for _, player in ipairs(self.roster or {}) do
         local unit = player.unit
@@ -182,27 +178,7 @@ function Raid:QueueGearInspections()
                     and self.gearInspectCache[key]
                 local freshCache = cached and cached.complete
                     and now - (cached.updated or 0) < 300
-                local compatiblePeer
-                for sender, compatible in pairs(
-                    self.compatiblePeers or {})
-                do
-                    if compatible
-                        and ShortPlayerName(sender)
-                            == ShortPlayerName(player.name)
-                    then
-                        compatiblePeer = true
-                        break
-                    end
-                end
-                if compatiblePeer and not cached then
-                    self.gearPeerWait[key] =
-                        self.gearPeerWait[key] or now
-                end
-                local waitingForPeer = compatiblePeer
-                    and not cached
-                    and now - (self.gearPeerWait[key] or now) < 8
-                if not freshCache and not waitingForPeer
-                    and not self.gearInspectQueued[key]
+                if not freshCache and not self.gearInspectQueued[key]
                 then
                     self.gearInspectQueued[key] = true
                     self.gearInspectQueue[

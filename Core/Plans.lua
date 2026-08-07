@@ -1527,7 +1527,7 @@ local AUTO_MARKER_EVENT_UNIT = {
 }
 
 function Raid:ApplyAutoMarkers(event)
-	if self.simulation.enabled or not self:IsAutoMarkerEnabled()
+	if self:IsSimulating() or not self:IsAutoMarkerEnabled()
 	or type(SetRaidTarget) ~= "function"
 	then
 		return
@@ -1586,7 +1586,7 @@ function Raid:ClearPlan()
 end
 
 function Raid:CanStartRaid()
-	if IsInRaid and IsInRaid() then
+	if self:IsInLiveRaid() then
 		return self:IsActualRaidLeader()
 	end
 	if self.simulation.enabled then
@@ -1595,22 +1595,74 @@ function Raid:CanStartRaid()
 	return true
 end
 
+function Raid:GetDefaultRaidSessionName(raid, stamp)
+	raid = raid or self:GetRaid()
+	stamp = tonumber(stamp) or (GetServerTime and GetServerTime())
+		or time and time() or 0
+	local formatted = date and date("%Y-%m-%d %H:%M", stamp)
+		or tostring(stamp)
+	return (raid and raid.name or self.L.RAID) .. " -> " .. formatted
+end
+
+function Raid:GenerateRaidSessionID()
+	self.raidSessionSequence = (self.raidSessionSequence or 0) + 1
+	local stamp = GetServerTime and GetServerTime()
+		or time and time() or 0
+	local owner = UnitGUID and UnitGUID("player")
+		or UnitName and UnitName("player") or "unknown"
+	owner = tostring(owner):gsub("[^%w]", ""):sub(-12)
+	local entropy = math.random and math.random(0, 1679615) or 0
+	return ("LR-%x-%s-%x-%x"):format(
+		stamp, owner, self.raidSessionSequence, entropy)
+end
+
 function Raid:CompleteRaid()
 	if not self.db.raidLocked then
 		self:Print(self.L.NO_ACTIVE_RAID)
 		return false
 	end
-	if not self:CanStartRaid() then
-		self:Print(self.L.ONLY_LEADER_COMPLETE)
-		return false
+	if self.db.raidReadOnly then
+		self:ExitRaidHistory()
+		return true
 	end
+	if not self:CanStartRaid() then
+		if self.DiscardPendingSync then self:DiscardPendingSync() end
+		self.db.raidLocked = false
+		self.db.activeSavedRaid = nil
+		self.db.activeRaidSessionID = nil
+		self.db.raidReadOnly = false
+		self.selectedPlayer = nil
+		self.dragPlayer = nil
+		self.roster = {}
+		if self.HideDragGhost then self:HideDragGhost() end
+		if self.RefreshPersonalAssignments then
+			self:RefreshPersonalAssignments()
+		end
+		if self.RefreshMechanicsHUD then self:RefreshMechanicsHUD() end
+		if self.RefreshQuickActionBar then
+			self:RefreshQuickActionBar()
+		end
+		self:ShowNewRaidWizard(false)
+		self.activeRaidLeader = nil
+		if self.RequestPeerSync then self:RequestPeerSync() end
+		return true
+	end
+	self:AutoSaveActiveRaid()
 	local raid = self:GetRaid()
+	local saved = self.db.activeSavedRaid
+		and self.db.savedRaids[self.db.activeSavedRaid]
+	if saved then
+		saved.closedAt = GetServerTime and GetServerTime()
+			or time and time() or saved.savedAt
+	end
 	if self.QueueSync and self:IsLocalRaidEditor() then
 		if self.DiscardPendingSync then self:DiscardPendingSync() end
 		self:QueueSync("CLOSE", { raid.key })
 	end
 	self.db.raidLocked = false
 	self.db.activeSavedRaid = nil
+	self.db.activeRaidSessionID = nil
+	self.db.raidReadOnly = false
 	self.selectedPlayer = nil
 	self.dragPlayer = nil
 	if self.HideDragGhost then
@@ -1647,6 +1699,8 @@ function Raid:ClearCurrentRaidSession()
 	end
 	self.db.raidLocked = false
 	self.db.activeSavedRaid = nil
+	self.db.activeRaidSessionID = nil
+	self.db.raidReadOnly = false
 	self.selectedPlayer = nil
 	self.dragPlayer = nil
 	self.roster = {}
@@ -1667,10 +1721,6 @@ function Raid:ClearCurrentRaidSession()
 end
 
 function Raid:BeginRaid(raidKey)
-	if not self:CanStartRaid() then
-		self:Print(self.L.ONLY_LEADER_START)
-		return false
-	end
 	local raid = self.raidByKey[raidKey]
 	if not raid then
 		return false
@@ -1692,6 +1742,11 @@ function Raid:BeginRaid(raidKey)
 			Copy(configuration.bossPresets)
 	end
 	self.db.manualPlayers[raid.key] = {}
+	self.db.activeRaidSessionID = self:GenerateRaidSessionID()
+	self.db.activeBossKills = {}
+	self.db.raidLocked = true
+	self.db.activeSavedRaid = self.db.activeRaidSessionID
+	self.db.raidReadOnly = false
 	local firstBoss = #raid.encounters >= 2 and 2 or 1
 	self.db.currentBossByRaid[raid.key] =
 		firstBoss >= 2 and firstBoss or nil
@@ -1699,12 +1754,13 @@ function Raid:BeginRaid(raidKey)
 		self:QueueSync("RESET", { raid.key })
 	end
 	self.db.activeEncounter = firstBoss
-	self.db.raidLocked = true
-	self.db.activeSavedRaid = nil
 	self.db.lastRaidByExpansion[raid.expansion] = raid.key
 	self.db.lastEncounterByRaid[raid.key] = firstBoss
 	self.selectedPlayer = nil
 	self.dragPlayer = nil
+	self.raidLootLineIDs = {}
+	self:UpdateRoster(true)
+	self:SaveCurrentRaid(self:GetDefaultRaidSessionName(raid), true)
 	if self.assignmentScroll then
 		self.assignmentScroll:SetVerticalScroll(0)
 	end
@@ -1740,31 +1796,159 @@ end
 function Raid:AutoSaveActiveRaid()
 	local saved = self.db.activeSavedRaid
 		and self.db.savedRaids[self.db.activeSavedRaid]
-	if not saved or not self.db.raidLocked or self.receivingSync then
+	if not saved or not self.db.raidLocked or self.db.raidReadOnly
+		or self.receivingSync
+	then
 		return false
 	end
 	self:SaveCurrentRaid(saved.name, true)
 	return true
 end
 
+local RAID_INSTANCE_ALIASES = {
+	hyjal = { "Hyjal Summit" },
+	aq40 = { "Ahn'Qiraj", "Ahn'Qiraj Temple" },
+}
+
+local function NormalizeInstanceName(value)
+	return tostring(value or ""):lower()
+		:gsub("^the%s+", "")
+		:gsub("[^%w]+", "")
+end
+
+local function CurrentClientExpansion()
+	local interfaceVersion = GetBuildInfo
+		and tonumber(select(4, GetBuildInfo())) or 0
+	if interfaceVersion >= 50000 and interfaceVersion < 60000 then
+		return "MOP"
+	elseif interfaceVersion >= 40000 and interfaceVersion < 50000 then
+		return "CATA"
+	elseif interfaceVersion >= 30000 and interfaceVersion < 40000 then
+		return "WOTLK"
+	elseif interfaceVersion >= 20000 and interfaceVersion < 30000 then
+		return "TBC"
+	elseif interfaceVersion > 0 and interfaceVersion < 20000 then
+		return "VANILLA"
+	end
+end
+
+function Raid:FindRaidForCurrentInstance()
+	if not GetInstanceInfo then return end
+	local instanceName, instanceType, _, _, maxPlayers, _, _, instanceID =
+		GetInstanceInfo()
+	if instanceType ~= "raid" or not instanceName or instanceName == "" then
+		return nil, nil
+	end
+	local wanted = NormalizeInstanceName(instanceName)
+	instanceID = tonumber(instanceID)
+	local hasInstanceID = instanceID and instanceID > 0
+	local hasKnownInstanceID = false
+	if hasInstanceID then
+		for _, raid in ipairs(self.raids or {}) do
+			if tonumber(raid.instanceID) == instanceID then
+				hasKnownInstanceID = true
+				break
+			end
+		end
+	end
+	local clientExpansion = CurrentClientExpansion()
+	local best, bestScore
+	for _, raid in ipairs(self.raids or {}) do
+		local matches = hasInstanceID
+			and tonumber(raid.instanceID) == instanceID or false
+		-- Blizzard has changed some Classic instance identifiers between client
+		-- branches. Keep a known ID authoritative, but let an unknown ID use the
+		-- localized instance name so a new client build does not break detection.
+		if not hasKnownInstanceID then
+			matches = NormalizeInstanceName(raid.name) == wanted
+			for _, alias in ipairs(RAID_INSTANCE_ALIASES[raid.key] or {}) do
+				if NormalizeInstanceName(alias) == wanted then matches = true end
+			end
+		end
+		if matches then
+			local score = 0
+			if clientExpansion and raid.expansion == clientExpansion then
+				score = score + 20
+			end
+			if tonumber(maxPlayers) and tonumber(raid.size)
+				and tonumber(maxPlayers) == tonumber(raid.size)
+			then
+				score = score + 10
+			end
+			if raid.expansion == self.db.activeExpansion then
+				score = score + 2
+			end
+			if not bestScore or score > bestScore then
+				best, bestScore = raid, score
+			end
+		end
+	end
+	local instanceKey = tostring(instanceID or 0) .. ":" .. wanted
+	return best, instanceKey
+end
+
+function Raid:HandleRaidInstanceChanged()
+	local function Check()
+		local raid, instanceKey = Raid:FindRaidForCurrentInstance()
+		if not raid then
+			Raid.lastRaidInstancePromptKey = nil
+			Raid.pendingInstanceRaidKey = nil
+			return
+		end
+		if Raid.db.raidLocked or not Raid:CanStartRaid()
+			or Raid.lastRaidInstancePromptKey == instanceKey
+		then
+			return
+		end
+		Raid.lastRaidInstancePromptKey = instanceKey
+		Raid.pendingInstanceRaidKey = raid.key
+		if StaticPopup_Show then
+			StaticPopup_Show(
+				"LUNARAIDS_START_INSTANCE_RAID", raid.name, nil, raid.key)
+		end
+	end
+	if C_Timer and C_Timer.After then
+		C_Timer.After(1, Check)
+	else
+		Check()
+	end
+end
+
 function Raid:SaveCurrentRaid(name, silent)
+	if self.db.raidReadOnly then return false end
 	local raid = self:GetRaid()
+	local existing = self.db.activeSavedRaid
+		and self.db.savedRaids[self.db.activeSavedRaid]
+	local now = GetServerTime and GetServerTime()
+		or time and time() or 0
 	name = strtrim(name or "")
 	if name == "" then
-		name = raid.name .. " Plan"
+		name = existing and existing.name
+			or self:GetDefaultRaidSessionName(raid, now)
 	end
-	local id = self.db.activeSavedRaid
-	if not id or not self.db.savedRaids[id] then
-		self.savedRaidSequence = (self.savedRaidSequence or 0) + 1
-		local stamp = GetServerTime and GetServerTime()
-		or time and time() or 0
-		id = tostring(stamp)
-		.. "-" .. self.savedRaidSequence
-	end
+	local id = self.db.activeRaidSessionID or self.db.activeSavedRaid
+	if not id then id = self:GenerateRaidSessionID() end
+	self.db.activeRaidSessionID = id
 	local plans = self.simulation.enabled
 	and self.simulation.plans or self.db.plans
 	local savedPlayers =
 		Copy(self.db.manualPlayers[raid.key] or {})
+	local rosterSnapshot = {}
+	for _, player in ipairs(self.roster or {}) do
+		if player.name and player.name ~= "" then
+			rosterSnapshot[#rosterSnapshot + 1] = {
+				name = player.name,
+				class = player.class,
+				className = player.className,
+				role = player.role,
+				reportedRole = player.reportedRole,
+				spec = player.spec,
+				race = player.race,
+				subgroup = tonumber(player.subgroup) or 1,
+				online = player.online,
+			}
+		end
+	end
 	if self.simulation.enabled then
 		for _, player in ipairs(self.roster or {}) do
 			if player.name and player.name ~= "" then
@@ -1795,8 +1979,9 @@ function Raid:SaveCurrentRaid(name, silent)
 		name = name,
 		raidKey = raid.key,
 		expansion = raid.expansion,
-		savedAt = GetServerTime and GetServerTime()
-		or time and time() or 0,
+		createdAt = existing
+			and (existing.createdAt or existing.savedAt) or now,
+		savedAt = now,
 		activeEncounter = self.db.activeEncounter,
 		currentBoss = self:GetCurrentBossIndex(raid),
 		plans = Copy(plans[raid.key] or {}),
@@ -1804,6 +1989,9 @@ function Raid:SaveCurrentRaid(name, silent)
 		bossPresets = Copy(self.db.bossPresets[raid.key] or {}),
 		raidComposition = Copy(self.db.raidCompositions[raid.key] or {}),
 		manualPlayers = savedPlayers,
+		roster = rosterSnapshot,
+		lootHistory = Copy(existing and existing.lootHistory or {}),
+		bossKills = Copy(self.db.activeBossKills or {}),
 	}
 	self.db.activeSavedRaid = id
 	self:PersistRaidConfiguration(raid.key)
@@ -1816,10 +2004,6 @@ function Raid:SaveCurrentRaid(name, silent)
 end
 
 function Raid:LoadSavedRaid(id)
-	if not self:CanStartRaid() then
-		self:Print(self.L.ONLY_LEADER_LOAD)
-		return false
-	end
 	local saved = self.db.savedRaids[id]
 	local raid = saved and self.raidByKey[saved.raidKey]
 	if not raid then
@@ -1835,11 +2019,31 @@ function Raid:LoadSavedRaid(id)
 	self.db.bossPresets[raid.key] = Copy(saved.bossPresets or {})
 	self.db.raidCompositions[raid.key] =
 		Copy(saved.raidComposition or {})
-	self.db.manualPlayers[raid.key] = Copy(saved.manualPlayers or {})
+	local restoredPlayers = Copy(saved.manualPlayers or {})
+	for _, player in ipairs(saved.roster or {}) do
+		if player.name and player.name ~= "" then
+			local key = player.name:lower()
+			if not restoredPlayers[key] then
+				restoredPlayers[key] = {
+					name = player.name,
+					class = player.class or "WARRIOR",
+					className = player.className,
+					role = player.role or player.reportedRole or "DAMAGER",
+					reportedRole = player.reportedRole or player.role,
+					spec = player.spec or "",
+					race = player.race or "Planned",
+					subgroup = tonumber(player.subgroup) or 1,
+					manual = true,
+				}
+			end
+		end
+	end
+	self.db.manualPlayers[raid.key] = restoredPlayers
 	self.db.activeRaid = raid.key
 	self.db.activeExpansion = raid.expansion
 	self.db.activeEncounter = math.max(1, math.min(
 		tonumber(saved.activeEncounter) or 1, #raid.encounters))
+	self.db.activeBossKills = Copy(saved.bossKills or {})
 	local savedCurrentBoss = tonumber(saved.currentBoss)
 	self.db.currentBossByRaid[raid.key] =
 		savedCurrentBoss and savedCurrentBoss >= 2
@@ -1847,22 +2051,28 @@ function Raid:LoadSavedRaid(id)
 		and savedCurrentBoss or nil
 	self.db.raidLocked = true
 	self.db.activeSavedRaid = id
-	self:PersistRaidConfiguration(raid.key)
+	self.db.activeRaidSessionID = tostring(saved.id or id)
+	self.db.raidReadOnly = true
+	self.raidLootLineIDs = {}
 	self.db.lastRaidByExpansion[raid.expansion] = raid.key
 	self.db.lastEncounterByRaid[raid.key] = self.db.activeEncounter
-	self:ApplyRaidComposition(raid)
-	self:UpdateRoster()
+	self.roster = {}
+	for _, player in ipairs(saved.roster or {}) do
+		local copy = Copy(player)
+		copy.manual = true
+		self.roster[#self.roster + 1] = copy
+	end
+	if #self.roster == 0 then
+		for _, player in pairs(restoredPlayers) do
+			self.roster[#self.roster + 1] = Copy(player)
+		end
+	end
+	self:SortRosterByRole()
 	if self.RefreshAll then
 		self:RefreshAll()
 	end
 	if self.RefreshQuickActionBar then
 		self:RefreshQuickActionBar()
-	end
-	if self.BroadcastSelection then
-		self:BroadcastSelection()
-	end
-	if self.SendPlanSnapshot then
-		self:SendPlanSnapshot()
 	end
 	if self.EnterBossUI then
 		self:EnterBossUI("ASSIGNMENTS")
@@ -1880,9 +2090,15 @@ function Raid:DeleteSavedRaid(id)
 	self.db.savedRaids[id] = nil
 	if self.db.activeSavedRaid == id then
 		self.db.activeSavedRaid = nil
+		if self.db.activeRaidSessionID == tostring(saved.id or id) then
+			self.db.activeRaidSessionID = nil
+		end
 	end
 	if self.RefreshNewRaidWizard then
 		self:RefreshNewRaidWizard()
+	end
+	if self.activeBossTab == "HISTORY" and self.RefreshAssignments then
+		self:RefreshAssignments()
 	end
 	self:Print(self:Localize("RAID_PLAN_DELETED", name))
 	return true
@@ -1984,6 +2200,9 @@ function Raid:SetCurrentBoss(index, fromSync)
 	self.db.currentBossByRaid[raid.key] = index
 	if not fromSync and self.QueueSync then
 		self:QueueSync("CURRENT", { raid.key, index })
+		if self.SendPlanSnapshot then
+			self:SendPlanSnapshot(nil, index, false)
+		end
 	end
 	if not fromSync then self:AutoSaveActiveRaid() end
 	if self.RefreshPersonalAssignments then
@@ -2028,6 +2247,22 @@ function Raid:NavigateBoss(direction)
 	return true
 end
 
+function Raid:ExitRaidHistory()
+	if not self.db.raidReadOnly then return end
+	self.db.raidLocked = false
+	self.db.activeSavedRaid = nil
+	self.db.activeRaidSessionID = nil
+	self.db.raidReadOnly = false
+	self.roster = {}
+	self.selectedPlayer = nil
+	self.dragPlayer = nil
+	self:ShowNewRaidWizard(false)
+	if self.newRaidWizard then
+		self.newRaidWizard.step = "HISTORY"
+		self:RefreshNewRaidWizard()
+	end
+end
+
 local function NormalizeEncounterName(name)
 	name = tostring(name or ""):lower():gsub("[^%w]", "")
 	return name:gsub("^the", "")
@@ -2042,9 +2277,164 @@ local function EncounterNameMatches(encounter, encounterName)
 	return false
 end
 
+function Raid:IsBossKilled(index)
+	return index and self.db.activeBossKills
+		and self.db.activeBossKills[index] ~= nil or false
+end
+
+function Raid:GetDBMBossStats(encounter)
+	if not encounter then return end
+	local raid = self:GetRaid()
+	local instanceID = raid and tonumber(raid.instanceID)
+	local dbmAvailable = type(DBM) == "table"
+	local loadAttempted = false
+	local loadSucceeded = false
+	-- DBM raid packs are load-on-demand. Their SavedVariables and boss
+	-- modules do not exist just because DBM-Core is loaded, so ask DBM to
+	-- load the pack belonging to this raid before inspecting mod.stats.
+	if dbmAvailable and instanceID
+		and type(DBM.LoadModsOnDemand) == "function"
+		and not (InCombatLockdown and InCombatLockdown())
+	then
+		loadAttempted = true
+		loadSucceeded = pcall(function()
+			DBM:LoadModsOnDemand("mapId", instanceID, 0)
+		end)
+	end
+	local wanted = { [NormalizeEncounterName(encounter.name)] = true }
+	for _, alias in ipairs(encounter.encounterNames or {}) do
+		wanted[NormalizeEncounterName(alias)] = true
+	end
+	-- A few DBM modules deliberately use short/internal IDs which cannot be
+	-- derived from the displayed encounter name. Keep these aliases beside
+	-- the integration rather than leaking DBM-specific names into raid data.
+	local dbmAliases = {
+		attumenthehuntsman = { "Attumen" },
+		maidenofvirtue = { "Maiden" },
+		theoperaevent = { "BigBadWolf", "Oz", "RomuloAndJulianne" },
+		shadeofaran = { "Aran" },
+		princemalchezaar = { "Prince" },
+		highkingmaulgar = { "Maulgar" },
+		ragewinterchill = { "Rage" },
+		ladyvashj = { "Vashj" },
+		alar = { "Alar" },
+		kaelthassunstrider = { "KaelThas" },
+		theillidaricouncil = { "Council" },
+		theeredartwins = { "Twins" },
+		muru = { "Muru" },
+		kiljaeden = { "Kil" },
+		kalecgos = { "Kal" },
+	}
+	for wantedName in pairs(wanted) do
+		for _, alias in ipairs(dbmAliases[wantedName] or {}) do
+			wanted[NormalizeEncounterName(alias)] = true
+		end
+	end
+	local result = {
+		kills = 0, pulls = 0, dbmAvailable = dbmAvailable,
+		loadAttempted = loadAttempted, loadSucceeded = loadSucceeded,
+	}
+	local found
+	local visited = {}
+	local function Matches(candidate)
+		candidate = NormalizeEncounterName(candidate):gsub("raid$", "")
+		if #candidate < 4 then return false end
+		for name in pairs(wanted) do
+			if candidate == name
+				or #name >= 4 and (
+					candidate:find(name, 1, true)
+					or name:find(candidate, 1, true))
+			then
+				return true
+			end
+		end
+		return false
+	end
+	local function AddStats(stats)
+		if type(stats) ~= "table" or visited[stats] then return end
+		visited[stats] = true
+		found = true
+		for key, value in pairs(stats) do
+				value = tonumber(value)
+				if value and key:match("Kills$") then
+					result.kills = result.kills + value
+				elseif value and key:match("Pulls$") then
+					result.pulls = result.pulls + value
+				elseif value and value > 0 and key:match("BestTime$")
+					and (not result.bestTime or value < result.bestTime)
+				then
+					result.bestTime = value
+				elseif value and value > 0 and key:match("LastTime$") then
+					result.lastTime = value
+				end
+		end
+	end
+	if DBM and type(DBM.Mods) == "table" then
+		for _, mod in ipairs(DBM.Mods) do
+			local general = mod.localization and mod.localization.general
+			if (Matches(mod.id) or Matches(general and general.name)) then
+				result.moduleID = result.moduleID or mod.id
+				AddStats(mod.stats)
+			end
+		end
+	end
+	-- DBM keeps statistics in per-character globals. Reading these directly
+	-- also works before a load-on-demand raid package has built every mod.
+	for _, globalName in ipairs({
+		"DBMRaidsVanilla_SavedStats",
+		"DBMRaidsBC_SavedStats",
+		"DBMRaidsWotLK_SavedStats",
+		"DBMRaidsCataclysm_SavedStats",
+		"DBMRaidsMoP_SavedStats",
+	}) do
+		for modID, stats in pairs(_G[globalName] or {}) do
+			if Matches(modID) then
+				result.moduleID = result.moduleID or modID
+				AddStats(stats)
+			end
+		end
+	end
+	result.matched = found or false
+	return result
+end
+
+function Raid:FormatBossTime(seconds)
+	seconds = tonumber(seconds)
+	if not seconds or seconds <= 0 then return "--" end
+	local minutes = math.floor(seconds / 60)
+	local remainder = seconds - (minutes * 60)
+	return ("%d:%05.2f"):format(minutes, remainder)
+end
+
+function Raid:RecordBossKill(index, encounterID, encounterName)
+	if self.db.raidReadOnly or not self.db.raidLocked or not index then
+		return false
+	end
+	self.db.activeBossKills = self.db.activeBossKills or {}
+	if self.db.activeBossKills[index] then return false end
+	self.db.activeBossKills[index] = {
+		encounterID = tonumber(encounterID),
+		name = encounterName,
+		killedAt = GetServerTime and GetServerTime()
+			or time and time() or 0,
+	}
+	self:AutoSaveActiveRaid()
+	if self.RefreshBossRail then self:RefreshBossRail() end
+	if self.RefreshQuickActionBar then self:RefreshQuickActionBar() end
+	-- DBM updates its own saved statistics from the same encounter event. Give
+	-- it one frame to commit the new kill/time before refreshing our labels.
+	if C_Timer and C_Timer.After then
+		C_Timer.After(.2, function()
+			if Raid.RefreshBossRail then Raid:RefreshBossRail() end
+			if Raid.RefreshQuickActionBar then Raid:RefreshQuickActionBar() end
+		end)
+	end
+	return true
+end
+
 function Raid:HandleEncounterStarted(_, encounterID, encounterName)
 	self.pendingBossAdvance = nil
-	if not self.db.raidLocked or not self:IsLocalRaidEditor() then return end
+	if not self.db.raidLocked or self.db.raidReadOnly then return end
 	encounterID = tonumber(encounterID)
 	if not encounterID then return end
 	local raid = self:GetRaid()
@@ -2072,7 +2462,8 @@ function Raid:HandleEncounterEnded(
 	end
 	local raid = self:GetRaid()
 	if self:GetCurrentBossIndex(raid) ~= pending.index then return end
-	self:NavigateBoss(1)
+	self:RecordBossKill(pending.index, encounterID, encounterName)
+	if self:IsLocalRaidEditor() then self:NavigateBoss(1) end
 end
 
 function Raid:HandleBossKill(_, encounterID, encounterName)
@@ -2081,13 +2472,14 @@ function Raid:HandleBossKill(_, encounterID, encounterName)
 			"BOSS_KILL", encounterID, encounterName, nil, nil, 1)
 		return
 	end
-	if not self.db.raidLocked or not self:IsLocalRaidEditor() then return end
+	if not self.db.raidLocked or self.db.raidReadOnly then return end
 	local raid = self:GetRaid()
 	local index = self:GetCurrentBossIndex(raid)
 	local encounter = index and raid.encounters[index]
 	if not encounter or not EncounterNameMatches(encounter, encounterName) then
 		return
 	end
-	self:NavigateBoss(1)
+	self:RecordBossKill(index, encounterID, encounterName)
+	if self:IsLocalRaidEditor() then self:NavigateBoss(1) end
 end
 

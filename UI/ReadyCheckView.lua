@@ -738,7 +738,7 @@ function Raid:RefreshRaidStatusView()
     self.readyCheckPeerData = self.readyCheckPeerData or {}
     self.readyCheckAuraCache = self.readyCheckAuraCache or {}
     frame:Show()
-    frame.ActionBar:Show()
+    frame.ActionBar:SetShown(self:IsInGroupContext())
     local canEdit = self:IsLocalRaidEditor()
     for _, button in ipairs(frame.Actions or {}) do
         button:SetEnabled(canEdit)

@@ -11,7 +11,7 @@ local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = tru
 
 local raid = Raid:RegisterRaid({
     expansion = "VANILLA",
-    key = "naxxramas", name = "Naxxramas", size = 40,
+    key = "naxxramas", name = "Naxxramas", size = 40, instanceID = 533,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\naxxramas",
     guides = {
         ["Anub'Rekhan"] = {

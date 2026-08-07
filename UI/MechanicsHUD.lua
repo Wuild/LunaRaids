@@ -82,8 +82,8 @@ function Raid:RefreshMechanicsHUD()
     local bossIndex = self:GetCurrentBossIndex(raid)
     local encounter = bossIndex and raid.encounters[bossIndex]
     local mechanics = encounter and encounter.mechanics or {}
-    local inGroup = IsInGroup and IsInGroup()
-    local inRaid = IsInRaid and IsInRaid()
+    local inGroup = self:IsInGroupContext()
+    local inRaid = self:IsInRaidContext()
     local visibility = settings.visibility or "GROUP"
     local allowed = visibility == "ALWAYS"
         or visibility == "GROUP" and inGroup

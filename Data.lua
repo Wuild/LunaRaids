@@ -484,6 +484,7 @@ function Raid:RegisterRaid(definition)
     end
     if type(definition.name) ~= "string"
         or type(definition.expansion) ~= "string"
+        or not tonumber(definition.instanceID)
         or type(definition.encounters) ~= "table"
     then
         error("Invalid LunaRaids raid definition: " .. definition.key, 2)

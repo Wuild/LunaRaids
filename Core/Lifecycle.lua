@@ -159,6 +159,56 @@ function Raid:OnInitialize()
         hideOnEscape = false,
         preferredIndex = 3,
     }
+    StaticPopupDialogs.LUNARAIDS_LEFT_GROUP_CLOSE_RAID = {
+        text = self.L.LEFT_GROUP_ACTIVE_RAID,
+        button1 = self.L.CLOSE_RAID,
+        button2 = self.L.KEEP_RAID_ACTIVE,
+        OnAccept = function()
+            Raid:CompleteRaid()
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+    StaticPopupDialogs.LUNARAIDS_JOINED_GROUP_CLOSE_RAID = {
+        text = self.L.JOINED_GROUP_ACTIVE_RAID,
+        button1 = self.L.CLOSE_RAID,
+        button2 = self.L.KEEP_RAID_ACTIVE,
+        OnAccept = function()
+            Raid:CompleteRaid()
+            if Raid.RequestPeerSync then Raid:RequestPeerSync() end
+        end,
+        OnCancel = function()
+            if Raid.RequestPeerSync then Raid:RequestPeerSync() end
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
+    StaticPopupDialogs.LUNARAIDS_START_INSTANCE_RAID = {
+        text = self.L.START_INSTANCE_RAID_PROMPT,
+        button1 = self.L.START_A_RAID,
+        button2 = CANCEL,
+        OnAccept = function(_, raidKey)
+            raidKey = raidKey or Raid.pendingInstanceRaidKey
+            Raid.pendingInstanceRaidKey = nil
+            if not Raid.db.raidLocked and raidKey
+                and Raid.raidByKey[raidKey]
+                and Raid:CanStartRaid()
+            then
+                Raid:BeginRaid(raidKey)
+            end
+        end,
+        OnCancel = function()
+            Raid.pendingInstanceRaidKey = nil
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = true,
+        preferredIndex = 3,
+    }
     self.messageFrame = CreateFrame("Frame")
     self.messageFrame:Hide()
     self.messageFrame.elapsed = 0
@@ -171,7 +221,7 @@ function Raid:OnInitialize()
             frame:Hide()
             return
         end
-        if Raid.simulation.enabled then
+        if Raid:IsSimulating() then
             local destination = message.channel
             local displayText =
                 Raid:FormatMarkerTokensForLocalDisplay(message.text)
@@ -220,8 +270,14 @@ function Raid:OnInitialize()
     self:RegisterEvent(
         "PARTY_LOOT_METHOD_CHANGED", "HandleGroupRosterUpdate")
     self:RegisterEvent("CHAT_MSG_WHISPER", "HandleAutoInviteWhisper")
+    self:RegisterEvent("CHAT_MSG_LOOT", "HandleRaidLootMessage")
+    self:RegisterEvent("ADDON_LOADED", "HandleLootAddonLoaded")
+    self:InitializeGargulLootIntegration()
+    self:InitializeGroupLootIntegration()
     self:RegisterEvent(
         "PLAYER_ENTERING_WORLD", "HandlePlayerEnteringWorld")
+    self:RegisterEvent(
+        "ZONE_CHANGED_NEW_AREA", "HandleRaidInstanceChanged")
     self:RegisterEvent(
         "INSTANCE_ENCOUNTER_ENGAGE_UNIT", "ApplyAutoMarkers")
     self:RegisterEvent("PLAYER_TARGET_CHANGED", "ApplyAutoMarkers")
@@ -274,6 +330,8 @@ function Raid:HandleSlashCommand(input)
                 or "Minimap button shown.")
     elseif input == "cooldowns" or input == "cds" then
         self:ToggleRaidCooldowns()
+    elseif input == "cddebug" then
+        self:PrintRaidCooldownDebug()
     elseif input == "config" or input == "settings" then
         self:OpenSettings()
     else

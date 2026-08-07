@@ -36,6 +36,70 @@ local CreateScrollArea = UI.CreateScrollArea
 local TOP_NAV_HEIGHT = 42
 local CONTENT_TOP = 46 + TOP_NAV_HEIGHT
 
+function Raid:CreateLeaderRaidToast()
+    if self.leaderRaidToast then return self.leaderRaidToast end
+    local toast = Panel(UIParent)
+    PixelSetSize(toast, 440, 58)
+    toast:SetPoint("TOP", UIParent, "TOP", 0, -105)
+    toast:SetFrameStrata("DIALOG")
+    toast:SetFrameLevel(120)
+    toast:SetBackdropColor(unpack(THEME.surfaceRaised))
+    toast:SetBackdropBorderColor(unpack(THEME.positiveBorder))
+    toast:EnableMouse(true)
+    toast.Icon = toast:CreateTexture(nil, "ARTWORK")
+    toast.Icon:SetTexture(ICONS.GROUPS)
+    PixelSetSize(toast.Icon, 30, 30)
+    toast.Icon:SetPoint("LEFT", 12, 0)
+    toast.Title = Font(toast, 10, "accent", L.ACTIVE_RAID_AVAILABLE)
+    toast.Title:SetPoint("TOPLEFT", toast.Icon, "TOPRIGHT", 10, -1)
+    toast.Detail = Font(toast, 10, "text", "")
+    toast.Detail:SetPoint("TOPLEFT", toast.Title, "BOTTOMLEFT", 0, -4)
+    toast.Hint = Font(toast, 9, "accent", L.JOIN_RAID)
+    toast.Hint:SetPoint("RIGHT", -40, 0)
+    toast.Close = Button(toast, "X", 24, 24)
+    toast.Close:SetPoint("TOPRIGHT", -5, -5)
+    toast.Close:SetScript(
+        "OnClick", function() Raid:DismissLeaderRaidOffer() end)
+    toast:SetScript("OnMouseUp", function(_, button)
+        if button == "LeftButton" then Raid:AcceptLeaderRaidOffer() end
+    end)
+    toast:SetScript("OnEnter", function(self)
+        self:SetBackdropBorderColor(unpack(UI.ACCENT))
+    end)
+    toast:SetScript("OnLeave", function(self)
+        self:SetBackdropBorderColor(unpack(THEME.positiveBorder))
+    end)
+    toast:Hide()
+    self.leaderRaidToast = toast
+    return toast
+end
+
+function Raid:RefreshLeaderRaidToast()
+    local offer = self.availableLeaderRaid
+    local raid = offer and self.raidByKey[offer.raidKey]
+    if not offer or not raid or offer.dismissed then
+        if self.leaderRaidToast then self.leaderRaidToast:Hide() end
+        return
+    end
+    local toast = self:CreateLeaderRaidToast()
+    toast:SetScale(tonumber(self.db.hudScale) or 1)
+    toast:SetAlpha(tonumber(self.db.hudOpacity) or .92)
+    toast.Title:SetText(L.ACTIVE_RAID_AVAILABLE)
+    toast.Detail:SetText(offer.sender .. "  ·  " .. raid.name)
+    toast:Show()
+    self.leaderRaidToastToken = (self.leaderRaidToastToken or 0) + 1
+    local token = self.leaderRaidToastToken
+    if C_Timer and C_Timer.After then
+        C_Timer.After(8, function()
+            if Raid.leaderRaidToastToken == token
+                and Raid.leaderRaidToast
+            then
+                Raid.leaderRaidToast:Hide()
+            end
+        end)
+    end
+end
+
 function Raid:GetRosterPanelWidth(width)
     local frameWidth = self.frame and self.frame:GetWidth() or FRAME_WIDTH
     local maximum = math.max(280, math.min(460, frameWidth - 540))
@@ -70,7 +134,7 @@ function Raid:EnterBossUI(initialWorkspace)
     self.workspaceMode = initialWorkspace == "ASSIGNMENTS"
         and "ASSIGNMENTS" or "GROUPS"
     self.activeBossTab = "ASSIGNMENTS"
-    self:UpdateRoster()
+    if not self.db.raidReadOnly then self:UpdateRoster() end
     self:RefreshAll()
     self.frame:Show()
 end
@@ -583,7 +647,7 @@ function Raid:CreateUI()
     local workspaceEntries = {
         {
             key = "ASSIGNMENTS",
-            label = L.ASSIGNMENTS,
+            label = L.RAID,
             title = L.RAID_ASSIGNMENTS,
             description = L.WORKSPACE_ASSIGNMENTS_DESC,
             icon = ICONS.ASSIGNMENTS,
@@ -652,6 +716,73 @@ function Raid:CreateUI()
         self.workspaceButtons[workspaceKey] = button
         previousWorkspaceButton = button
     end
+
+    self.raidToolbar = CreateFrame("Frame", nil, frame)
+    self.raidToolbar:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -88)
+    self.raidToolbar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -88)
+    self.raidToolbar:SetHeight(38)
+    self.raidToolbar:SetFrameLevel(frame:GetFrameLevel() + 3)
+    self.raidToolbar.Background =
+        self.raidToolbar:CreateTexture(nil, "BACKGROUND")
+    self.raidToolbar.Background:SetTexture(WHITE)
+    self.raidToolbar.Background:SetAllPoints()
+    self.raidToolbar.Background:SetVertexColor(unpack(THEME.surfaceAlt))
+    self.raidToolbar.BottomLine =
+        self.raidToolbar:CreateTexture(nil, "ARTWORK")
+    self.raidToolbar.BottomLine:SetTexture(WHITE)
+    self.raidToolbar.BottomLine:SetPoint("BOTTOMLEFT")
+    self.raidToolbar.BottomLine:SetPoint("BOTTOMRIGHT")
+    SetPixelHeight(self.raidToolbar.BottomLine, 1)
+    self.raidToolbar.BottomLine:SetVertexColor(unpack(THEME.dividerStrong))
+    self.raidToolbar.Icon = self.raidToolbar:CreateTexture(nil, "ARTWORK")
+    self.raidToolbar.Icon:SetTexture(ICONS.PLAN)
+    PixelSetSize(self.raidToolbar.Icon, 17, 17)
+    self.raidToolbar.Icon:SetPoint("LEFT", 12, 0)
+    self.raidToolbar.Title = Font(self.raidToolbar, 10, "accent", "")
+    self.raidToolbar.Title:SetPoint(
+        "LEFT", self.raidToolbar.Icon, "RIGHT", 7, 0)
+    self.raidToolbar.Title:SetWidth(180)
+    self.raidToolbar.Title:SetJustifyH("LEFT")
+
+    self.inactiveRaidBanner = CreateFrame("Frame", nil, frame)
+    self.inactiveRaidBanner:SetPoint("TOPLEFT", frame, "TOPLEFT", 1, -88)
+    self.inactiveRaidBanner:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -88)
+    self.inactiveRaidBanner:SetHeight(38)
+    self.inactiveRaidBanner:SetFrameLevel(frame:GetFrameLevel() + 3)
+    self.inactiveRaidBanner.Background =
+        self.inactiveRaidBanner:CreateTexture(nil, "BACKGROUND")
+    self.inactiveRaidBanner.Background:SetTexture(WHITE)
+    self.inactiveRaidBanner.Background:SetAllPoints()
+    self.inactiveRaidBanner.Background:SetVertexColor(unpack(THEME.surfaceAlt))
+    self.inactiveRaidBanner.BottomLine =
+        self.inactiveRaidBanner:CreateTexture(nil, "ARTWORK")
+    self.inactiveRaidBanner.BottomLine:SetTexture(WHITE)
+    self.inactiveRaidBanner.BottomLine:SetPoint("BOTTOMLEFT")
+    self.inactiveRaidBanner.BottomLine:SetPoint("BOTTOMRIGHT")
+    SetPixelHeight(self.inactiveRaidBanner.BottomLine, 1)
+    self.inactiveRaidBanner.BottomLine:SetVertexColor(
+        unpack(THEME.dividerStrong))
+    self.inactiveRaidBanner.Icon =
+        self.inactiveRaidBanner:CreateTexture(nil, "ARTWORK")
+    self.inactiveRaidBanner.Icon:SetTexture(ICONS.GROUPS)
+    PixelSetSize(self.inactiveRaidBanner.Icon, 18, 18)
+    self.inactiveRaidBanner.Icon:SetPoint("LEFT", 12, 0)
+    self.inactiveRaidBanner.Title = Font(
+        self.inactiveRaidBanner, 10, "accent", L.NO_ACTIVE_RAID_JOINED)
+    self.inactiveRaidBanner.Title:SetPoint(
+        "LEFT", self.inactiveRaidBanner.Icon, "RIGHT", 8, 0)
+    self.inactiveRaidBanner.Action = Button(
+        self.inactiveRaidBanner, L.SELECT_RAID, 120, 26)
+    self.inactiveRaidBanner.Action:SetPoint("RIGHT", -8, 0)
+    StyleButton(self.inactiveRaidBanner.Action, "primary")
+    self.inactiveRaidBanner.Action:SetScript("OnClick", function()
+        if Raid.availableLeaderRaid then
+            Raid:AcceptLeaderRaidOffer()
+        else
+            Raid:ShowNewRaidWizard(false)
+        end
+    end)
+    self.inactiveRaidBanner:Hide()
 
     self.bossRail = Panel(frame)
     self.bossRail:SetPoint(
@@ -820,6 +951,7 @@ function Raid:CreateUI()
             icon = ICONS.ASSIGNMENTS },
         { key = "MECHANICS", label = L.MECHANICS,
             icon = ICONS.MECHANICS },
+        { key = "STATS", label = "STATS", icon = ICONS.COOLDOWNS },
     }
     local previousTab
     for _, entry in ipairs(tabEntries) do
@@ -871,43 +1003,35 @@ function Raid:CreateUI()
     self.assignmentScroll:SetPoint("BOTTOMRIGHT", -6, 8)
     self.assignmentContent:SetWidth(ASSIGNMENT_ROW_WIDTH)
 
-    local newRaid = Button(frame, L.NEW_RAID, 100, 30)
-    newRaid:SetPoint("BOTTOMLEFT", 12, 14)
-    AddButtonIcon(newRaid, ICONS.NEW, 16)
-    newRaid:SetScript("OnClick", function()
-        Raid:RequestNewRaid()
-    end)
+    local closeRaid = Button(
+        self.raidToolbar, L.CLOSE_RAID, 104, 26)
+    closeRaid:SetPoint("RIGHT", self.raidToolbar, "RIGHT", -8, 0)
+    StyleButton(closeRaid, "danger")
+    closeRaid:SetScript("OnClick", function() Raid:CompleteRaid() end)
     AddButtonTooltip(
-        newRaid, "New Raid",
-        "Open raid setup to create a new plan or load a saved raid.")
-    local clear = Button(frame, L.CLEAR_BOSS, 104, 30)
-    self.clearPlanButton = clear
-    clear:SetPoint("LEFT", newRaid, "RIGHT", 5, 0)
-    AddButtonIcon(clear, ICONS.DELETE, 16)
-    clear:SetScript("OnClick", function() Raid:ClearPlan() end)
-    StyleButton(clear, "danger")
+        closeRaid, "Close Active Raid",
+        "Return to raid selection. Leaders close the shared session; other players only close their local view.")
+    local backToHistory = Button(
+        self.raidToolbar, L.BACK_TO_HISTORY, 142, 26)
+    backToHistory:SetPoint("RIGHT", self.raidToolbar, "RIGHT", -8, 0)
+    StyleButton(backToHistory, "default")
+    backToHistory:SetScript(
+        "OnClick", function() Raid:ExitRaidHistory() end)
     AddButtonTooltip(
-        clear, "Clear Boss",
-        "Remove every player, healing target, and marker assignment from the current page.")
-    local saveRaid = Button(frame, L.SAVE_RAID, 110, 30)
-    saveRaid:SetPoint("LEFT", clear, "RIGHT", 5, 0)
-    AddButtonIcon(saveRaid, ICONS.SAVE, 16)
+        backToHistory, "Back to Raid History",
+        "Close this read-only view and return to saved raids.")
+    local saveRaid = Button(self.raidToolbar, L.SAVE_RAID, 104, 26)
+    saveRaid:SetPoint("RIGHT", closeRaid, "LEFT", -5, 0)
+    StyleButton(saveRaid, "default")
+    AddButtonIcon(saveRaid, ICONS.SAVE, 15)
     saveRaid:SetScript("OnClick", function() Raid:PromptSaveRaid() end)
     AddButtonTooltip(
         saveRaid, "Save Raid",
-        "Save the complete raid plan so it can be loaded before a future raid.")
-    local whisper = Button(frame, L.WHISPER, 114, 30)
-    whisper:SetPoint("BOTTOMRIGHT", -163, 14)
-    StyleButton(whisper, "default")
-    AddButtonIcon(whisper, ICONS.WHISPER, 16)
-    whisper:SetScript("OnClick", function() Raid:WhisperAssignments() end)
-    AddButtonTooltip(
-        whisper, "Whisper Roles",
-        "Whisper each selected player their assignments for the current boss.")
-    local announce = Button(frame, L.ANNOUNCE, 134, 30)
-    announce:SetPoint("BOTTOMRIGHT", -24, 14)
+        "Save the current raid plan, roster, and assignments.")
+    local announce = Button(self.raidToolbar, L.ANNOUNCE, 116, 26)
+    announce:SetPoint("RIGHT", saveRaid, "LEFT", -5, 0)
     StyleButton(announce, "primary")
-    AddButtonIcon(announce, ICONS.ANNOUNCE, 16)
+    AddButtonIcon(announce, ICONS.ANNOUNCE, 15)
     announce:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     announce:SetScript("OnClick", function(self, mouseButton)
         if mouseButton == "RightButton" then
@@ -919,37 +1043,54 @@ function Raid:CreateUI()
     AddButtonTooltip(
         announce, "Announce Assignments",
         L.ANNOUNCE_ASSIGNMENTS_DESC .. L.ANNOUNCE_CHANNEL_PICKER_DESC)
-    frame.FooterGroupDivider = frame.StatusBg:CreateTexture(nil, "OVERLAY")
-    frame.FooterGroupDivider:SetTexture(WHITE)
-    frame.FooterGroupDivider:SetPoint(
-        "LEFT", saveRaid, "RIGHT", 10, 0)
-    frame.FooterGroupDivider:SetSize(Pixel(1), Pixel(24))
-    frame.FooterGroupDivider:SetVertexColor(unpack(THEME.border))
+    local whisper = Button(self.raidToolbar, L.WHISPER, 104, 26)
+    whisper:SetPoint("RIGHT", announce, "LEFT", -5, 0)
+    StyleButton(whisper, "default")
+    AddButtonIcon(whisper, ICONS.WHISPER, 15)
+    whisper:SetScript("OnClick", function() Raid:WhisperAssignments() end)
+    AddButtonTooltip(
+        whisper, "Whisper Roles",
+        "Whisper each selected player their assignments for the current boss.")
+    local assignments = Button(
+        self.raidToolbar, L.ASSIGNMENTS, 122, 26)
+    assignments:SetPoint("LEFT", self.raidToolbar, "LEFT", 228, 0)
+    StyleButton(assignments, "primary")
+    AddButtonIcon(assignments, ICONS.ASSIGNMENTS, 15)
+    assignments:SetScript("OnClick", function()
+        Raid:SetBossTab(Raid.lastAssignmentBossTab or "ASSIGNMENTS")
+    end)
+    AddButtonTooltip(
+        assignments, L.ASSIGNMENTS,
+        "Open the boss plans, assignments, markers, and raid roster.")
+    local loot = Button(self.raidToolbar, L.LOOT, 92, 26)
+    loot:SetPoint("LEFT", assignments, "RIGHT", 5, 0)
+    StyleButton(loot, "default")
+    AddButtonIcon(loot, ICONS.LOOT, 15)
+    loot:SetScript("OnClick", function() Raid:SetBossTab("LOOT") end)
+    AddButtonTooltip(
+        loot, L.LOOT, "View items received during this raid session.")
     self.workspaceFrames = {
         self.bossRail, rosterPanel, assignmentPanel,
     }
-    self.raidActionButtons = {
-        newRaid, clear, saveRaid, whisper, announce,
+    self.raidToolbarButtons = {
+        assignments, loot, whisper, announce, saveRaid, closeRaid,
     }
+    self.raidToolbarEditorButtons = {
+        whisper, announce, saveRaid,
+    }
+    self.raidToolbarCloseButton = closeRaid
+    self.raidToolbarHistoryButton = backToHistory
+    self.raidToolbarLootButton = loot
+    self.raidToolbarAssignmentsButton = assignments
+    self.raidActionButtons = {}
     self.editorActionButtons = {
         addPlanned, self.bossSettingsButton,
-        newRaid, clear, saveRaid, whisper, announce,
     }
-    self.assignmentActionButtons = {
-        clear, whisper, announce,
-    }
-    self.generalFooterActionButtons = {
-        newRaid, saveRaid,
-    }
-    self.footerActionButtons = {
-        newRaid, clear, saveRaid, whisper, announce,
-    }
-    self.footerLeftButtons = {
-        newRaid, clear, saveRaid,
-    }
-    self.footerRightButtons = {
-        announce, whisper,
-    }
+    self.assignmentActionButtons = {}
+    self.generalFooterActionButtons = {}
+    self.footerActionButtons = {}
+    self.footerLeftButtons = {}
+    self.footerRightButtons = {}
     self:RefreshWorkspaceNavigation()
 
     -- The resize handle belongs to the window chrome, not the optional footer.
@@ -1050,13 +1191,7 @@ function Raid:Toggle()
     else
         self.frame:Show()
         if not self.db.raidLocked then
-            if self:CanStartRaid() then
-                self:ShowNewRaidWizard()
-            else
-                self.frame:Hide()
-                self:Print(
-                    "No active raid. Waiting for the raid leader to start one.")
-            end
+            self:ShowNewRaidWizard()
         else
             self:UpdateRoster()
             self:RefreshAll()

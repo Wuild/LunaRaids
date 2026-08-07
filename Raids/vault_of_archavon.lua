@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\vault_of_archav
 
 Raid:RegisterRaid({
     expansion = "WOTLK",
-    key = "vault_of_archavon", name = "Vault of Archavon", size = 25,
+    key = "vault_of_archavon", name = "Vault of Archavon", size = 25, instanceID = 624,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

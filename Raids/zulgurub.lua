@@ -11,7 +11,7 @@ local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = tru
 
 local raid = Raid:RegisterRaid({
     expansion = "VANILLA",
-    key = "zulgurub", name = "Zul'Gurub", size = 20,
+    key = "zulgurub", name = "Zul'Gurub", size = 20, instanceID = 309,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\zulgurub",
     guides = {
         ["High Priestess Jeklik"] = {

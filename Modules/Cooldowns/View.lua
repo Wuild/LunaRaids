@@ -12,6 +12,24 @@ local THEME = Raid.UI.THEME
 local ICONS = Raid.UI.ICONS
 local ACCENT = Raid.UI.ACCENT
 local MUTED = Raid.UI.MUTED
+local ROLE_TEXTURE = Raid.UI.ROLE_TEXTURE
+local ROLE_COORDS = Raid.UI.ROLE_COORDS
+local CLASS_TEXTURE =
+    "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"
+local CLASS_COORDS = {
+    WARRIOR = { 0, .25, 0, .25 },
+    MAGE = { .25, .50, 0, .25 },
+    ROGUE = { .50, .75, 0, .25 },
+    DRUID = { .75, 1, 0, .25 },
+    HUNTER = { 0, .25, .25, .50 },
+    SHAMAN = { .25, .50, .25, .50 },
+    PRIEST = { .50, .75, .25, .50 },
+    WARLOCK = { .75, 1, .25, .50 },
+    PALADIN = { 0, .25, .50, .75 },
+    DEATHKNIGHT = { .25, .50, .50, .75 },
+    MONK = { .50, .75, .50, .75 },
+    DEMONHUNTER = { .75, 1, .50, .75 },
+}
 local function SetLabelSize(label, size)
     label:SetFontObject(
         Raid.UI.GetFontObject(size, "MONOCHROMEOUTLINE"))
@@ -249,13 +267,7 @@ function Raid:CreateRaidCooldownRow(index)
     return row
 end
 
-function Raid:WhisperRaidCooldown(playerName, definition)
-    if not playerName or not definition then return end
-    if not self:GetRaidCooldownSettings().whisperEnabled then return end
-    if not IsInGroup or not IsInGroup() then
-        self:Print(L.JOIN_GROUP_COOLDOWN_REQUEST)
-        return
-    end
+local function CooldownSpellLink(definition)
     local spell = definition[2]
     local spellID = definition[4]
     if C_Spell and C_Spell.GetSpellLink then
@@ -269,12 +281,280 @@ function Raid:WhisperRaidCooldown(playerName, definition)
             spell = link
         end
     end
+    return spell
+end
+
+local TARGET_RULES = {
+    INNERVATE = {
+        rolePriority = { HEALER = 1, DAMAGER = 2, TANK = 3 },
+        classes = {
+            DRUID = true, HUNTER = true, MAGE = true, PALADIN = true,
+            PRIEST = true, SHAMAN = true, WARLOCK = true,
+        },
+        specs = {
+            Balance = true, Restoration = true,
+            Arcane = true, Fire = true, Frost = true,
+            Holy = true, Discipline = true, Shadow = true,
+            Elemental = true, Affliction = true,
+            Demonology = true, Destruction = true,
+            ["Beast Mastery"] = true,
+            Marksmanship = true, Survival = true,
+        },
+    },
+    POWER_INFUSION = {
+        rolePriority = { DAMAGER = 1, HEALER = 2, TANK = 3 },
+        classes = {
+            DRUID = true, MAGE = true, PALADIN = true,
+            PRIEST = true, SHAMAN = true, WARLOCK = true,
+        },
+        specs = {
+            Balance = true, Restoration = true,
+            Arcane = true, Fire = true, Frost = true,
+            Holy = true, Discipline = true, Shadow = true,
+            Elemental = true, Affliction = true,
+            Demonology = true, Destruction = true,
+        },
+    },
+    MISDIRECTION = {
+        rolePriority = { TANK = 1 },
+        classes = { WARRIOR = true, PALADIN = true, DRUID = true },
+        specs = {
+            Protection = true, Guardian = true,
+            Feral = true, ["Feral Combat"] = true,
+        },
+        tankRole = true,
+        excludeCaster = true,
+    },
+    REBIRTH = {
+        deadOnly = true, excludeCaster = true,
+        rolePriority = { HEALER = 1, TANK = 2, DAMAGER = 3 },
+    },
+    DIVINE_INTERVENTION = {
+        excludeCaster = true,
+        rolePriority = { HEALER = 1, DAMAGER = 2, TANK = 3 },
+    },
+    PAIN_SUPPRESSION = {
+        rolePriority = { TANK = 1, HEALER = 2, DAMAGER = 3 },
+    },
+    FEAR_WARD = {
+        rolePriority = { TANK = 1, HEALER = 2, DAMAGER = 3 },
+    },
+    LAY_ON_HANDS = {
+        rolePriority = { TANK = 1, HEALER = 2, DAMAGER = 3 },
+    },
+    BLESSING_PROTECTION = {
+        rolePriority = { HEALER = 1, DAMAGER = 2, TANK = 3 },
+    },
+    SOULSTONE = {
+        rolePriority = { HEALER = 1, TANK = 2, DAMAGER = 3 },
+    },
+}
+
+local function HasKnownSpec(player)
+    local spec = player and tostring(player.spec or "") or ""
+    return spec ~= "" and spec ~= "Unknown" and not tonumber(spec)
+end
+
+local function IsSmartCooldownTarget(player, casterName, definition)
+    local rule = definition and TARGET_RULES[definition[1]]
+    if not rule or not player or not player.name
+        or player.online == false
+    then
+        return false
+    end
+    if rule.excludeCaster
+        and ShortName(player.name):lower()
+            == ShortName(casterName):lower()
+    then
+        return false
+    end
+    if rule.deadOnly and player.unit and UnitIsDeadOrGhost
+        and not UnitIsDeadOrGhost(player.unit)
+    then
+        return false
+    end
+    if rule.tankRole and player.role and player.role ~= "NONE" then
+        return player.role == "TANK"
+    end
+    if HasKnownSpec(player) and rule.specs then
+        return rule.specs[player.spec] == true
+    end
+    if rule.classes then return rule.classes[player.class] == true end
+    return true
+end
+
+local function SmartTargetPriority(player, definition)
+    local rule = definition and TARGET_RULES[definition[1]]
+    local priorities = rule and rule.rolePriority
+    local role = player and player.role
+    if not ROLE_COORDS[role] then role = player and player.reportedRole end
+    if not ROLE_COORDS[role] then role = player and player.groupRole end
+    return priorities and priorities[role] or 10
+end
+
+function Raid:WhisperRaidCooldown(playerName, definition, targetName)
+    if not playerName or not definition then return end
+    if not self:GetRaidCooldownSettings().whisperEnabled then return end
+    if not self:IsInGroupContext() then
+        self:Print(L.JOIN_GROUP_COOLDOWN_REQUEST)
+        return
+    end
+    local spell = CooldownSpellLink(definition)
+    local message = targetName and targetName ~= ""
+        and ("Cast %s on [%s]."):format(spell, ShortName(targetName))
+        or ("Cast %s."):format(spell)
     -- Outbound raid communication defaults to English. UI locale must not
     -- change whispers or announcements; a communication-language option can
     -- explicitly select different message templates in the future.
-    self:QueueMessage(
-        "WHISPER", playerName, ("Cast %s."):format(spell), true)
+    self:QueueMessage("WHISPER", playerName, message, true)
     self:StartMessageQueue()
+end
+
+function Raid:ShowRaidCooldownTargetDialog(owner, playerName, definition)
+    if not owner or not playerName or not definition then return end
+    if not self:GetRaidCooldownSettings().whisperEnabled then return end
+    if not self:IsInGroupContext() then
+        self:Print(L.JOIN_GROUP_COOLDOWN_REQUEST)
+        return
+    end
+    local dialog = self.raidCooldownTargetDialog
+    if not dialog then
+        dialog = Frame(UIParent)
+        dialog:SetSize(310, 350)
+        dialog:SetFrameStrata("FULLSCREEN_DIALOG")
+        dialog:SetClampedToScreen(true)
+        dialog.Title = Label(dialog, 11, "SELECT TARGET", ACCENT)
+        dialog.Title:SetPoint("TOPLEFT", 12, -12)
+        dialog.Detail = Label(dialog, 8, "", MUTED)
+        dialog.Detail:SetPoint("TOPLEFT", 12, -30)
+        dialog.Close = Raid.UI.MakeButton(dialog, "X", 25, 25)
+        dialog.Close:SetPoint("TOPRIGHT", -6, -6)
+        dialog.Close:SetScript("OnClick", function() dialog:Hide() end)
+        dialog.Scroll, dialog.Content = Raid.UI.CreateScrollArea(dialog)
+        dialog.Scroll:SetPoint("TOPLEFT", 8, -49)
+        dialog.Scroll:SetPoint("BOTTOMRIGHT", -8, 8)
+        dialog.Content:SetWidth(286)
+        dialog.Rows = {}
+        dialog:SetScript("OnHide", function(self)
+            if self.Dismiss then self.Dismiss:Hide() end
+        end)
+        self.raidCooldownTargetDialog = dialog
+    end
+    dialog.playerName = playerName
+    dialog.definition = definition
+    dialog.Detail:SetText(
+        ("Ask %s to cast %s on:"):format(
+            ShortName(playerName), definition[2]))
+    local roster = self:GetRaidCooldownRoster(true)
+    local targets = {}
+    for _, player in ipairs(roster) do
+        if IsSmartCooldownTarget(player, playerName, definition) then
+            targets[#targets + 1] = player
+        end
+    end
+    table.sort(targets, function(left, right)
+        local leftPriority = SmartTargetPriority(left, definition)
+        local rightPriority = SmartTargetPriority(right, definition)
+        if leftPriority ~= rightPriority then
+            return leftPriority < rightPriority
+        end
+        return ShortName(left.name):lower() < ShortName(right.name):lower()
+    end)
+    for index, player in ipairs(targets) do
+        local row = dialog.Rows[index]
+        if not row then
+            row = Raid.UI.MakeButton(dialog.Content, "", 286, 27)
+            row.borderless = true
+            row.baseBorder = { 0, 0, 0, 0 }
+            row:SetBackdropBorderColor(0, 0, 0, 0)
+            row.ClassIcon = row:CreateTexture(nil, "OVERLAY", nil, 6)
+            row.ClassIcon:SetTexture(CLASS_TEXTURE)
+            row.ClassIcon:SetSize(18, 18)
+            row.ClassIcon:SetPoint("LEFT", 6, 0)
+            row.RoleIcon = row:CreateTexture(nil, "OVERLAY", nil, 6)
+            row.RoleIcon:SetTexture(ROLE_TEXTURE)
+            row.RoleIcon:SetSize(17, 17)
+            row.RoleIcon:SetPoint("LEFT", row.ClassIcon, "RIGHT", 5, 0)
+            row.Text:ClearAllPoints()
+            row.Text:SetPoint("LEFT", row.RoleIcon, "RIGHT", 7, 0)
+            row.Text:SetJustifyH("LEFT")
+            row:SetScript("OnClick", function(self)
+                Raid:WhisperRaidCooldown(
+                    dialog.playerName, dialog.definition, self.targetName)
+                dialog:Hide()
+            end)
+            dialog.Rows[index] = row
+        end
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", 0, -((index - 1) * 29))
+        row.baseColor = index % 2 == 0
+            and { unpack(THEME.rowAlt) }
+            or { unpack(THEME.row) }
+        row:SetBackdropColor(unpack(row.baseColor))
+        row:SetBackdropBorderColor(0, 0, 0, 0)
+        row.targetName = player.name
+        row.Text:SetText(ShortName(player.name))
+        local classColor = CUSTOM_CLASS_COLORS
+            and CUSTOM_CLASS_COLORS[player.class]
+            or RAID_CLASS_COLORS and RAID_CLASS_COLORS[player.class]
+        if classColor then
+            row.Text:SetTextColor(
+                classColor.r or 1, classColor.g or 1,
+                classColor.b or 1, 1)
+        else
+            row.Text:SetTextColor(1, 1, 1, 1)
+        end
+        local classCoords = CLASS_ICON_TCOORDS
+            and CLASS_ICON_TCOORDS[player.class]
+            or CLASS_COORDS[player.class]
+        if classCoords then
+            row.ClassIcon:SetTexCoord(unpack(classCoords))
+            row.ClassIcon:SetVertexColor(1, 1, 1, 1)
+            row.ClassIcon:SetAlpha(1)
+            row.ClassIcon:Show()
+        else
+            row.ClassIcon:Hide()
+        end
+        local role = player.role
+        if not ROLE_COORDS[role] then role = player.reportedRole end
+        if not ROLE_COORDS[role] then role = player.groupRole end
+        local roleCoords = ROLE_COORDS[role]
+        if roleCoords then
+            row.RoleIcon:SetTexCoord(unpack(roleCoords))
+            row.RoleIcon:SetVertexColor(1, 1, 1, 1)
+            row.RoleIcon:SetAlpha(1)
+            row.RoleIcon:Show()
+        else
+            row.RoleIcon:Hide()
+        end
+        row:Show()
+    end
+    for index = #targets + 1, #dialog.Rows do
+        dialog.Rows[index]:Hide()
+    end
+    if not dialog.Empty then
+        dialog.Empty = Label(
+            dialog.Content, 9, "No suitable targets found.", MUTED)
+        dialog.Empty:SetPoint("TOP", 0, -14)
+    end
+    dialog.Empty:SetShown(#targets == 0)
+    dialog.Content:SetHeight(math.max(1, #targets * 29))
+    dialog.Scroll:SetVerticalScroll(0)
+    if dialog.Scroll.UpdateScrollbar then dialog.Scroll:UpdateScrollbar() end
+    if not dialog.Dismiss then
+        dialog.Dismiss = CreateFrame("Button", nil, UIParent)
+        dialog.Dismiss:SetAllPoints(UIParent)
+        dialog.Dismiss:SetFrameStrata("FULLSCREEN_DIALOG")
+        dialog.Dismiss:SetFrameLevel(1)
+        dialog.Dismiss:EnableMouse(true)
+        dialog.Dismiss:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        dialog.Dismiss:SetScript("OnClick", function() dialog:Hide() end)
+    end
+    dialog.Dismiss:Show()
+    dialog:SetFrameLevel(dialog.Dismiss:GetFrameLevel() + 10)
+    dialog:ClearAllPoints()
+    dialog:SetPoint("TOPLEFT", owner, "BOTTOMLEFT", 0, -4)
+    dialog:Show()
 end
 
 function Raid:CreateRaidCooldownChip(row, index)
@@ -300,22 +580,39 @@ function Raid:CreateRaidCooldownChip(row, index)
             L.BASE_COOLDOWN,
             CooldownLength(chip.definition[5]),
             .62, .72, .78, .95, .82, .35)
+        local enabled = Raid:GetRaidCooldownSettings().whisperEnabled
+        local targetable = enabled
+            and TARGET_RULES[chip.definition[1]] ~= nil
+        GameTooltip:AddLine(
+            not enabled and "Cooldown requests disabled in settings"
+                or targetable
+                and "Left-click: request cast\nRight-click: choose target"
+                or "Left-click: request cast",
+            .72, .75, .78, true)
         GameTooltip:Show()
     end)
     chip.IconHit:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
-    chip.IconHit:SetScript("OnClick", function()
+    chip.IconHit:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    chip.IconHit:SetScript("OnClick", function(_, button)
         if chip.playerOnline and chip.playerName and chip.definition then
-            Raid:WhisperRaidCooldown(
-                chip.playerName, chip.definition)
+            if not Raid:GetRaidCooldownSettings().whisperEnabled then return end
+            if button == "RightButton" then
+                if not TARGET_RULES[chip.definition[1]] then return end
+                Raid:ShowRaidCooldownTargetDialog(
+                    chip, chip.playerName, chip.definition)
+            elseif button == "LeftButton" then
+                Raid:WhisperRaidCooldown(
+                    chip.playerName, chip.definition)
+            end
         end
     end)
     chip.Status = Label(chip, 8, "", MUTED)
     chip.Status:SetPoint("RIGHT", -4, 0)
     chip.Status:Hide()
     chip:EnableMouse(true)
-    chip:RegisterForClicks("LeftButtonUp")
+    chip:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     chip:RegisterForDrag("LeftButton")
     chip:SetScript("OnEnter", function(self)
         if not self.definition then return end
@@ -324,16 +621,32 @@ function Raid:CreateRaidCooldownChip(row, index)
         GameTooltip:AddLine(
             ShortName(self.playerName) .. " - " .. (self.statusText or ""),
             .78, .86, .90, true)
+        local enabled = Raid:GetRaidCooldownSettings().whisperEnabled
+        local targetable = enabled
+            and TARGET_RULES[self.definition[1]] ~= nil
+        GameTooltip:AddLine(
+            not enabled and "Cooldown requests disabled in settings"
+                or targetable
+                and "Left-click: request cast\nRight-click: choose target"
+                or "Left-click: request cast",
+            .72, .75, .78, true)
         GameTooltip:Show()
     end)
     chip:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
-    chip:SetScript("OnClick", function(self)
+    chip:SetScript("OnClick", function(self, button)
         if self.wasDragged then return end
         if self.playerOnline and self.playerName and self.definition then
-            Raid:WhisperRaidCooldown(
-                self.playerName, self.definition)
+            if not Raid:GetRaidCooldownSettings().whisperEnabled then return end
+            if button == "RightButton" then
+                if not TARGET_RULES[self.definition[1]] then return end
+                Raid:ShowRaidCooldownTargetDialog(
+                    self, self.playerName, self.definition)
+            elseif button == "LeftButton" then
+                Raid:WhisperRaidCooldown(
+                    self.playerName, self.definition)
+            end
         end
     end)
     chip:SetScript("OnDragStart", function(self)
@@ -365,20 +678,21 @@ function Raid:RefreshRaidCooldowns()
     frame:SetScale(
         (settings.scale or 1) * self:GetHUDScale())
     frame:SetAlpha(1)
-    local simulated = self.simulation and self.simulation.enabled
     local visibility = settings.visibility or "GROUP"
-    local inGroup = IsInGroup and IsInGroup()
-    local inRaid = IsInRaid and IsInRaid()
+    local inGroup = self:IsInGroupContext()
+    local inRaid = self:IsInRaidContext()
     local visibilityAllows = visibility == "ALWAYS"
         or visibility == "GROUP" and inGroup
         or visibility == "RAID" and inRaid
     if not settings.enabled
-        or (not simulated and not visibilityAllows)
+        or not visibilityAllows
     then
         frame:Hide()
         if self.raidCooldownConfig then self.raidCooldownConfig:Hide() end
         return
     end
+    local cooldownRoster = self:GetRaidCooldownRoster(
+        visibility == "ALWAYS")
     local style = settings.style
     local columnWidth = style == "CARDS" and 142
         or style == "COMPACT" and 112 or 72
@@ -450,7 +764,7 @@ function Raid:RefreshRaidCooldowns()
     for _, definition in ipairs(orderedDefinitions) do
         local players = {}
         if settings.spells[definition[1]] ~= false then
-            for _, player in ipairs(self.roster or {}) do
+            for _, player in ipairs(cooldownRoster) do
                 if self:IsRaidCooldownPlayerEligible(player, definition) then
                     players[#players + 1] = player
                 end

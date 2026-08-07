@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\obsidian_sanctu
 
 Raid:RegisterRaid({
     expansion = "WOTLK",
-    key = "obsidian_sanctum", name = "The Obsidian Sanctum", size = 25,
+    key = "obsidian_sanctum", name = "The Obsidian Sanctum", size = 25, instanceID = 615,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

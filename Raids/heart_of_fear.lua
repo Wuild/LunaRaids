@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\heart_of_fear"
 
 Raid:RegisterRaid({
     expansion = "MOP",
-    key = "heart_of_fear", name = "Heart of Fear", size = 25,
+    key = "heart_of_fear", name = "Heart of Fear", size = 25, instanceID = 1009,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

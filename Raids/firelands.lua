@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\firelands"
 
 Raid:RegisterRaid({
     expansion = "CATA",
-    key = "firelands", name = "Firelands", size = 25,
+    key = "firelands", name = "Firelands", size = 25, instanceID = 720,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

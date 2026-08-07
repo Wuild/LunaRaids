@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\icecrown_citade
 
 Raid:RegisterRaid({
     expansion = "WOTLK",
-    key = "icecrown_citadel", name = "Icecrown Citadel", size = 25,
+    key = "icecrown_citadel", name = "Icecrown Citadel", size = 25, instanceID = 631,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

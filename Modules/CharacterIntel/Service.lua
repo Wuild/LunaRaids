@@ -210,7 +210,7 @@ function Raid:BuildOwnCharacterIntel()
 end
 
 function Raid:BroadcastCharacterProfile(target, force)
-    if not self.QueueSync or not IsInGroup or not IsInGroup() then return end
+    if not self.QueueSync or not self:IsInLiveGroup() then return end
     local data = self:BuildOwnCharacterIntel()
     if not data then return end
     self:StoreCharacterIntel(data)
@@ -220,9 +220,14 @@ function Raid:BroadcastCharacterProfile(target, force)
         data.race or "", tostring(data.gearScore or ""),
         tostring(data.itemLevel or ""),
     }, "\t")
-    if not force and signature == self.lastBroadcastCharacterProfile then
+    local recipient = target and string.lower(target) or "*"
+    self.sentProfileFingerprints = self.sentProfileFingerprints or {}
+    if not force
+        and signature == self.sentProfileFingerprints[recipient]
+    then
         return
     end
+    self.sentProfileFingerprints[recipient] = signature
     self.lastBroadcastCharacterProfile = signature
     self:QueueSync("PROFILE", {
         data.name, data.guid, data.class, data.role,
@@ -365,20 +370,24 @@ function Raid:INSPECT_READY(_, guid)
 end
 
 function Raid:PLAYER_TALENT_UPDATE()
+    self:UpdateRoster()
     self:BroadcastCharacterProfile()
 end
 
 function Raid:PLAYER_ROLES_ASSIGNED()
+    self:UpdateRoster()
     self:BroadcastCharacterProfile()
 end
 
 function Raid:PLAYER_SPECIALIZATION_CHANGED(_, unit)
     if not unit or unit == "player" then
+        self:UpdateRoster()
         self:BroadcastCharacterProfile()
     end
 end
 
 function Raid:ACTIVE_TALENT_GROUP_CHANGED()
+    self:UpdateRoster()
     self:BroadcastCharacterProfile()
 end
 

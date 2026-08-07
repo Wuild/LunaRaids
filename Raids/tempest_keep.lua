@@ -11,7 +11,7 @@ local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = tru
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
-    key = "tempest_keep", name = "Tempest Keep", size = 25,
+    key = "tempest_keep", name = "Tempest Keep", size = 25, instanceID = 550,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\tempest_keep",
     guides = {
         ["Al'ar"] = {

@@ -11,7 +11,7 @@ local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = tru
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
-    key = "hyjal", name = "Battle for Mount Hyjal", size = 25,
+    key = "hyjal", name = "Battle for Mount Hyjal", size = 25, instanceID = 534,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\hyjal",
     guides = {
         ["Rage Winterchill"] = {

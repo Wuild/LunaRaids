@@ -102,11 +102,10 @@ function Raid:CreateSettingsView()
     local general = CreateFrame("Frame", nil, view.Content)
     general:SetPoint("TOPLEFT", 12, -8)
     general:SetPoint("TOPRIGHT", -12, -8)
-    general:SetHeight(270)
-    SectionHeader(general, L.GENERAL)
+    general:SetHeight(230)
     local interfaceCard = Panel(general)
-    interfaceCard:SetPoint("TOPLEFT", 0, -40)
-    interfaceCard:SetPoint("TOPRIGHT", 0, -40)
+    interfaceCard:SetPoint("TOPLEFT")
+    interfaceCard:SetPoint("TOPRIGHT")
     interfaceCard:SetHeight(230)
     SectionHeader(interfaceCard, L.INTERFACE_MESSAGES)
     local function SettingLabel(parent, text, description, y)
@@ -240,16 +239,22 @@ function Raid:CreateSettingsView()
     end)
     AddButtonTooltip(
         view.QuickBar, L.QUICK_ACTION_BAR, L.QUICK_ACTION_BAR_TOOLTIP)
+    local toolbarHUD = Panel(view.Content)
+    toolbarHUD:SetPoint("TOPLEFT", 12, -8)
+    toolbarHUD:SetPoint("TOPRIGHT", -12, -8)
+    toolbarHUD:SetHeight(232)
+    SectionHeader(
+        toolbarHUD, L.TOOLBAR_HUD, L.QUICK_ACTION_BAR_DESC)
     local automation = Panel(view.Content)
     automation:SetPoint("TOPLEFT", 12, -8)
     automation:SetPoint("TOPRIGHT", -12, -8)
-    automation:SetHeight(416)
+    automation:SetHeight(232)
     SectionHeader(
         automation, L.AUTOMATION, L.AUTOMATION_DESC)
     view.AutoMarker:SetParent(automation)
     view.AutoMarker:SetFrameLevel(automation:GetFrameLevel() + 1)
-    view.QuickBar:SetParent(automation)
-    view.QuickBar:SetFrameLevel(automation:GetFrameLevel() + 1)
+    view.QuickBar:SetParent(toolbarHUD)
+    view.QuickBar:SetFrameLevel(toolbarHUD:GetFrameLevel() + 1)
     SettingLabel(
         automation, L.ENCOUNTER_AUTO_MARKER,
         L.ENCOUNTER_AUTO_MARKER_DESC,
@@ -257,17 +262,17 @@ function Raid:CreateSettingsView()
     view.AutoMarker:ClearAllPoints()
     view.AutoMarker:SetPoint("TOPRIGHT", automation, -14, -42)
     SettingLabel(
-        automation, L.QUICK_ACTION_BAR,
+        toolbarHUD, L.QUICK_ACTION_BAR,
         L.QUICK_ACTION_BAR_DESC,
-        -84)
-    view.QuickBar:SetPoint("TOPRIGHT", automation, -14, -88)
+        -38)
+    view.QuickBar:SetPoint("TOPRIGHT", toolbarHUD, -14, -42)
     SettingLabel(
         automation, L.READY_CHECK_RESULTS_LABEL,
-        L.READY_CHECK_RESULTS_DESC, -130)
+        L.READY_CHECK_RESULTS_DESC, -84)
     view.ReadyHoldMinus = Button(automation, "-", 26, 28)
     view.ReadyHoldValue = Button(automation, "", 68, 28)
     view.ReadyHoldPlus = Button(automation, "+", 26, 28)
-    view.ReadyHoldPlus:SetPoint("TOPRIGHT", automation, -14, -134)
+    view.ReadyHoldPlus:SetPoint("TOPRIGHT", automation, -14, -88)
     view.ReadyHoldValue:SetPoint(
         "RIGHT", view.ReadyHoldPlus, "LEFT", -4, 0)
     view.ReadyHoldMinus:SetPoint(
@@ -283,22 +288,22 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     SettingLabel(
-        automation, L.COMPACT_TOOLBAR,
-        L.COMPACT_TOOLBAR_DESC, -176)
-    view.QuickBarIcons = Button(automation, "", 174, 27)
-    view.QuickBarIcons:SetPoint("TOPRIGHT", automation, -14, -180)
+        toolbarHUD, L.COMPACT_TOOLBAR,
+        L.COMPACT_TOOLBAR_DESC, -84)
+    view.QuickBarIcons = Button(toolbarHUD, "", 174, 27)
+    view.QuickBarIcons:SetPoint("TOPRIGHT", toolbarHUD, -14, -88)
     view.QuickBarIcons:SetScript("OnClick", function()
         Raid.db.quickBar.iconOnly = not Raid.db.quickBar.iconOnly
         Raid:RefreshQuickActionBar()
         Raid:RefreshSettingsView()
     end)
     SettingLabel(
-        automation, L.TOOLBAR_VISIBILITY,
-        L.TOOLBAR_VISIBILITY_DESC, -222)
-    view.QuickBarVisibility = Button(automation, "", 174, 27)
+        toolbarHUD, L.TOOLBAR_VISIBILITY,
+        L.TOOLBAR_VISIBILITY_DESC, -130)
+    view.QuickBarVisibility = Button(toolbarHUD, "", 174, 27)
     AddDropdownArrow(view.QuickBarVisibility)
     view.QuickBarVisibility:SetPoint(
-        "TOPRIGHT", automation, -14, -226)
+        "TOPRIGHT", toolbarHUD, -14, -134)
     view.QuickBarVisibility:SetScript("OnClick", function()
         ShowSelectionMenu(view.QuickBarVisibility, {
             { "ALWAYS", L.VISIBILITY_ALWAYS },
@@ -311,10 +316,10 @@ function Raid:CreateSettingsView()
         end)
     end)
     SettingLabel(
-        automation, L.COMBAT_VISIBILITY,
-        L.COMBAT_VISIBILITY_DESC, -268)
-    view.QuickBarCombat = Button(automation, "", 174, 27)
-    view.QuickBarCombat:SetPoint("TOPRIGHT", automation, -14, -272)
+        toolbarHUD, L.COMBAT_VISIBILITY,
+        L.COMBAT_VISIBILITY_DESC, -176)
+    view.QuickBarCombat = Button(toolbarHUD, "", 174, 27)
+    view.QuickBarCombat:SetPoint("TOPRIGHT", toolbarHUD, -14, -180)
     view.QuickBarCombat:SetScript("OnClick", function()
         Raid.db.quickBar.hideInCombat =
             not Raid.db.quickBar.hideInCombat
@@ -323,10 +328,10 @@ function Raid:CreateSettingsView()
     end)
     SettingLabel(
         automation, L.READY_CHECK_WINDOW,
-        L.READY_CHECK_WINDOW_DESC, -314)
+        L.READY_CHECK_WINDOW_DESC, -130)
     view.ReadyCheckWindow = Button(automation, "", 174, 27)
     view.ReadyCheckWindow:SetPoint(
-        "TOPRIGHT", automation, -14, -318)
+        "TOPRIGHT", automation, -14, -134)
     view.ReadyCheckWindow:SetScript("OnClick", function()
         Raid.db.readyCheck.showWindow =
             Raid.db.readyCheck.showWindow == false
@@ -339,10 +344,10 @@ function Raid:CreateSettingsView()
     end)
     SettingLabel(
         automation, L.PERSONAL_ASSIGNMENT_PANEL,
-        L.PERSONAL_ASSIGNMENT_PANEL_DESC, -360)
+        L.PERSONAL_ASSIGNMENT_PANEL_DESC, -176)
     view.AssignmentInfo = Button(automation, "", 174, 27)
     view.AssignmentInfo:SetPoint(
-        "TOPRIGHT", automation, -14, -364)
+        "TOPRIGHT", automation, -14, -180)
     view.AssignmentInfo:SetScript("OnClick", function()
         Raid.db.assignmentInfo.hide =
             not Raid.db.assignmentInfo.hide
@@ -662,8 +667,8 @@ function Raid:CreateSettingsView()
         Raid:RefreshSettingsView()
     end)
     local mechanicsHUD = Panel(view.Content)
-    mechanicsHUD:SetPoint("TOPLEFT", 12, -8)
-    mechanicsHUD:SetPoint("TOPRIGHT", -12, -8)
+    mechanicsHUD:SetPoint("TOPLEFT", toolbarHUD, "BOTTOMLEFT", 0, -10)
+    mechanicsHUD:SetPoint("TOPRIGHT", toolbarHUD, "BOTTOMRIGHT", 0, -10)
     mechanicsHUD:SetHeight(344)
     SectionHeader(mechanicsHUD, L.MECHANICS_HUD_SECTION,
         L.MECHANICS_HUD_SECTION_DESC)
@@ -1039,6 +1044,7 @@ function Raid:CreateSettingsView()
     view.AdminPanel = admin
     view.GeneralPanel = general
     view.AutomationPanel = automation
+    view.ToolbarHUDPanel = toolbarHUD
     view.MechanicsHUDPanel = mechanicsHUD
     view.CooldownPanel = cooldowns
 
@@ -1081,6 +1087,7 @@ function Raid:RefreshSettingsView()
             or L.SETTINGS_SUBTITLE_GENERAL)
     view.GeneralPanel:SetShown(interfaceTab)
     view.AutomationPanel:SetShown(automationTab)
+    view.ToolbarHUDPanel:SetShown(hudTab)
     view.MechanicsHUDPanel:SetShown(hudTab)
     view.AdminPanel:SetShown(adminTab)
     view.CooldownPanel:SetShown(cooldownTab)
@@ -1090,9 +1097,9 @@ function Raid:RefreshSettingsView()
     view.Content:SetHeight(
         cooldownTab and 820
         or adminTab and 496
-        or automationTab and 432
-        or hudTab and 360
-        or 286)
+        or automationTab and 248
+        or hudTab and 602
+        or 246)
     if view.Scroll.UpdateScrollbar then
         view.Scroll:UpdateScrollbar()
     end
@@ -1448,20 +1455,49 @@ function Raid:ExitSettingsView()
     if self.settingsView then self.settingsView:Hide() end
     if self.db.raidLocked then
         self:EnterBossUI()
-    elseif self:CanStartRaid() then
-        self:ShowNewRaidWizard()
     else
-        self.frame:Hide()
+        self:ShowNewRaidWizard()
     end
 end
 
 function Raid:CreateNewRaidWizard()
     if self.newRaidWizard then return self.newRaidWizard end
-    local wizard = Panel(self.assignmentPanel)
-    wizard:SetPoint("TOPLEFT", 1, -1)
+    local nav = CreateFrame("Frame", nil, self.assignmentPanel)
+    nav:SetPoint("TOPLEFT", 1, -1)
+    nav:SetPoint("TOPRIGHT", -1, -1)
+    nav:SetHeight(38)
+    nav:SetFrameLevel(self.assignmentPanel:GetFrameLevel() + 21)
+    nav.Background = nav:CreateTexture(nil, "BACKGROUND")
+    nav.Background:SetTexture(WHITE)
+    nav.Background:SetAllPoints()
+    nav.Background:SetVertexColor(unpack(THEME.content))
+    nav.NewRaid = Button(nav, L.NEW_RAID, 130, 30)
+    nav.NewRaid:SetPoint("LEFT", 8, 0)
+    nav.History = Button(nav, L.RAID_HISTORY, 150, 30)
+    nav.History:SetPoint("LEFT", nav.NewRaid, "RIGHT", 6, 0)
+    for _, button in ipairs({ nav.NewRaid, nav.History }) do
+        button.borderless = true
+        button.baseBorder = { 0, 0, 0, 0 }
+        button:SetBackdropBorderColor(0, 0, 0, 0)
+    end
+    nav.NewRaid:SetScript("OnClick", function()
+        Raid.newRaidWizard.step = "EXPANSION"
+        Raid:RefreshNewRaidWizard()
+    end)
+    nav.History:SetScript("OnClick", function()
+        Raid.newRaidWizard.step = "HISTORY"
+        Raid.newRaidWizard.historyPage = 1
+        Raid:RefreshNewRaidWizard()
+    end)
+    self.inactiveRaidNav = nav
+    local wizard = CreateFrame("Frame", nil, self.assignmentPanel)
+    wizard:SetPoint("TOPLEFT", 1, -39)
     wizard:SetPoint("BOTTOMRIGHT", -1, 1)
     wizard:SetFrameLevel(self.assignmentPanel:GetFrameLevel() + 20)
-    wizard:SetBackdropColor(unpack(THEME.content))
+    wizard.Background = wizard:CreateTexture(nil, "BACKGROUND")
+    wizard.Background:SetTexture(WHITE)
+    wizard.Background:SetAllPoints()
+    wizard.Background:SetVertexColor(unpack(THEME.content))
     wizard:EnableMouse(true)
     wizard.Title = Font(wizard, 15, "accent", L.START_A_RAID)
     wizard.Title:SetPoint("TOPLEFT", 20, -22)
@@ -1475,6 +1511,25 @@ function Raid:CreateNewRaidWizard()
         wizard.step = "EXPANSION"
         Raid:RefreshNewRaidWizard()
     end)
+    wizard.Previous = Button(wizard, "<", 34, 26)
+    wizard.Previous:SetPoint("BOTTOMRIGHT", -59, 14)
+    wizard.Previous:SetScript("OnClick", function()
+        wizard.historyPage = math.max(1, (wizard.historyPage or 1) - 1)
+        Raid:RefreshNewRaidWizard()
+    end)
+    wizard.Next = Button(wizard, ">", 34, 26)
+    wizard.Next:SetPoint("BOTTOMRIGHT", -20, 14)
+    wizard.Next:SetScript("OnClick", function()
+        wizard.historyPage = (wizard.historyPage or 1) + 1
+        Raid:RefreshNewRaidWizard()
+    end)
+    for _, button in ipairs({ wizard.Back, wizard.Previous, wizard.Next }) do
+        button.borderless = true
+        button.baseColor = { unpack(THEME.surfaceRaised) }
+        button.baseBorder = { 0, 0, 0, 0 }
+        button:SetBackdropColor(unpack(button.baseColor))
+        button:SetBackdropBorderColor(0, 0, 0, 0)
+    end
     wizard.Buttons = {}
     wizard:Hide()
     self.newRaidWizard = wizard
@@ -1487,6 +1542,9 @@ function Raid:WizardButton(index)
     if not button then
         button = Button(
             wizard, "", math.max(1, wizard:GetWidth() - 40), 42)
+        button.borderless = true
+        button.baseBorder = { 0, 0, 0, 0 }
+        button:SetBackdropBorderColor(0, 0, 0, 0)
         button.Text:ClearAllPoints()
         button.Text:SetPoint("LEFT", 12, 0)
         button.Text:SetPoint("RIGHT", -10, 0)
@@ -1502,10 +1560,15 @@ function Raid:WizardButton(index)
         button.Meta = Font(button, 8, "accent", "")
         button.Meta:SetJustifyH("CENTER")
         button.Meta:Hide()
-        button.Delete = Button(button, "X", 26, 26)
+        button.Delete = Button(button, L.DELETE, 70, 26)
         button.Delete:SetPoint("RIGHT", -4, 0)
         button.Delete:SetFrameLevel(button:GetFrameLevel() + 3)
         button.Delete.Text:SetTextColor(1, .35, .35)
+        button.Delete.borderless = true
+        button.Delete.baseColor = { 0, 0, 0, 0 }
+        button.Delete.baseBorder = { 0, 0, 0, 0 }
+        button.Delete:SetBackdropColor(0, 0, 0, 0)
+        button.Delete:SetBackdropBorderColor(0, 0, 0, 0)
         AddButtonTooltip(
             button.Delete, "Delete Saved Raid",
             "Permanently remove this saved raid plan.")
@@ -1556,6 +1619,7 @@ end
 function Raid:RefreshNewRaidWizard()
     local wizard = self:CreateNewRaidWizard()
     for _, button in ipairs(wizard.Buttons) do
+        button:Enable()
         button:Hide()
         button.Delete:Hide()
         button.Logo:Hide()
@@ -1570,6 +1634,22 @@ function Raid:RefreshNewRaidWizard()
         button.WizardCard = nil
         button.WizardOrder = nil
         button.WizardRow = nil
+    end
+    wizard.Previous:Hide()
+    wizard.Next:Hide()
+    if self.inactiveRaidNav then
+        local history = wizard.step == "HISTORY"
+        local function StyleWizardTab(button, active)
+            StyleButton(button, active and "primary" or "default")
+            button.borderless = true
+            button.baseColor = { unpack(active
+                and THEME.surfaceSelected or THEME.content) }
+            button.baseBorder = { 0, 0, 0, 0 }
+            button:SetBackdropColor(unpack(button.baseColor))
+            button:SetBackdropBorderColor(0, 0, 0, 0)
+        end
+        StyleWizardTab(self.inactiveRaidNav.NewRaid, not history)
+        StyleWizardTab(self.inactiveRaidNav.History, history)
     end
     local entries = {}
     if wizard.step == "RAID" then
@@ -1592,10 +1672,54 @@ function Raid:RefreshNewRaidWizard()
                 }
             end
         end
+    elseif wizard.step == "HISTORY" then
+        wizard.Back:Hide()
+        local saved = {}
+        for id, data in pairs(self.db.savedRaids or {}) do
+            saved[#saved + 1] = { id = id, data = data }
+        end
+        table.sort(saved, function(left, right)
+            return (left.data.createdAt or left.data.savedAt or 0)
+                > (right.data.createdAt or right.data.savedAt or 0)
+        end)
+        local pageSize = 9
+        local pageCount = math.max(1, math.ceil(#saved / pageSize))
+        wizard.historyPage = math.max(
+            1, math.min(tonumber(wizard.historyPage) or 1, pageCount))
+        wizard.Subtitle:SetText(
+            #saved .. " saved raids  |  page "
+                .. wizard.historyPage .. "/" .. pageCount)
+        wizard.Previous:SetShown(wizard.historyPage > 1)
+        wizard.Next:SetShown(wizard.historyPage < pageCount)
+        if #saved == 0 then
+            entries[#entries + 1] = {
+                label = L.NO_SAVED_RAIDS, disabled = true,
+            }
+        else
+            local first = ((wizard.historyPage - 1) * pageSize) + 1
+            local last = math.min(#saved, first + pageSize - 1)
+            for savedIndex = first, last do
+                local entry = saved[savedIndex]
+                local savedID, data = entry.id, entry.data
+                local raid = self.raidByKey[data.raidKey]
+                local rosterCount = #(data.roster or {})
+                entries[#entries + 1] = {
+                    label = (data.name or "Saved Raid")
+                        .. (rosterCount > 0 and "  |  " .. rosterCount
+                            .. " players" or ""),
+                    logo = raid and raid.icon,
+                    logoWidth = 34,
+                    logoHeight = 34,
+                    action = function() self:LoadSavedRaid(savedID) end,
+                    deleteID = savedID,
+                    deleteName = data.name,
+                }
+            end
+        end
     else
         wizard.step = "EXPANSION"
         wizard.Subtitle:SetText(
-            "Choose an expansion, or open a raid saved in advance")
+            "Choose an expansion to start a raid, or open Raid History")
         wizard.Back:Hide()
         for _, expansion in ipairs(self.expansions) do
             local expansionKey = expansion.key
@@ -1634,30 +1758,6 @@ function Raid:RefreshNewRaidWizard()
                 end,
             }
         end
-        local saved = {}
-        for id, data in pairs(self.db.savedRaids or {}) do
-            saved[#saved + 1] = { id = id, data = data }
-        end
-        table.sort(saved, function(left, right)
-            return (left.data.savedAt or 0) > (right.data.savedAt or 0)
-        end)
-        for savedIndex, entry in ipairs(saved) do
-            if savedIndex > 9 then break end
-            local savedID, data = entry.id, entry.data
-            local raid = self.raidByKey[data.raidKey]
-            entries[#entries + 1] = {
-                label = L.SAVED .. "  -  " .. data.name
-                    .. (raid and "  [" .. raid.name .. "]" or ""),
-                logo = raid and raid.icon,
-                logoWidth = 34,
-                logoHeight = 34,
-                action = function()
-                    self:LoadSavedRaid(savedID)
-                end,
-                deleteID = savedID,
-                deleteName = data.name,
-            }
-        end
     end
     local cardIndex, rowIndex = 0, 0
     for index, entry in ipairs(entries) do
@@ -1672,6 +1772,7 @@ function Raid:RefreshNewRaidWizard()
         end
         button.Text:SetText(entry.label)
         button:SetScript("OnClick", entry.action)
+        if entry.disabled then button:Disable() end
         if entry.logo then
             button.Logo:SetTexture(entry.logo)
             button.Logo:SetSize(
@@ -1708,7 +1809,7 @@ function Raid:RefreshNewRaidWizard()
             button.Text:SetPoint(
                 "LEFT", entry.logo and 14 + (entry.logoWidth or 34)
                     or 12, 0)
-            button.Text:SetPoint("RIGHT", -40, 0)
+            button.Text:SetPoint("RIGHT", -84, 0)
             button.Delete:SetScript("OnClick", function()
                 Raid.pendingDeleteSavedRaidID = deleteID
                 if StaticPopup_Show then
@@ -1799,11 +1900,6 @@ function Raid:RequestNewRaid()
 end
 
 function Raid:ShowNewRaidWizard(clearCurrentRaid)
-    if not self:CanStartRaid() then
-        self:Print(
-            "Only the raid leader can create or load the active raid.")
-        return
-    end
     if clearCurrentRaid then
         self:ClearCurrentRaidSession()
     end

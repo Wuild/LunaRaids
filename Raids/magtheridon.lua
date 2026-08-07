@@ -17,7 +17,7 @@ end
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
-    key = "magtheridon", name = "Magtheridon's Lair", size = 25,
+    key = "magtheridon", name = "Magtheridon's Lair", size = 25, instanceID = 544,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\magtheridon",
     guides = {
         ["Magtheridon"] = {

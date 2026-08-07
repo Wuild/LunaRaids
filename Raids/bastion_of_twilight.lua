@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\bastion_of_twil
 
 Raid:RegisterRaid({
     expansion = "CATA",
-    key = "bastion_of_twilight", name = "The Bastion of Twilight", size = 25,
+    key = "bastion_of_twilight", name = "The Bastion of Twilight", size = 25, instanceID = 671,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

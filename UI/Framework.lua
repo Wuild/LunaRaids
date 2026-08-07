@@ -68,10 +68,12 @@ local ICONS = {
     CHECK = ICON_ROOT .. "circle-check-big",
     COOLDOWNS = ICON_ROOT .. "timer",
     DELETE = ICON_ROOT .. "trash-2",
+    DROPDOWN = ICON_ROOT .. "chevron-down",
     GEAR = ICON_ROOT .. "shirt",
     GRIP = ICON_ROOT .. "grip-vertical",
     GROUPS = ICON_ROOT .. "users",
     HELP = ICON_ROOT .. "circle-question-mark",
+    LOOT = ICON_ROOT .. "loot-bag",
     MARKERS = ICON_ROOT .. "tags",
     MECHANICS = ICON_ROOT .. "book-open",
     NEW = ICON_ROOT .. "plus",
@@ -595,11 +597,17 @@ end
 
 local function AddDropdownArrow(button)
     button.DropdownArrow = button:CreateTexture(nil, "OVERLAY")
-    button.DropdownArrow:SetTexture(
-        "Interface\\Buttons\\UI-ScrollBar-ScrollDownButton-Up")
-    local size = 18
+    button.DropdownArrow:SetTexture(ICONS.DROPDOWN)
+    local size = 14
     PixelSetSize(button.DropdownArrow, size, size)
-    button.DropdownArrow:SetPoint("RIGHT", -6, 0)
+    button.DropdownArrow:SetPoint("RIGHT", -8, 0)
+    button.DropdownArrow:SetVertexColor(unpack(THEME.muted))
+    button:HookScript("OnEnter", function(self)
+        self.DropdownArrow:SetVertexColor(unpack(THEME.accent))
+    end)
+    button:HookScript("OnLeave", function(self)
+        self.DropdownArrow:SetVertexColor(unpack(THEME.muted))
+    end)
     button.Text:ClearAllPoints()
     button.Text:SetPoint("LEFT", 9, 0)
     button.Text:SetPoint("RIGHT", button.DropdownArrow, "LEFT", -4, 0)
@@ -660,6 +668,46 @@ local function Panel(parent)
         THEME.dividerStrong[1], THEME.dividerStrong[2],
         THEME.dividerStrong[3], .55)
     return panel
+end
+
+local function Menu(parent, width, height)
+    local menu = BackdropFrame("Frame", nil, parent)
+    PixelSetSize(menu, width, height)
+    menu:SetBackdrop({
+        bgFile = WHITE,
+        edgeFile = WHITE,
+        edgeSize = Pixel(1),
+    })
+    InstallPixelBorder(menu)
+    menu:SetBackdropColor(unpack(THEME.surfaceRaised))
+    menu:SetBackdropBorderColor(unpack(THEME.border))
+    return menu
+end
+
+local function StyleMenuRow(row, selected, kind)
+    row.borderless = true
+    row.baseBorder = { 0, 0, 0, 0 }
+    if selected then
+        row.baseColor = { unpack(THEME.surfaceSelected) }
+        row.Text:SetTextColor(unpack(THEME.accentText))
+    elseif kind == "danger" then
+        row.baseColor = { 0, 0, 0, 0 }
+        row.Text:SetTextColor(unpack(THEME.dangerBorder))
+    else
+        row.baseColor = { 0, 0, 0, 0 }
+        row.Text:SetTextColor(unpack(THEME.text))
+    end
+    row:SetBackdropColor(unpack(row.baseColor))
+    row:SetBackdropBorderColor(unpack(row.baseBorder))
+    if not row.SelectionBar then
+        row.SelectionBar = row:CreateTexture(nil, "OVERLAY")
+        row.SelectionBar:SetTexture(WHITE)
+        row.SelectionBar:SetPoint("TOPLEFT", 0, -3)
+        row.SelectionBar:SetPoint("BOTTOMLEFT", 0, 3)
+        SetPixelWidth(row.SelectionBar, 2)
+        row.SelectionBar:SetVertexColor(unpack(THEME.accent))
+    end
+    row.SelectionBar:SetShown(selected == true)
 end
 
 -- Public construction vocabulary. Keep the lower-level names available for
@@ -896,8 +944,7 @@ local function ShowSelectionMenu(
     dismiss:SetFrameLevel(1)
     dismiss:EnableMouse(true)
     dismiss:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    local menu = Panel(UIParent)
-    PixelSetSize(menu, menuWidth, (#entries * 27) + 4)
+    local menu = Menu(UIParent, menuWidth, (#entries * 26) + 4)
     menu:SetFrameStrata("FULLSCREEN_DIALOG")
     menu:SetFrameLevel(dismiss:GetFrameLevel() + 10)
     menu:SetClampedToScreen(true)
@@ -911,13 +958,12 @@ local function ShowSelectionMenu(
     for index, entry in ipairs(entries) do
         local value, label = entry[1], entry[2]
         local choice = Button(
-            menu, (value == selected and ">  " or "   ") .. label,
-            menuWidth - 4, 25)
-        choice:SetPoint("TOPLEFT", 2, -2 - ((index - 1) * 27))
+            menu, label, menuWidth - 4, 26)
+        choice:SetPoint("TOPLEFT", 2, -2 - ((index - 1) * 26))
         choice.Text:ClearAllPoints()
         choice.Text:SetPoint("LEFT", 8, 0)
         choice.Text:SetJustifyH("LEFT")
-        if value == selected then StyleButton(choice, "primary") end
+        StyleMenuRow(choice, value == selected)
         choice:SetScript("OnClick", function()
             onSelect(value)
             menu:Hide()
@@ -956,8 +1002,7 @@ local function ShowMultiSelectionMenu(
     dismiss:SetFrameLevel(1)
     dismiss:EnableMouse(true)
     dismiss:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    local menu = Panel(UIParent)
-    PixelSetSize(menu, owner:GetWidth(), (#entries * 27) + 4)
+    local menu = Menu(UIParent, owner:GetWidth(), (#entries * 26) + 4)
     menu:SetFrameStrata("FULLSCREEN_DIALOG")
     menu:SetFrameLevel(dismiss:GetFrameLevel() + 10)
     menu:SetClampedToScreen(true)
@@ -970,16 +1015,15 @@ local function ShowMultiSelectionMenu(
     for index, entry in ipairs(entries) do
         local value, label = entry[1], entry[2]
         local choice = Button(
-            menu, "", owner:GetWidth() - 4, 25)
-        choice:SetPoint("TOPLEFT", 2, -2 - ((index - 1) * 27))
+            menu, "", owner:GetWidth() - 4, 26)
+        choice:SetPoint("TOPLEFT", 2, -2 - ((index - 1) * 26))
         choice.Text:ClearAllPoints()
         choice.Text:SetPoint("LEFT", 8, 0)
         choice.Text:SetJustifyH("LEFT")
         local function RefreshChoice()
             local checked = selected[value] == true
-            choice.Text:SetText(
-                (checked and "[x]  " or "[ ]  ") .. label)
-            StyleButton(choice, checked and "primary" or nil)
+            choice.Text:SetText(label)
+            StyleMenuRow(choice, checked)
         end
         choice:SetScript("OnClick", function()
             selected[value] = not selected[value] or nil
@@ -1216,6 +1260,8 @@ Raid.UI = {
     AddDropdownArrow = AddDropdownArrow,
     AddButtonTooltip = AddButtonTooltip,
     Panel = Panel,
+    Menu = Menu,
+    StyleMenuRow = StyleMenuRow,
     MakeCard = MakeCard,
     MakePage = MakePage,
     MakeFooter = MakeFooter,

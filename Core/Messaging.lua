@@ -42,11 +42,11 @@ function Raid:StartMessageQueue()
 end
 
 function Raid:GetGroupChannel()
-    if self.simulation.enabled then return "RAID_WARNING" end
+    if self:IsSimulating() then return "RAID_WARNING" end
     local configured = self.db.announcementChannel or "AUTO"
     if configured ~= "AUTO" then
         if configured == "RAID_WARNING"
-            and not (IsInRaid and IsInRaid())
+            and not self:IsInLiveRaid()
         then
             return "PARTY"
         elseif configured == "RAID_WARNING"
@@ -56,11 +56,9 @@ function Raid:GetGroupChannel()
         end
         return configured
     end
-    if IsInRaid and IsInRaid() then
+    if self:IsInLiveRaid() then
         return self:IsLocalRaidEditor() and "RAID_WARNING" or "RAID"
-    elseif IsInGroup and IsInGroup()
-        or GetNumPartyMembers and GetNumPartyMembers() > 0
-    then
+    elseif self:IsInLiveGroup() then
         return "PARTY"
     end
     return "SAY"

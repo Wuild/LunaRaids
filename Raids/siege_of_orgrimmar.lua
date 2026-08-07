@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\siege_of_orgrim
 
 Raid:RegisterRaid({
     expansion = "MOP",
-    key = "siege_of_orgrimmar", name = "Siege of Orgrimmar", size = 25,
+    key = "siege_of_orgrimmar", name = "Siege of Orgrimmar", size = 25, instanceID = 1136,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

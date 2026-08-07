@@ -1,7 +1,7 @@
 local _, Raid = ...
 
 local PREFIX = "LunaRaids"
-local PROTOCOL = "8"
+local PROTOCOL = "9"
 
 local KIND_TO_WIRE = {
     HELLO = "H", PROFILE = "P", INTEL = "I", CHECK = "k",
@@ -296,15 +296,15 @@ local function Fields(message)
 end
 
 function Raid:IsLocalRaidEditor()
-    if self.simulation.enabled then return true end
-    if not (IsInRaid and IsInRaid()) then return true end
+    if self.db and self.db.raidReadOnly then return false end
+    if self:IsSimulating() then return true end
+    if not self:IsInLiveRaid() then return true end
     return (UnitIsGroupLeader and UnitIsGroupLeader("player"))
         or false
 end
 
 function Raid:IsAuthorizedPeer(sender)
-    local count = IsInRaid and IsInRaid()
-        and GetNumGroupMembers and GetNumGroupMembers() or 0
+    local count = self:GetLiveRaidMemberCount()
     for index = 1, count do
         local unit = "raid" .. index
         local unitName = GetUnitName and GetUnitName(unit, true)
@@ -317,8 +317,7 @@ function Raid:IsAuthorizedPeer(sender)
 end
 
 function Raid:IsPeerLeader(sender)
-    local count = IsInRaid and IsInRaid()
-        and GetNumGroupMembers and GetNumGroupMembers() or 0
+    local count = self:GetLiveRaidMemberCount()
     for index = 1, count do
         local unit = "raid" .. index
         local unitName = GetUnitName and GetUnitName(unit, true)
@@ -330,8 +329,15 @@ function Raid:IsPeerLeader(sender)
     return false
 end
 
-function Raid:QueueSync(kind, values, distribution, target)
+function Raid:IsRaidSyncActive()
+    return self.db and self.db.raidLocked
+        and not self.db.raidReadOnly or false
+end
+
+function Raid:QueueSync(kind, values, distribution, target, priority)
     if self.receivingSync then return end
+    local sessionless = kind == "HELLO" or kind == "COOLDOWN"
+    if not sessionless and not self:IsRaidSyncActive() then return end
     if not self.syncQueue or not self.syncFrame then
         self:InitializeCommunication()
     end
@@ -345,6 +351,12 @@ function Raid:QueueSync(kind, values, distribution, target)
     for _, value in ipairs(EncodeValues(kind, values)) do
         fields[#fields + 1] = value
     end
+    local raidSessionID = not sessionless
+        and self.db.activeRaidSessionID or nil
+    if not sessionless and not raidSessionID then return end
+    if raidSessionID then
+        fields[#fields + 1] = "@" .. tostring(raidSessionID)
+    end
     local encodedMessage = table.concat(fields, "\t")
     if #encodedMessage > 255 then
         self.syncPayloadWarnings = self.syncPayloadWarnings or {}
@@ -357,12 +369,50 @@ function Raid:QueueSync(kind, values, distribution, target)
     end
     self.syncQueueTail = (self.syncQueueTail or 0) + 1
     self.syncQueue[self.syncQueueTail] = {
+        kind = kind,
         message = encodedMessage,
         distribution = distribution or (
-            IsInRaid and IsInRaid() and "RAID" or "PARTY"),
+            self:IsInLiveRaid() and "RAID" or "PARTY"),
         target = target,
+        priority = priority,
+        raidSessionID = raidSessionID,
     }
     self.syncFrame:Show()
+end
+
+local function IsCurrentGroupMember(name)
+    if not name or name == "" then return false end
+    local ownName = GetUnitName and GetUnitName("player", true)
+        or UnitName("player")
+    if SamePlayer(name, ownName) then return true end
+    local prefix = Raid:IsInLiveRaid() and "raid" or "party"
+    local count = Raid:IsInLiveRaid()
+        and Raid:GetLiveRaidMemberCount()
+        or Raid:GetLivePartyMemberCount()
+    for index = 1, count do
+        local unitName = GetUnitName
+            and GetUnitName(prefix .. index, true)
+            or UnitName(prefix .. index)
+        if SamePlayer(name, unitName) then return true end
+    end
+    return false
+end
+
+function Raid:PruneDepartedSyncTargets()
+    if not self.syncQueue then return end
+    local retained = {}
+    for index = self.syncQueueHead or 1, self.syncQueueTail or 0 do
+        local item = self.syncQueue[index]
+        if item and (item.distribution ~= "WHISPER"
+            or IsCurrentGroupMember(item.target))
+        then
+            retained[#retained + 1] = item
+        end
+    end
+    self.syncQueue = retained
+    self.syncQueueHead = 1
+    self.syncQueueTail = #retained
+    if #retained == 0 and self.syncFrame then self.syncFrame:Hide() end
 end
 
 function Raid:DiscardPendingSync()
@@ -436,6 +486,56 @@ function Raid:BroadcastSimulationRoster(target)
         "SIM_END", { self.db.activeRaid }, distribution, target)
 end
 
+local function SyncFingerprint(value, seen)
+    local valueType = type(value)
+    if valueType ~= "table" then
+        return valueType .. ":" .. tostring(value)
+    end
+    seen = seen or {}
+    if seen[value] then return "cycle" end
+    seen[value] = true
+    local keys = {}
+    for key in pairs(value) do keys[#keys + 1] = key end
+    table.sort(keys, function(left, right)
+        return tostring(left) < tostring(right)
+    end)
+    local parts = { "{" }
+    for _, key in ipairs(keys) do
+        parts[#parts + 1] = SyncFingerprint(key, seen)
+        parts[#parts + 1] = "="
+        parts[#parts + 1] = SyncFingerprint(value[key], seen)
+        parts[#parts + 1] = ";"
+    end
+    parts[#parts + 1] = "}"
+    seen[value] = nil
+    return table.concat(parts)
+end
+
+local function SyncRecipientKey(target)
+    return target and string.lower(target) or "*"
+end
+
+function Raid:ClearSentSyncFingerprints(target)
+    local recipient = SyncRecipientKey(target)
+    for _, field in ipairs({
+        "sentPlanFingerprints",
+        "sentGearFingerprints",
+        "sentProfileFingerprints",
+    }) do
+        local cache = self[field]
+        if cache then
+            for key in pairs(cache) do
+                if key == recipient
+                    or key:find("|" .. recipient .. "|", 1, true)
+                    or key:sub(-#recipient - 1) == "|" .. recipient
+                then
+                    cache[key] = nil
+                end
+            end
+        end
+    end
+end
+
 function Raid:SendPlanSnapshot(
     target, requestedEncounterIndex, includeSharedRaidState)
     if not self:IsLocalRaidEditor() then return end
@@ -445,14 +545,33 @@ function Raid:SendPlanSnapshot(
     if not raid.encounters[encounterIndex] then return end
     local distribution = target and "WHISPER" or nil
     if includeSharedRaidState == nil then includeSharedRaidState = true end
-    self:QueueSync("SNAP_BEGIN", {
-        raid.key, encounterIndex,
-    }, distribution, target)
-    if includeSharedRaidState then self:BroadcastCurrentBoss(target) end
     local plans = self.simulation.enabled
         and self.simulation.plans or self.db.plans
     local plan = plans[raid.key]
         and plans[raid.key][encounterIndex] or {}
+    local bossOverride = self:GetBossOverride(
+        false, raid.key, encounterIndex)
+    local fingerprintState = { plan = plan, boss = bossOverride }
+    if includeSharedRaidState then
+        fingerprintState.current = self:GetCurrentBossIndex(raid)
+        fingerprintState.composition = self:GetRaidComposition(raid.key)
+        fingerprintState.manual = self.db.manualPlayers[raid.key]
+        fingerprintState.simulation = self.simulation.enabled
+            and self.simulation.roster or false
+    end
+    local cacheKey = table.concat({
+        tostring(self.db.activeRaidSessionID or ""),
+        SyncRecipientKey(target), tostring(encounterIndex),
+        includeSharedRaidState and "shared" or "plan",
+    }, "|")
+    local fingerprint = SyncFingerprint(fingerprintState)
+    self.sentPlanFingerprints = self.sentPlanFingerprints or {}
+    if self.sentPlanFingerprints[cacheKey] == fingerprint then return end
+    self.sentPlanFingerprints[cacheKey] = fingerprint
+    self:QueueSync("SNAP_BEGIN", {
+        raid.key, encounterIndex,
+    }, distribution, target)
+    if includeSharedRaidState then self:BroadcastCurrentBoss(target) end
     for key, value in pairs(plan) do
         if type(value) == "table" then
             self:QueueSync("PLAN", {
@@ -478,14 +597,12 @@ function Raid:SendPlanSnapshot(
                 player.role, player.spec or "", player.subgroup or 1,
             }, distribution, target)
         end
-        if self.simulation.enabled then
+        if self:IsSimulating() then
             self:BroadcastSimulationRoster(target)
         elseif self.IsActualRaidLeader and self:IsActualRaidLeader() then
             self:BroadcastSimulationClear(target)
         end
     end
-    local bossOverride = self:GetBossOverride(
-        false, raid.key, encounterIndex)
     self:QueueSync("BOSSRESET", {
         raid.key, encounterIndex,
     }, distribution, target)
@@ -514,22 +631,38 @@ function Raid:SendPlanSnapshot(
 end
 
 function Raid:BroadcastOwnGear(target)
-    if not IsInGroup or not IsInGroup() then return end
-    local distribution = target and "WHISPER" or nil
-    self:QueueSync("GEAR_BEGIN", {}, distribution, target)
+    if not self:IsRaidSyncActive()
+        or not self:IsInLiveGroup()
+    then
+        return
+    end
+    local gear = {}
     for slotID = 1, 19 do
-        local link = GetInventoryItemLink
-            and GetInventoryItemLink("player", slotID)
+        gear[slotID] = GetInventoryItemLink
+            and GetInventoryItemLink("player", slotID) or false
+    end
+    local cacheKey = table.concat({
+        tostring(self.db.activeRaidSessionID or ""),
+        SyncRecipientKey(target),
+    }, "|")
+    local fingerprint = SyncFingerprint(gear)
+    self.sentGearFingerprints = self.sentGearFingerprints or {}
+    if self.sentGearFingerprints[cacheKey] == fingerprint then return end
+    self.sentGearFingerprints[cacheKey] = fingerprint
+    local distribution = target and "WHISPER" or nil
+    self:QueueSync("GEAR_BEGIN", {}, distribution, target, "BULK")
+    for slotID = 1, 19 do
+        local link = gear[slotID]
         if link then
             self:QueueSync(
-                "GEAR", { slotID, link }, distribution, target)
+                "GEAR", { slotID, link }, distribution, target, "BULK")
         end
     end
-    self:QueueSync("GEAR_END", {}, distribution, target)
+    self:QueueSync("GEAR_END", {}, distribution, target, "BULK")
 end
 
 function Raid:BroadcastOwnCooldown(definitionIndex, remaining, target)
-    if not IsInGroup or not IsInGroup() then return end
+    if not self:IsInLiveGroup() then return end
     self:QueueSync(
         "COOLDOWN", { definitionIndex, remaining },
         target and "WHISPER" or nil, target)
@@ -577,26 +710,22 @@ function Raid:HandlePlayerEquipmentChanged()
 end
 
 function Raid:RequestPeerSync()
-    if not IsInGroup or not IsInGroup() then return end
+    if not self:IsInLiveGroup() then return end
     self:QueueSync("HELLO", {
         self.syncVersion or self.version or "unknown", "Q",
     })
-    if self.BroadcastCharacterProfile then
-        self:BroadcastCharacterProfile(nil, true)
-    end
     self:BroadcastOwnGear()
-    if self.BroadcastLocalRaidCooldowns then
-        self:BroadcastLocalRaidCooldowns(nil, true)
-    end
 end
 
-function Raid:ApplyPeerSelection(raidKey, encounterIndex, replaceOpenRaid)
+function Raid:ApplyPeerSelection(
+    raidKey, encounterIndex, replaceOpenRaid, leader, raidSessionID)
     local raid = self.raidByKey[raidKey]
     if not raid then return end
     local continuingCurrentRaid =
         not replaceOpenRaid
         and self.db.raidLocked and self.db.activeRaid == raid.key
     if replaceOpenRaid and self.db.raidLocked then
+        if self.DiscardPendingSync then self:DiscardPendingSync() end
         -- A leader selection starts a new shared session. Detach assistants
         -- from their previous open plan without deleting the saved plan.
         self.db.raidLocked = false
@@ -615,6 +744,19 @@ function Raid:ApplyPeerSelection(raidKey, encounterIndex, replaceOpenRaid)
     self.db.lastRaidByExpansion[raid.expansion] = raid.key
     self.db.lastEncounterByRaid[raid.key] = self.db.activeEncounter
     self.db.raidLocked = true
+    self.db.raidReadOnly = false
+	self.db.activeRaidSessionID = raidSessionID
+		or self.db.activeRaidSessionID
+	self.db.activeSavedRaid = self.db.activeRaidSessionID
+	if not continuingCurrentRaid then
+		local saved = self.db.activeSavedRaid
+			and self.db.savedRaids[self.db.activeSavedRaid]
+		self.db.activeBossKills = {}
+		for index, kill in pairs(saved and saved.bossKills or {}) do
+			self.db.activeBossKills[index] = kill
+		end
+	end
+    if leader then self.activeRaidLeader = leader end
     self:ApplyRaidComposition(raid)
     local isAssistant = UnitIsGroupAssistant
         and UnitIsGroupAssistant("player")
@@ -632,6 +774,55 @@ function Raid:ApplyPeerSelection(raidKey, encounterIndex, replaceOpenRaid)
     elseif self.RefreshAll then
         self:RefreshAll()
     end
+end
+
+function Raid:OfferLeaderRaid(sender, raidKey, encounterIndex, raidSessionID)
+    local raid = self.raidByKey[raidKey]
+    if not raid or not raidSessionID or raidSessionID == "" then return end
+    if self.activeRaidLeader and SamePlayer(self.activeRaidLeader, sender)
+        and self.db.raidLocked and self.db.activeRaid == raidKey
+        and self.db.activeRaidSessionID == raidSessionID
+        and not self.db.raidReadOnly
+    then
+        self:ApplyPeerSelection(
+            raidKey, encounterIndex, false, sender, raidSessionID)
+        return
+    end
+    self.availableLeaderRaid = {
+        sender = sender,
+        raidKey = raidKey,
+        encounterIndex = tonumber(encounterIndex) or 1,
+        raidSessionID = raidSessionID,
+    }
+    if self.RefreshLeaderRaidToast then self:RefreshLeaderRaidToast() end
+    if self.RefreshFooterLayout then self:RefreshFooterLayout() end
+end
+
+function Raid:DismissLeaderRaidOffer()
+    if not self.availableLeaderRaid then return end
+    -- Keep the offer as a dismissed sync barrier so snapshots already queued
+    -- behind SELECT cannot silently activate the raid.
+    self.availableLeaderRaid.dismissed = true
+    if self.RefreshLeaderRaidToast then self:RefreshLeaderRaidToast() end
+end
+
+function Raid:AcceptLeaderRaidOffer()
+    local offer = self.availableLeaderRaid
+    if not offer or not self:IsPeerLeader(offer.sender) then
+        self.availableLeaderRaid = nil
+        if self.RefreshLeaderRaidToast then self:RefreshLeaderRaidToast() end
+        if self.RefreshFooterLayout then self:RefreshFooterLayout() end
+        return false
+    end
+    self.availableLeaderRaid = nil
+    self.activeRaidLeader = offer.sender
+    self:ApplyPeerSelection(
+        offer.raidKey, offer.encounterIndex, true, offer.sender,
+        offer.raidSessionID)
+    if self.RequestPeerSync then self:RequestPeerSync() end
+    if self.RefreshLeaderRaidToast then self:RefreshLeaderRaidToast() end
+    if self.RefreshFooterLayout then self:RefreshFooterLayout() end
+    return true
 end
 
 function Raid:FinalizeReceivedSnapshot()
@@ -660,10 +851,22 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         self:WarnIncompatiblePeer(sender, nil, fields[1])
         return
     end
+    local raidSessionID
+    local last = fields[#fields]
+    if last and last:sub(1, 1) == "@" then
+        raidSessionID = last:sub(2)
+        fields[#fields] = nil
+    end
     local kind = DecodeFields(fields)
     if not kind then return end
     local sequence = tonumber(fields[3]) or 0
     if kind == "HELLO" then
+        self.peerHelloSequences = self.peerHelloSequences or {}
+        local previousHello = self.peerHelloSequences[sender]
+        if previousHello and sequence <= previousHello then
+            self:ClearSentSyncFingerprints(sender)
+        end
+        self.peerHelloSequences[sender] = sequence
         self.compatiblePeers = self.compatiblePeers or {}
         -- The protocol check above determines wire compatibility. Display
         -- versions may differ (or be an unexpanded packager token) without
@@ -678,21 +881,63 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
                 self.syncVersion or self.version or "unknown", "R",
             }, "WHISPER", sender)
             if self.BroadcastCharacterProfile then
-                self:BroadcastCharacterProfile(sender, true)
+                self:BroadcastCharacterProfile(sender)
             end
             self:BroadcastOwnGear(sender)
-            if self.BroadcastLocalRaidCooldowns then
-                self:BroadcastLocalRaidCooldowns(sender, true)
-            end
         end
         local snapshotAuthority = self.db.raidLocked
             and self:IsLocalRaidEditor()
-            and (not IsInRaid or not IsInRaid()
+            and (not self:IsInLiveRaid()
                 or self.IsActualRaidLeader
                     and self:IsActualRaidLeader())
         if fields[5] ~= "R" and snapshotAuthority then
             self:BroadcastSelection(sender)
             self:SendRaidPlanSnapshots(sender)
+        end
+        return
+    end
+    if kind ~= "COOLDOWN"
+        and (not raidSessionID or raidSessionID == "")
+    then
+        return
+    end
+    -- SELECT is the only non-handshake message accepted without an active
+    -- local session; it creates the opt-in discovery toast. Everything else
+    -- waits until a raid has explicitly been joined or created.
+    local offeredClose = kind == "CLOSE" and self.availableLeaderRaid
+        and SamePlayer(self.availableLeaderRaid.sender, sender)
+        and self.availableLeaderRaid.raidSessionID == raidSessionID
+    if kind ~= "SELECT" and kind ~= "COOLDOWN" and not offeredClose
+        and not self:IsRaidSyncActive()
+    then
+        return
+    end
+    if kind ~= "SELECT" and kind ~= "COOLDOWN" and not offeredClose
+        and raidSessionID ~= self.db.activeRaidSessionID
+    then
+        return
+    end
+    if kind == "GEAR_BEGIN" then
+        self.peerGearSnapshots = self.peerGearSnapshots or {}
+        self.peerGearSnapshots[PlayerKey(sender)] = {}
+        return
+    elseif kind == "GEAR" then
+        self.peerGearSnapshots = self.peerGearSnapshots or {}
+        local snapshot = self.peerGearSnapshots[PlayerKey(sender)]
+        local slotID = tonumber(fields[4])
+        if snapshot and slotID and fields[5] and fields[5] ~= "" then
+            snapshot[slotID] = fields[5]
+        end
+        return
+    elseif kind == "GEAR_END" then
+        local senderKey = PlayerKey(sender)
+        local snapshot = self.peerGearSnapshots
+            and self.peerGearSnapshots[senderKey]
+        if snapshot and self.StorePeerGearSnapshot then
+            self:StorePeerGearSnapshot(sender, snapshot)
+        end
+        if self.peerGearSnapshots then
+            self.peerGearSnapshots[senderKey] = nil
         end
         return
     end
@@ -724,34 +969,26 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         end
         return
     end
-    if kind == "GEAR_BEGIN" then
-        self.peerGearSnapshots = self.peerGearSnapshots or {}
-        self.peerGearSnapshots[PlayerKey(sender)] = {}
-        return
-    elseif kind == "GEAR" then
-        self.peerGearSnapshots = self.peerGearSnapshots or {}
-        local snapshot = self.peerGearSnapshots[PlayerKey(sender)]
-        local slotID = tonumber(fields[4])
-        if snapshot and slotID and fields[5] and fields[5] ~= "" then
-            snapshot[slotID] = fields[5]
-        end
-        return
-    elseif kind == "GEAR_END" then
-        local senderKey = PlayerKey(sender)
-        local snapshot = self.peerGearSnapshots
-            and self.peerGearSnapshots[senderKey]
-        if snapshot and self.StorePeerGearSnapshot then
-            self:StorePeerGearSnapshot(sender, snapshot)
-        end
-        if self.peerGearSnapshots then
-            self.peerGearSnapshots[senderKey] = nil
-        end
-        return
-    end
     if not self:IsAuthorizedPeer(sender) then return end
     self.peerSequences = self.peerSequences or {}
     if sequence <= (self.peerSequences[sender] or 0) then return end
     self.peerSequences[sender] = sequence
+    if kind == "SELECT" then
+        self:OfferLeaderRaid(
+            sender, fields[4], tonumber(fields[5]), raidSessionID)
+        return
+    end
+    local offer = self.availableLeaderRaid
+    if offer and SamePlayer(offer.sender, sender) then
+        if kind == "CLOSE" then
+            self.availableLeaderRaid = nil
+            if self.RefreshLeaderRaidToast then
+                self:RefreshLeaderRaidToast()
+            end
+            if self.RefreshFooterLayout then self:RefreshFooterLayout() end
+        end
+        return
+    end
     if kind == "INSPECT_CLAIM" then
         local key, duration = fields[4], tonumber(fields[5]) or 10
         if key and key ~= "" then
@@ -809,9 +1046,7 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     end
     self.receivingSync = true
     local raidKey, encounterIndex = fields[4], tonumber(fields[5])
-    if kind == "SELECT" then
-        self:ApplyPeerSelection(raidKey, encounterIndex, true)
-    elseif kind == "CURRENT" then
+    if kind == "CURRENT" then
         local raid = self.raidByKey[raidKey]
         if raid and encounterIndex and encounterIndex >= 2
             and encounterIndex <= #raid.encounters
@@ -878,6 +1113,8 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     elseif kind == "CLOSE" then
         self.db.raidLocked = false
         self.db.activeSavedRaid = nil
+        self.db.activeRaidSessionID = nil
+        self.activeRaidLeader = nil
         self.selectedPlayer = nil
         self.dragPlayer = nil
         self.remoteSimulationRoster = nil
@@ -1135,9 +1372,14 @@ function Raid:HandleGroupRosterUpdate()
     self.rosterUpdatePending = true
     local function Refresh()
         Raid.rosterUpdatePending = nil
-        local inGroup = IsInGroup and IsInGroup() or false
+        local inGroup = Raid:IsInLiveGroup()
+        local leftGroup = Raid.communicationWasInGroup == true
+            and not inGroup
         local joinedGroup = inGroup
             and Raid.communicationWasInGroup == false
+        local joinedWithActiveRaid = joinedGroup
+            and Raid.db.raidLocked
+            and not Raid.db.raidReadOnly
         local isAssistant = UnitIsGroupAssistant
             and UnitIsGroupAssistant("player") or false
         local isLeader = UnitIsGroupLeader
@@ -1146,9 +1388,20 @@ function Raid:HandleGroupRosterUpdate()
             and Raid.communicationWasAssistant == false
         Raid.communicationWasInGroup = inGroup
         Raid.communicationWasAssistant = isAssistant
+        Raid:PruneDepartedSyncTargets()
+        if Raid.availableLeaderRaid
+            and not Raid:IsPeerLeader(Raid.availableLeaderRaid.sender)
+        then
+            Raid.availableLeaderRaid = nil
+            if Raid.RefreshLeaderRaidToast then
+                Raid:RefreshLeaderRaidToast()
+            end
+            if Raid.RefreshFooterLayout then Raid:RefreshFooterLayout() end
+        end
         -- RefreshAll below redraws the visible roster.  Avoid doing that work
         -- twice for the same event burst (and skip hidden roster UI entirely).
         Raid:UpdateRoster(true)
+        Raid:AutoSaveActiveRaid()
         if Raid.RefreshRaidCooldowns then
             Raid:RefreshRaidCooldowns()
         end
@@ -1167,8 +1420,17 @@ function Raid:HandleGroupRosterUpdate()
         elseif Raid.ApplyRaidAdministration then
             Raid:ApplyRaidAdministration()
         end
-        if joinedGroup or becameAssistant then
+        if (joinedGroup or becameAssistant) and not joinedWithActiveRaid then
             Raid:RequestPeerSync()
+        end
+        if joinedWithActiveRaid and StaticPopup_Show then
+            StaticPopup_Show("LUNARAIDS_JOINED_GROUP_CLOSE_RAID")
+        end
+        if leftGroup and Raid.db.raidLocked
+            and not Raid.db.raidReadOnly
+            and StaticPopup_Show
+        then
+            StaticPopup_Show("LUNARAIDS_LEFT_GROUP_CLOSE_RAID")
         end
     end
     if C_Timer and C_Timer.After then
@@ -1181,9 +1443,14 @@ end
 function Raid:SendRaidPlanSnapshots(target)
     if not self:IsLocalRaidEditor() then return end
     local raid = self:GetRaid()
-    for encounterIndex = 1, #raid.encounters do
-        self:SendPlanSnapshot(
-            target, encounterIndex, encounterIndex == 1)
+    local current = self:GetCurrentBossIndex(raid)
+        or tonumber(self.db.activeEncounter) or 1
+    current = math.max(1, math.min(#raid.encounters, current))
+    -- A joining peer needs raid-wide duties and the current encounter, not
+    -- every boss plan in the zone. Remaining plans sync when selected.
+    self:SendPlanSnapshot(target, 1, true)
+    if current ~= 1 then
+        self:SendPlanSnapshot(target, current, false)
     end
 end
 
@@ -1193,8 +1460,7 @@ function Raid:InitializeCommunication()
     self.syncQueueTail = self.syncQueueTail or 0
     self.syncSequence = self.syncSequence or 0
     if self.communicationWasInGroup == nil then
-        self.communicationWasInGroup =
-            IsInGroup and IsInGroup() or false
+        self.communicationWasInGroup = self:IsInLiveGroup()
     end
     if self.communicationWasAssistant == nil then
         self.communicationWasAssistant = UnitIsGroupAssistant
@@ -1206,10 +1472,21 @@ function Raid:InitializeCommunication()
     self.syncFrame.elapsed = 0
     self.syncFrame:SetScript("OnUpdate", function(frame, elapsed)
         frame.elapsed = frame.elapsed + elapsed
-        if frame.elapsed < .08 then return end
+        if frame.elapsed < .15 then return end
         frame.elapsed = 0
         local head = Raid.syncQueueHead or 1
         local item = Raid.syncQueue and Raid.syncQueue[head]
+        if item and item.priority == "BULK" then
+            for index = head + 1, Raid.syncQueueTail or head do
+                local candidate = Raid.syncQueue[index]
+                if candidate and candidate.priority ~= "BULK" then
+                    Raid.syncQueue[head], Raid.syncQueue[index] =
+                        candidate, item
+                    item = candidate
+                    break
+                end
+            end
+        end
         if not item then
             Raid.syncQueue = {}
             Raid.syncQueueHead = 1
@@ -1219,8 +1496,21 @@ function Raid:InitializeCommunication()
         end
         Raid.syncQueue[head] = nil
         Raid.syncQueueHead = head + 1
+        if item.kind ~= "HELLO" and item.kind ~= "COOLDOWN"
+            and (not Raid:IsRaidSyncActive()
+            or item.raidSessionID ~= Raid.db.activeRaidSessionID)
+        then
+            return
+        end
         local ok = true
-        if C_ChatInfo and C_ChatInfo.SendAddonMessage then
+        if ChatThrottleLib and ChatThrottleLib.SendAddonMessage then
+            local priority = item.priority
+                or (item.kind == "CHECK" and "ALERT" or "NORMAL")
+            ok = pcall(
+                ChatThrottleLib.SendAddonMessage, ChatThrottleLib,
+                priority, PREFIX, item.message,
+                item.distribution, item.target)
+        elseif C_ChatInfo and C_ChatInfo.SendAddonMessage then
             ok = pcall(
                 C_ChatInfo.SendAddonMessage,
                 PREFIX, item.message, item.distribution, item.target)

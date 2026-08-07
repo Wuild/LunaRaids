@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\mogushan_vaults
 
 Raid:RegisterRaid({
     expansion = "MOP",
-    key = "mogushan_vaults", name = "Mogu'shan Vaults", size = 25,
+    key = "mogushan_vaults", name = "Mogu'shan Vaults", size = 25, instanceID = 1008,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

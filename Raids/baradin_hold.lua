@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\baradin_hold"
 
 Raid:RegisterRaid({
     expansion = "CATA",
-    key = "baradin_hold", name = "Baradin Hold", size = 25,
+    key = "baradin_hold", name = "Baradin Hold", size = 25, instanceID = 757,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

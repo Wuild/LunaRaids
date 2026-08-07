@@ -12,7 +12,7 @@ local HealerReuse = { roles = { Raid.Role.HEALER }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
-    key = "zulaman", name = "Zul'Aman", size = 10,
+    key = "zulaman", name = "Zul'Aman", size = 10, instanceID = 568,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\zulaman",
     guides = {
         ["Akil'zon"] = {

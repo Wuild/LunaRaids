@@ -1,5 +1,6 @@
 local _, Raid = ...
 local UI = Raid.UI
+local ICONS = UI.ICONS
 local L = Raid.L
 local THEME = UI.THEME
 
@@ -60,11 +61,13 @@ function Raid:RefreshAssignments()
             activeTab ~= "GROUPS"
                 and activeTab ~= "STATUS"
                 and activeTab ~= "GEAR"
-                and activeTab ~= "ABOUT")
+                and activeTab ~= "ABOUT"
+                and activeTab ~= "LOOT")
         if (activeTab == "GROUPS"
             or activeTab == "STATUS"
             or activeTab == "GEAR"
-            or activeTab == "ABOUT")
+            or activeTab == "ABOUT"
+            or activeTab == "LOOT")
             and self.bossSettingsPanel
         then
             self.bossSettingsPanel:Hide()
@@ -100,6 +103,26 @@ function Raid:RefreshAssignments()
     end
     if activeTab ~= "ABOUT" and self.aboutView then
         self.aboutView:Hide()
+    end
+    if activeTab ~= "STATS" and self.bossStatsView then
+        self.bossStatsView:Hide()
+    end
+    if activeTab ~= "LOOT" and self.HideLootHistory then
+        self:HideLootHistory()
+    end
+    if activeTab == "LOOT" then
+        for _, slot in ipairs(self.assignmentSlots) do slot:Hide() end
+        for _, header in ipairs(self.groupHeaders) do header:Hide() end
+        for _, row in ipairs(self.markerRows) do row:Hide() end
+        if self.autoAssignButton then self.autoAssignButton:Hide() end
+        if self.assignmentPanel
+            and self.assignmentPanel.ProgressTrack
+        then
+            self.assignmentPanel.ProgressTrack:Hide()
+            self.assignmentPanel.ProgressFill:Hide()
+        end
+        self:RefreshLootHistory()
+        return
     end
     if activeTab == "ABOUT" then
         for _, slot in ipairs(self.assignmentSlots) do slot:Hide() end
@@ -169,6 +192,18 @@ function Raid:RefreshAssignments()
             self.assignmentPanel.ProgressFill:Hide()
         end
         self:RefreshMechanics()
+        return
+    end
+    if activeTab == "STATS" then
+        for _, slot in ipairs(self.assignmentSlots) do slot:Hide() end
+        for _, header in ipairs(self.groupHeaders) do header:Hide() end
+        for _, row in ipairs(self.markerRows) do row:Hide() end
+        if self.autoAssignButton then self.autoAssignButton:Hide() end
+        if self.assignmentPanel and self.assignmentPanel.ProgressTrack then
+            self.assignmentPanel.ProgressTrack:Hide()
+            self.assignmentPanel.ProgressFill:Hide()
+        end
+        self:RefreshBossStats()
         return
     end
     local slotNumber, groupNumber, y = 0, 0, 0
@@ -479,6 +514,118 @@ function Raid:RefreshAssignments()
     end
 end
 
+function Raid:CreateBossStatsView()
+    if self.bossStatsView then return self.bossStatsView end
+    local view = CreateFrame("Frame", nil, self.assignmentContent)
+    view:SetPoint("TOPLEFT")
+    view:SetPoint("TOPRIGHT")
+    view:SetHeight(300)
+    view.Title = Font(view, 13, "accent", "BOSS STATISTICS")
+    view.Title:SetPoint("TOPLEFT", 8, -8)
+    view.Provider = Font(view, 9, "muted", "")
+    view.Provider:SetPoint("TOPLEFT", 8, -30)
+    view.Provider:SetPoint("RIGHT", -8, 0)
+    view.Provider:SetJustifyH("LEFT")
+    view.Empty = Font(view, 10, "muted", "")
+    view.Empty:SetPoint("TOPLEFT", 8, -70)
+    view.Empty:SetPoint("RIGHT", -8, 0)
+    view.Empty:SetJustifyH("LEFT")
+    view.Rows = {}
+    local labels = {
+        "DEFEATED THIS RAID", "DBM KILLS", "DBM PULLS",
+        "KILL RATE", "FASTEST KILL", "LAST KILL",
+    }
+    for index, label in ipairs(labels) do
+        local row = CreateFrame("Frame", nil, view)
+        row:SetHeight(38)
+        row.Background = row:CreateTexture(nil, "BACKGROUND")
+        row.Background:SetTexture(WHITE)
+        row.Background:SetAllPoints()
+        row.Background:SetVertexColor(unpack(
+            index % 2 == 0 and THEME.surfaceAlt or THEME.surface))
+        row.Label = Font(row, 9, "muted", label)
+        row.Label:SetPoint("LEFT", 12, 0)
+        row.Value = Font(row, 11, "text", "--")
+        row.Value:SetPoint("RIGHT", -12, 0)
+        row.Value:SetJustifyH("RIGHT")
+        view.Rows[index] = row
+    end
+    view:Hide()
+    self.bossStatsView = view
+    return view
+end
+
+function Raid:RefreshBossStats()
+    local view = self:CreateBossStatsView()
+    local raid = self:GetRaid()
+    local index = tonumber(self.db.activeEncounter) or 1
+    local encounter = raid and raid.encounters[index]
+    view:Show()
+    if self.assignmentTitle then self.assignmentTitle:SetText("BOSS STATISTICS") end
+    if not encounter or index < 2 then
+        view.Title:SetText("RAID STATISTICS")
+        view.Provider:SetText("Select a boss tab above to view its statistics.")
+        view.Empty:SetText("")
+        for _, row in ipairs(view.Rows) do row:Hide() end
+        self.assignmentContent:SetHeight(110)
+        return
+    end
+    view.Title:SetText(encounter.name:upper())
+    local stats = self:GetDBMBossStats(encounter)
+    local hasHistory = stats and stats.matched and (
+        (stats.kills or 0) > 0 or (stats.pulls or 0) > 0)
+    if hasHistory then
+        view.Provider:SetText("Deadly Boss Mods · "
+            .. tostring(stats.moduleID or "matched boss module"))
+        view.Empty:SetText("")
+    elseif not stats or not stats.dbmAvailable then
+        view.Provider:SetText("LunaRaids session status · DBM unavailable")
+        view.Empty:SetText("DBM-Core is not enabled on this character.")
+    elseif stats.loadAttempted and not stats.loadSucceeded then
+        view.Provider:SetText("LunaRaids session status · DBM load failed")
+        view.Empty:SetText("DBM could not load the raid module for this "
+            .. "instance. Check that its raid pack is enabled.")
+    elseif not stats.matched then
+        view.Provider:SetText("LunaRaids session status · no DBM boss match")
+        view.Empty:SetText("DBM loaded, but no matching boss module was found "
+            .. "for this encounter.")
+    else
+        view.Provider:SetText("Deadly Boss Mods · "
+            .. tostring(stats.moduleID or "matched boss module"))
+        view.Empty:SetText("DBM has no recorded pulls for this boss on this "
+            .. "character yet.")
+    end
+    local killed = self:IsBossKilled(index)
+    local kills = stats and stats.kills or 0
+    local pulls = stats and stats.pulls or 0
+    local values = {
+        killed and "YES" or "NO",
+        hasHistory and tostring(kills) or "--",
+        hasHistory and tostring(pulls) or "--",
+        hasHistory and pulls > 0
+            and (("%.0f%%"):format((kills / pulls) * 100)) or "--",
+        hasHistory and self:FormatBossTime(stats.bestTime) or "--",
+        hasHistory and self:FormatBossTime(stats.lastTime) or "--",
+    }
+    local top = hasHistory and -54 or -106
+    for rowIndex, row in ipairs(view.Rows) do
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", 8, top - ((rowIndex - 1) * 42))
+        row:SetPoint("TOPRIGHT", -8, top - ((rowIndex - 1) * 42))
+        row.Value:SetText(values[rowIndex])
+        if rowIndex == 1 then
+            row.Value:SetTextColor(killed and .22 or .75,
+                killed and .9 or .75, killed and .55 or .75, 1)
+        else
+            row.Value:SetTextColor(unpack(THEME.text))
+        end
+        row:Show()
+    end
+    local height = -top + (#view.Rows * 42) + 8
+    view:SetHeight(height)
+    self.assignmentContent:SetHeight(height)
+end
+
 function Raid:CreateBossRailButton(index)
     local button = Button(
         self.bossRail, "", BOSS_BUTTON_SIZE, BOSS_BUTTON_SIZE)
@@ -506,6 +653,12 @@ function Raid:CreateBossRailButton(index)
     button.CurrentDot:SetPoint("TOPRIGHT", -3, -3)
     button.CurrentDot:SetVertexColor(.22, .9, .55, 1)
     button.CurrentDot:Hide()
+    button.Killed = button:CreateTexture(nil, "OVERLAY")
+    button.Killed:SetTexture(ICONS.CHECK)
+    PixelSetSize(button.Killed, 16, 16)
+    button.Killed:SetPoint("BOTTOMRIGHT", -2, 2)
+    button.Killed:SetVertexColor(.22, .9, .55, 1)
+    button.Killed:Hide()
     button.Text:Hide()
     button:SetScript("OnClick", function(self)
         Raid:SetEncounter(self.encounterIndex)
@@ -521,6 +674,9 @@ function Raid:CreateBossRailButton(index)
         if self.currentBoss then
             GameTooltip:AddLine(
                 "Current boss", .22, .9, .55)
+        end
+        if self.killed then
+            GameTooltip:AddLine("Defeated", .22, .9, .55)
         end
         GameTooltip:AddLine(L.CLICK_OPEN_BOSS_PLAN, unpack(MUTED))
         GameTooltip:Show()
@@ -567,7 +723,10 @@ end
 
 function Raid:RefreshBossRail()
     if not self.bossRail then return end
-    if self.raidPickerActive or not self.db.raidLocked then
+    if self.raidPickerActive or not self.db.raidLocked
+        or self.workspaceMode == "ASSIGNMENTS"
+            and self.activeBossTab == "LOOT"
+    then
         for _, button in ipairs(self.bossButtons or {}) do
             button:Hide()
         end
@@ -576,10 +735,6 @@ function Raid:RefreshBossRail()
     end
     local raid = self:GetRaid()
     local currentBossIndex = self:GetCurrentBossIndex(raid)
-    if self.clearPlanButton then
-        self.clearPlanButton.Text:SetText(
-            self.db.activeEncounter == 1 and "CLEAR PAGE" or L.CLEAR_BOSS)
-    end
     if self.setCurrentBossButton then
         local isOverview = self.db.activeEncounter == 1
         local isCurrent = self.db.activeEncounter == currentBossIndex
@@ -628,7 +783,9 @@ function Raid:RefreshBossRail()
             and "Raid-Wide Plan" or encounter.name
         button.selected = index == self.db.activeEncounter
         button.currentBoss = index == currentBossIndex
+        button.killed = index >= 2 and self:IsBossKilled(index)
         button.CurrentDot:SetShown(button.currentBoss)
+        button.Killed:SetShown(button.killed)
         local icon = encounter.icon or raid.icon
         button.Icon:SetTexture(
             icon or "Interface\\Icons\\INV_Sword_27")

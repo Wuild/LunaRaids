@@ -122,7 +122,11 @@ function Raid:GetRaidCooldownSettings()
     if settings.whisperEnabled == nil then
         settings.whisperEnabled = false
     end
-    settings.visibility = settings.visibility or "GROUP"
+    if settings.visibility ~= "ALWAYS"
+        and settings.visibility ~= "RAID"
+    then
+        settings.visibility = "GROUP"
+    end
     for _, definition in ipairs(DEFINITIONS) do
         if settings.spells[definition[1]] == nil then
             settings.spells[definition[1]] = definition[7]
@@ -146,13 +150,58 @@ function Raid:IsRaidCooldownPlayerEligible(player, definition)
     return false
 end
 
+function Raid:GetRaidCooldownRoster(includeSolo)
+    if self:IsSimulating() then
+        return self.roster or {}
+    end
+    if not self:IsInLiveGroup() and not includeSolo then
+        return {}
+    end
+    local live = self.BuildLiveRoster and self:BuildLiveRoster() or {}
+    local result = {}
+    for _, player in ipairs(live or {}) do
+        if player.unit and (not UnitExists or UnitExists(player.unit)) then
+            result[#result + 1] = player
+        end
+    end
+    return result
+end
+
+function Raid:PrintRaidCooldownDebug()
+    local settings = self:GetRaidCooldownSettings()
+    local roster = self:GetRaidCooldownRoster(true)
+    local eligibleRows = 0
+    for _, definition in ipairs(DEFINITIONS) do
+        if settings.spells[definition[1]] ~= false then
+            for _, player in ipairs(roster) do
+                if self:IsRaidCooldownPlayerEligible(player, definition) then
+                    eligibleRows = eligibleRows + 1
+                    break
+                end
+            end
+        end
+    end
+    local refreshed, refreshError = pcall(self.RefreshRaidCooldowns, self)
+    local frame = self.raidCooldownFrame
+    self:Print((
+        "CDDEBUG context=%s liveRaid=%d liveParty=%d enabled=%s "
+            .. "visibility=%s roster=%d rows=%d frame=%s refresh=%s%s"
+    ):format(
+        self:GetGroupContext(), self:GetLiveRaidMemberCount(),
+        self:GetLivePartyMemberCount(), tostring(settings.enabled),
+        tostring(settings.visibility), #roster, eligibleRows,
+        frame and tostring(frame:IsShown()) or "missing",
+        tostring(refreshed),
+        refreshed and "" or " error=" .. tostring(refreshError)))
+end
+
 function Raid:HandleRaidCooldownCombatLog()
     local _, event, _, sourceGUID, sourceName, _, _, destGUID, destName, _, _,
         spellID = CombatLogGetCurrentEventInfo()
     local definition = BY_SPELL[tonumber(spellID)]
     if not definition or not sourceName then return end
     local belongs = false
-    for _, player in ipairs(self.roster or {}) do
+    for _, player in ipairs(self:GetRaidCooldownRoster(true)) do
         if player.guid and sourceGUID and player.guid == sourceGUID
             or ShortName(player.name):lower()
                 == ShortName(sourceName):lower()
@@ -285,7 +334,7 @@ end
 function Raid:ReceiveRaidCooldownState(sender, definitionIndex, remaining)
     local senderName = ShortName(sender)
     local rosterPlayer
-    for _, player in ipairs(self.roster or {}) do
+    for _, player in ipairs(self:GetRaidCooldownRoster(true)) do
         if ShortName(player.name):lower() == senderName:lower() then
             rosterPlayer = player
             break
@@ -303,7 +352,7 @@ function Raid:ReceiveRaidCooldownState(sender, definitionIndex, remaining)
 end
 
 function Raid:BroadcastLocalRaidCooldowns(target, force)
-    if not IsInGroup or not IsInGroup() then return end
+    if not self:IsInLiveGroup() then return end
     self.localRaidCooldownWire = self.localRaidCooldownWire or {}
     local changed = false
     local playerName = GetUnitName

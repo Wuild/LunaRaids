@@ -11,7 +11,7 @@ local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = tru
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
-    key = "ssc", name = "Serpentshrine Cavern", size = 25,
+    key = "ssc", name = "Serpentshrine Cavern", size = 25, instanceID = 548,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\ssc",
     guides = {
         ["Hydross the Unstable"] = {

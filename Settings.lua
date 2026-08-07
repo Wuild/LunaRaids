@@ -63,7 +63,7 @@ end
 local function CanInvite()
     return UnitIsGroupLeader("player")
         or UnitIsGroupAssistant("player")
-        or not IsInGroup()
+        or not self:IsInLiveGroup()
 end
 
 local function NamesMatch(left, right)
@@ -154,7 +154,7 @@ end
 function Raid:ApplyAutoPromote()
     local settings = self.db and self.db.raidAdmin
     if not settings or not settings.autoPromote
-        or not IsInRaid() or not UnitIsGroupLeader("player")
+        or not self:IsInLiveRaid() or not UnitIsGroupLeader("player")
     then
         return
     end
@@ -199,7 +199,7 @@ function Raid:ApplyLootRules(force, replaceMaster)
         end
         return false
     end
-    if not IsInRaid() or not UnitIsGroupLeader("player") then
+    if not self:IsInLiveRaid() or not UnitIsGroupLeader("player") then
         if force then
             self:Print(self.L.LOOT_RULES_REQUIRE_LEADER)
         end

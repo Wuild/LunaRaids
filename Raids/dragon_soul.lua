@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\dragon_soul"
 
 Raid:RegisterRaid({
     expansion = "CATA",
-    key = "dragon_soul", name = "Dragon Soul", size = 25,
+    key = "dragon_soul", name = "Dragon Soul", size = 25, instanceID = 967,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

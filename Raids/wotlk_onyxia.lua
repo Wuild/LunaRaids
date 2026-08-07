@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\wotlk_onyxia"
 
 Raid:RegisterRaid({
     expansion = "WOTLK",
-    key = "wotlk_onyxia", name = "Onyxia's Lair", size = 25,
+    key = "wotlk_onyxia", name = "Onyxia's Lair", size = 25, instanceID = 249,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

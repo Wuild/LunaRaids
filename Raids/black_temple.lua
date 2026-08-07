@@ -11,7 +11,7 @@ local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = tru
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
-    key = "black_temple", name = "Black Temple", size = 25,
+    key = "black_temple", name = "Black Temple", size = 25, instanceID = 564,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\black_temple",
     guides = {
         ["High Warlord Naj'entus"] = {

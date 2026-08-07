@@ -276,11 +276,15 @@ end
 UI.SetMarkerTexture = SetMarkerTexture
 
 function Raid:SetBossTab(tab)
+    if tab ~= "LOOT" then
+        self.lastAssignmentBossTab = tab
+    end
     self.activeBossTab = tab
     if self.assignmentScroll then
         self.assignmentScroll:SetVerticalScroll(0)
     end
     self:RedrawWorkspace()
+    self:RefreshFooterLayout()
 end
 
 function Raid:SetWorkspaceMode(mode)
@@ -307,18 +311,6 @@ function Raid:SetWorkspaceMode(mode)
             self:RedrawWorkspace()
         else
             self.workspaceMode = "ASSIGNMENTS"
-            if not self:CanStartRaid() then
-                if self.newRaidWizard then
-                    self.newRaidWizard:Hide()
-                end
-                self:SetRaidPickerMode(false)
-                self:SetRaidWorkspaceVisible(true)
-                self:RefreshWorkspaceNavigation()
-                self:UpdateWindowLayout()
-                self:Print(
-                    "Only the raid leader can create a new raid plan.")
-                return
-            end
             self:SetRaidWorkspaceVisible(true)
             self:SetRaidPickerMode(true)
             local wizard = self:CreateNewRaidWizard()
@@ -350,6 +342,14 @@ end
 function Raid:SetRaidPickerMode(enabled)
     enabled = enabled and true or false
     self.raidPickerActive = enabled
+    if enabled then
+        -- The raid picker does not pass through RefreshAssignments, so hide
+        -- any standalone page (About, Gear, Status, Loot) at the transition.
+        UI.ShowPage(self, nil)
+    end
+    if self.inactiveRaidNav then
+        self.inactiveRaidNav:SetShown(enabled)
+    end
 
     for _, button in ipairs(self.bossButtons or {}) do
         button:Hide()
@@ -396,6 +396,75 @@ function Raid:RefreshFooterLayout()
     then
         return
     end
+    local offer = self.availableLeaderRaid
+    local offeredRaid = offer and self.raidByKey[offer.raidKey]
+    local showInactiveBanner = not self.db.raidLocked
+        and offeredRaid ~= nil
+    if self.inactiveRaidBanner then
+        self.inactiveRaidBanner:SetShown(showInactiveBanner)
+        if showInactiveBanner then
+            self.inactiveRaidBanner.Title:SetText(
+                self.L.ACTIVE_RAID_AVAILABLE .. "  ·  "
+                    .. offer.sender .. "  ·  " .. offeredRaid.name:upper())
+            self.inactiveRaidBanner.Action.Text:SetText(self.L.JOIN_RAID)
+            StyleButton(self.inactiveRaidBanner.Action, "positive")
+        end
+    end
+    local showRaidToolbar = self.db.raidLocked
+        and not self.raidPickerActive
+        and self.workspaceMode == "ASSIGNMENTS"
+    local readOnly = self.db.raidReadOnly == true
+    if self.raidToolbar then
+        self.raidToolbar:ClearAllPoints()
+        self.raidToolbar:SetPoint(
+            "TOPLEFT", self.frame, "TOPLEFT", 1,
+            showInactiveBanner and -126 or -88)
+        self.raidToolbar:SetPoint(
+            "TOPRIGHT", self.frame, "TOPRIGHT", -1,
+            showInactiveBanner and -126 or -88)
+        self.raidToolbar:SetShown(showRaidToolbar or false)
+        if showRaidToolbar and self.raidToolbar.Title then
+            local raid = self:GetRaid()
+            local saved = self.db.activeSavedRaid
+                and self.db.savedRaids[self.db.activeSavedRaid]
+            self.raidToolbar.Title:SetText(
+                readOnly and (self.L.READ_ONLY .. "  ·  "
+                    .. (saved and saved.name:upper()
+                        or raid and raid.name:upper() or self.L.RAID))
+                    or saved and saved.name:upper()
+                    or raid and raid.name:upper() or self.L.RAID)
+        end
+    end
+    local canEdit = self:IsLocalRaidEditor()
+    for _, button in ipairs(self.raidToolbarEditorButtons or {}) do
+        button:SetShown(showRaidToolbar and not readOnly and canEdit or false)
+    end
+    if self.raidToolbarCloseButton then
+        self.raidToolbarCloseButton:SetShown(
+            showRaidToolbar and not readOnly or false)
+    end
+    if self.raidToolbarHistoryButton then
+        self.raidToolbarHistoryButton:SetShown(
+            showRaidToolbar and readOnly or false)
+    end
+    if self.raidToolbarLootButton then
+        self.raidToolbarLootButton:SetShown(showRaidToolbar or false)
+        StyleButton(self.raidToolbarLootButton,
+            self.activeBossTab == "LOOT" and "primary" or "default")
+    end
+    if self.raidToolbarAssignmentsButton then
+        self.raidToolbarAssignmentsButton:SetShown(showRaidToolbar or false)
+        StyleButton(self.raidToolbarAssignmentsButton,
+            self.activeBossTab ~= "LOOT" and "primary" or "default")
+    end
+    local contentTop = -88
+        - (showInactiveBanner and 38 or 0)
+        - (showRaidToolbar and 38 or 0)
+    if self.settingsView then
+        self.settingsView:ClearAllPoints()
+        self.settingsView:SetPoint("TOPLEFT", 1, contentTop)
+        self.settingsView:SetPoint("BOTTOMRIGHT", -1, 1)
+    end
     local gearWorkspace = self.workspaceMode == "GEAR"
     if gearWorkspace then
         for _, button in ipairs(self.footerActionButtons or {}) do
@@ -437,18 +506,21 @@ function Raid:RefreshFooterLayout()
     if gearWorkspace then hasFooter = nil end
     local bottomInset = hasFooter and 58 or 1
     self.rosterPanel:ClearAllPoints()
-    self.rosterPanel:SetPoint("TOPLEFT", 1, -88)
+    self.rosterPanel:SetPoint("TOPLEFT", 1, contentTop)
     self.rosterPanel:SetPoint("BOTTOMLEFT", 1, bottomInset)
     self.rosterPanel:SetWidth(self:GetRosterPanelWidth())
 
+    local lootWorkspace = self.workspaceMode == "ASSIGNMENTS"
+        and self.activeBossTab == "LOOT"
     local fullWidth = self.raidPickerActive
+        or lootWorkspace
         or self.workspaceMode == "GROUPS"
         or self.workspaceMode == "STATUS"
         or self.workspaceMode == "GEAR"
         or self.workspaceMode == "ABOUT"
     self.assignmentPanel:ClearAllPoints()
     if fullWidth then
-        self.assignmentPanel:SetPoint("TOPLEFT", 1, -88)
+        self.assignmentPanel:SetPoint("TOPLEFT", 1, contentTop)
     else
         self.assignmentPanel:SetPoint(
             "TOPLEFT", self.rosterPanel, "TOPRIGHT", 0, 0)
@@ -480,16 +552,12 @@ function Raid:RefreshFooterLayout()
 
     if self.frame.DarkInset then
         self.frame.DarkInset:ClearAllPoints()
-        self.frame.DarkInset:SetPoint("TOPLEFT", 1, -88)
+        self.frame.DarkInset:SetPoint("TOPLEFT", 1, contentTop)
         self.frame.DarkInset:SetPoint(
             "BOTTOMRIGHT", -1, hasFooter and 58 or 1)
     end
     if self.frame.StatusBg then
         self.frame.StatusBg:SetShown(hasFooter or false)
-    end
-    if self.frame.FooterGroupDivider then
-        self.frame.FooterGroupDivider:SetShown(
-            hasFooter and self.workspaceMode == "ASSIGNMENTS")
     end
 end
 
@@ -500,12 +568,15 @@ function Raid:RefreshWorkspaceNavigation()
     local about = self.workspaceMode == "ABOUT"
     local settings = self.workspaceMode == "SETTINGS"
     local picker = self.raidPickerActive
+    local lootWorkspace = not picker
+        and self.workspaceMode == "ASSIGNMENTS"
+        and self.activeBossTab == "LOOT"
     local workspaceVisible = self.assignmentPanel
         and self.assignmentPanel:IsShown()
     local canEdit = self:IsLocalRaidEditor()
     local showRaidIdentity =
         not picker and not groups and not status and not gear
-            and not about and not settings
+            and not about and not settings and not lootWorkspace
     if self.assignmentRaidIcon then
         self.assignmentRaidIcon:SetShown(showRaidIdentity)
     end
@@ -580,13 +651,14 @@ function Raid:RefreshWorkspaceNavigation()
         self.bossRail:SetShown(
             not picker and (not groups and not status and not gear
                 and not about and not settings
+                and not lootWorkspace
                 and self.assignmentPanel
                 and self.assignmentPanel:IsShown()))
     end
     for _, tab in pairs(self.bossTabs or {}) do
         tab:SetShown(
             not picker and not groups and not status and not gear
-                and not about and not settings)
+                and not about and not settings and not lootWorkspace)
     end
     for _, button in ipairs(self.assignmentActionButtons or {}) do
         button:SetShown(
@@ -610,15 +682,16 @@ function Raid:RefreshWorkspaceNavigation()
                 and (index ~= 1 or self:CanStartRaid()))
     end
     if self.raidGroupQuickActions then
-        local hasGroupRoster = (IsInRaid and IsInRaid())
-            or (self.simulation and self.simulation.enabled)
+        local hasGroupRoster = self:IsInGroupContext()
         self.raidGroupQuickActions:SetShown(
             not picker and groups and workspaceVisible
-                and hasGroupRoster)
+                and hasGroupRoster and not self.db.raidReadOnly)
     end
     if self.raidStatusView and self.raidStatusView.ActionBar then
+        local hasGroup = self:IsInGroupContext()
         self.raidStatusView.ActionBar:SetShown(
-            not picker and status and workspaceVisible)
+            not picker and status and workspaceVisible
+                and hasGroup and not self.db.raidReadOnly)
     end
     if self.assignmentScroll then
         local usesSharedScroll = not status and not gear and not about
@@ -627,7 +700,7 @@ function Raid:RefreshWorkspaceNavigation()
         self.assignmentScroll:ClearAllPoints()
         self.assignmentScroll:SetPoint(
             "TOPLEFT", 6,
-            groups and -8 or -84)
+            (groups or lootWorkspace) and -8 or -84)
         self.assignmentScroll:SetPoint("BOTTOMRIGHT", -6, 8)
     end
     if self.raidStatusView then
@@ -636,13 +709,14 @@ function Raid:RefreshWorkspaceNavigation()
         self.raidStatusView:SetPoint("BOTTOMRIGHT", 0, 0)
     end
     if not picker and not groups and not status and not gear and not about
-        and self.LayoutAssignmentToolbar
+        and not lootWorkspace and self.LayoutAssignmentToolbar
     then
         self:LayoutAssignmentToolbar()
     end
     local showRoster =
         not picker and not groups and not status and not gear
-            and not about and not settings and workspaceVisible
+            and not about and not settings and not lootWorkspace
+            and workspaceVisible
     if self.rosterPanel then
         self.rosterPanel:SetShown(showRoster)
     end
@@ -1207,7 +1281,7 @@ function Raid:CreateRaidGroupQuickActions()
         AddButtonIcon(button, entry.icon, 16)
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         button:SetScript("OnClick", function(_, mouseButton)
-            if not Raid:CanEditRaidGroups() then return end
+            if not Raid:IsLocalRaidEditor() then return end
             if mouseButton == "RightButton" and rightAction then
                 rightAction(button)
             else
@@ -1235,9 +1309,7 @@ end
 function Raid:RefreshRaidGroups()
     self.raidGroupFrames = self.raidGroupFrames or {}
     local quickActions = self:CreateRaidGroupQuickActions()
-    local hasRaid = IsInRaid and IsInRaid()
-    local isSimulated = self.simulation and self.simulation.enabled
-    if not hasRaid and not isSimulated then
+    if not self:IsInGroupContext() then
         quickActions:Hide()
         for _, group in ipairs(self.raidGroupFrames) do
             group:Hide()
@@ -1266,7 +1338,7 @@ function Raid:RefreshRaidGroups()
         grouped[groupIndex][#grouped[groupIndex] + 1] = player
     end
     local rowWidth = self.assignmentRowWidth or ASSIGNMENT_ROW_WIDTH
-    local canEdit = self:CanEditRaidGroups()
+    local canEdit = self:IsLocalRaidEditor()
     for _, button in ipairs(quickActions.Actions) do
         button:SetEnabled(canEdit)
         button:SetAlpha(canEdit and 1 or .4)

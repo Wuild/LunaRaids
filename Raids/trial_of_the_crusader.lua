@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\trial_of_the_cr
 
 Raid:RegisterRaid({
     expansion = "WOTLK",
-    key = "trial_of_the_crusader", name = "Trial of the Crusader", size = 25,
+    key = "trial_of_the_crusader", name = "Trial of the Crusader", size = 25, instanceID = 649,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

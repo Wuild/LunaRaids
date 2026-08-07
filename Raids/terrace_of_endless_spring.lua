@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\terrace_of_endl
 
 Raid:RegisterRaid({
     expansion = "MOP",
-    key = "terrace_of_endless_spring", name = "Terrace of Endless Spring", size = 25,
+    key = "terrace_of_endless_spring", name = "Terrace of Endless Spring", size = 25, instanceID = 996,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

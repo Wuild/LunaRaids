@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\wotlk_naxxramas
 
 Raid:RegisterRaid({
     expansion = "WOTLK",
-    key = "wotlk_naxxramas", name = "Naxxramas", size = 25,
+    key = "wotlk_naxxramas", name = "Naxxramas", size = 25, instanceID = 533,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

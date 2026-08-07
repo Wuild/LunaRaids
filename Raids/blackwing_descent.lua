@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\blackwing_desce
 
 Raid:RegisterRaid({
     expansion = "CATA",
-    key = "blackwing_descent", name = "Blackwing Descent", size = 25,
+    key = "blackwing_descent", name = "Blackwing Descent", size = 25, instanceID = 669,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

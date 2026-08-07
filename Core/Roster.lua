@@ -68,14 +68,21 @@ local function AddRosterPlayer(result, seen, unit)
     then
         raidAssignment = "MAINASSIST"
     end
-    if raidAssignment == "MAINTANK" then
-        reportedRole = "TANK"
-    end
     local guid = UnitGUID and UnitGUID(unit)
-    local role = Raid.db and (
+    local roleOverride = Raid.db and (
         guid and Raid.db.roleOverrides[guid]
         or Raid.db.roleOverrides[name])
-        or reportedRole
+    local hasLiveRole = reportedRole == "TANK"
+        or reportedRole == "HEALER"
+        or reportedRole == "DAMAGER"
+    local role = hasLiveRole and reportedRole
+        or roleOverride or reportedRole
+    -- A valid Blizzard group role is authoritative. Overrides only bridge the
+    -- short delay after UnitSetRole or provide a fallback while unassigned.
+    if hasLiveRole and Raid.db then
+        if guid then Raid.db.roleOverrides[guid] = nil end
+        Raid.db.roleOverrides[name] = nil
+    end
     local subgroup
     if raidIndex then subgroup = rosterSubgroup end
     local leader = unitExists and UnitIsGroupLeader
@@ -181,8 +188,8 @@ function Raid:AddManualPlayer(name, class, role, spec, subgroup)
             raid.key, name, class, role, strtrim(spec or ""), subgroup,
         })
     end
-    self:AutoSaveActiveRaid()
     self:UpdateRoster()
+    self:AutoSaveActiveRaid()
 end
 
 function Raid:RemoveManualPlayer(name)
@@ -191,7 +198,7 @@ function Raid:RemoveManualPlayer(name)
     local key = name and name:lower()
     if not key or not self.db.manualPlayers[raid.key] then return end
     self.db.manualPlayers[raid.key][key] = nil
-    local plans = self.simulation.enabled
+    local plans = self:IsSimulating()
         and self.simulation.plans or self.db.plans
     for encounterIndex, plan in pairs(plans[raid.key] or {}) do
         for assignmentKey, assignment in pairs(plan) do
@@ -217,9 +224,39 @@ function Raid:RemoveManualPlayer(name)
     if self.QueueSync and self:IsLocalRaidEditor() then
         self:QueueSync("MANUALDEL", { raid.key, name })
     end
-    self:AutoSaveActiveRaid()
     self:UpdateRoster()
+    self:AutoSaveActiveRaid()
     if self.RefreshAssignments then self:RefreshAssignments() end
+end
+
+local function SameRosterPlayer(player, unit)
+    if not player or not unit or not UnitExists(unit) then return false end
+    if player.guid then return UnitGUID(unit) == player.guid end
+    if not player.name then return false end
+    local unitName = GetUnitName and GetUnitName(unit, true) or UnitName(unit)
+    if not unitName then return false end
+    local playerShort = player.name:match("^[^-]+")
+    local unitShort = unitName:match("^[^-]+")
+    return playerShort and unitShort
+        and playerShort:lower() == unitShort:lower()
+end
+
+local function ResolveRoleUnit(player)
+    -- Roster unit tokens can become stale whenever the raid composition changes.
+    -- Resolve the member again at the moment UnitSetRole is called.
+    if SameRosterPlayer(player, "player") then return "player" end
+
+    if Raid:IsInLiveRaid() then
+        for index = 1, GetNumGroupMembers() do
+            local unit = "raid" .. index
+            if SameRosterPlayer(player, unit) then return unit end
+        end
+    elseif Raid:IsInLiveParty() then
+        for index = 1, GetNumSubgroupMembers() do
+            local unit = "party" .. index
+            if SameRosterPlayer(player, unit) then return unit end
+        end
+    end
 end
 
 function Raid:SetPlayerRole(player, role)
@@ -236,10 +273,9 @@ function Raid:SetPlayerRole(player, role)
     if not key then return end
     local actualRole = role == "AUTO" and "NONE" or role
     local changedBlizzardRole = false
-    if not self.simulation.enabled and player.unit
-        and type(UnitSetRole) == "function"
-    then
-        local ok = pcall(UnitSetRole, player.unit, actualRole)
+    local roleUnit = not self:IsSimulating() and ResolveRoleUnit(player)
+    if roleUnit and type(UnitSetRole) == "function" then
+        local ok = pcall(UnitSetRole, roleUnit, actualRole)
         if not ok then
             self:Print(self.L.ROLE_CHANGE_REJECTED)
             return
@@ -263,6 +299,7 @@ function Raid:SetPlayerRole(player, role)
     end
     self:SortRosterByRole()
     self:RefreshRoster()
+    self:AutoSaveActiveRaid()
 end
 
 local function LiveRaidIndex(player)
@@ -306,6 +343,7 @@ function Raid:SetVirtualPlayerGroup(player, subgroup)
             self.db.activeRaid, player.name, subgroup,
         })
     end
+    self:AutoSaveActiveRaid()
 end
 
 function Raid:MoveRosterPlayer(player, subgroup, target)
@@ -316,7 +354,7 @@ function Raid:MoveRosterPlayer(player, subgroup, target)
     local sourceGroup = player.subgroup or 1
     local targetGroup = target and target.subgroup or subgroup
     if sourceIndex or targetIndex then
-        if not (IsInRaid and IsInRaid()) then
+        if not self:IsInLiveRaid() then
             self:Print(self.L.GROUP_EDIT_REQUIRES_RAID)
             return
         end
@@ -350,6 +388,7 @@ function Raid:MoveRosterPlayer(player, subgroup, target)
     self.selectedPlayer = nil
     self.dragPlayer = nil
     self:UpdateRoster()
+    self:AutoSaveActiveRaid()
     if self.RefreshAssignments then self:RefreshAssignments() end
 end
 
@@ -481,7 +520,7 @@ function Raid:StartBreakTimer(minutes)
         self:Print(self:Localize("SIM_BREAK_TIMER", minutes))
         return
     end
-    local channel = IsInRaid and IsInRaid()
+    local channel = self:IsInLiveRaid()
         and "RAID_WARNING" or "PARTY"
     if type(SendChatMessage) == "function" then
         pcall(SendChatMessage, message, channel)
@@ -548,7 +587,7 @@ function Raid:UpdateGearScoreFromTipTac(player)
 end
 
 function Raid:UpdateGearScores()
-    if self.simulation.enabled then return end
+    if self:IsSimulating() then return end
     local tacoTip = _G.TT_GS
         and type(_G.TT_GS.GetScore) == "function"
         and _G.TT_GS or nil
@@ -609,39 +648,16 @@ function Raid:UpdateGearScores()
     end
 end
 
-local function GetLiveRaidCount()
-    local modernCount = GetNumGroupMembers
-        and tonumber(GetNumGroupMembers()) or 0
-    local legacyCount = GetNumRaidMembers
-        and tonumber(GetNumRaidMembers()) or 0
-    local detectedCount = 0
-    for index = 1, 40 do
-        local unit = "raid" .. index
-        local rosterName = GetRaidRosterInfo
-            and GetRaidRosterInfo(index)
-        if rosterName or UnitExists and UnitExists(unit) then
-            detectedCount = index
-        end
-    end
-    local explicitlyInRaid = IsInRaid and IsInRaid() or false
-    local inRaid = explicitlyInRaid
-        or legacyCount > 0 or detectedCount > 0
-    return inRaid
-        and math.max(modernCount, legacyCount, detectedCount) or 0,
-        inRaid
-end
-
 function Raid:BuildLiveRoster()
     local result, seen = {}, {}
-    local raidCount, inRaid = GetLiveRaidCount()
-    if inRaid then
+    local raidCount = self:GetLiveRaidMemberCount()
+    if raidCount > 0 then
         for index = 1, raidCount do
             AddRosterPlayer(result, seen, "raid" .. index)
         end
     else
         AddRosterPlayer(result, seen, "player")
-        local partyCount = GetNumSubgroupMembers and GetNumSubgroupMembers()
-            or GetNumPartyMembers and GetNumPartyMembers() or 0
+        local partyCount = self:GetLivePartyMemberCount()
         for index = 1, partyCount do
             AddRosterPlayer(result, seen, "party" .. index)
         end
@@ -832,6 +848,13 @@ function Raid:StopSimulation(silent)
 end
 
 function Raid:UpdateRoster(suppressRosterRefresh)
+    if self.db and self.db.raidReadOnly then
+        self:SortRosterByRole()
+        if not suppressRosterRefresh and self.RefreshRoster then
+            self:RefreshRoster()
+        end
+        return
+    end
     if self.simulation.enabled then
         self.roster, self.simulation.roster =
             self:BuildSimulatedRoster(self.simulation.size)
@@ -904,8 +927,8 @@ function Raid:RefreshLoginRoster()
         if Raid.RefreshPersonalAssignments then
             Raid:RefreshPersonalAssignments()
         end
-        local expected, inRaid = GetLiveRaidCount()
-        if not inRaid then return end
+        local expected = Raid:GetLiveRaidMemberCount()
+        if expected == 0 then return end
         local liveCount = 0
         for _, player in ipairs(Raid.roster or {}) do
             if player.unit and player.unit:match("^raid%d+$") then
@@ -924,6 +947,7 @@ end
 
 function Raid:HandlePlayerEnteringWorld()
     self:RefreshLoginRoster()
+    self:HandleRaidInstanceChanged()
 end
 
 function Raid:FindPlayer(name)

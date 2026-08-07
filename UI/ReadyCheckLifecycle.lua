@@ -17,10 +17,6 @@ function Raid:HandleReadyCheckStarted(_, initiator, timeout)
     self.readyCheckActiveUntil =
         GetTime() + (tonumber(timeout) or 35)
     self:BroadcastReadyCheckStatus()
-    if not self:IsLocalRaidEditor() then
-        self:RequestGroupDurability()
-        return
-    end
     local caller
     if not (issecretvalue and issecretvalue(initiator))
         and type(initiator) == "string" and initiator ~= ""

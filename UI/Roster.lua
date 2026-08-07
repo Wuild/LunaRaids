@@ -27,6 +27,7 @@ local InstallPixelBorder, Button = UI.InstallPixelBorder, UI.Button
 local StyleButton, AddButtonIcon = UI.StyleButton, UI.AddButtonIcon
 local AddDropdownArrow, AddButtonTooltip = UI.AddDropdownArrow, UI.AddButtonTooltip
 local Panel, SectionHeader, EditField = UI.Panel, UI.SectionHeader, UI.EditField
+local Menu, StyleMenuRow = UI.Menu, UI.StyleMenuRow
 local ShowSelectionMenu = UI.ShowSelectionMenu
 local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
@@ -53,8 +54,7 @@ function Raid:ShowRoleMenu(player, anchor)
             end
         end)
         dismiss:Hide()
-        local menu = Panel(UIParent)
-        PixelSetSize(menu, 144, 114)
+        local menu = Menu(UIParent, 144, 114)
         menu:SetFrameStrata("FULLSCREEN_DIALOG")
         menu:SetFrameLevel(91)
         menu:SetClampedToScreen(true)
@@ -85,6 +85,7 @@ function Raid:ShowRoleMenu(player, anchor)
                 choice.Icon:SetTexCoord(0, 1, 0, 1)
             end
             choice.role = entry[2]
+            StyleMenuRow(choice, false)
             choice:SetScript("OnClick", function(self)
                 if self.role == "POLL" then
                     Raid:StartRoleCheck()
@@ -116,9 +117,7 @@ function Raid:ShowRoleMenu(player, anchor)
             or player.role ~= "NONE" and player.role
             or "AUTO"
         local selected = choice.role == selectedRole
-        choice.baseBorder = selected
-            and { unpack(ACCENT) } or { unpack(BORDER) }
-        choice:SetBackdropBorderColor(unpack(choice.baseBorder))
+        StyleMenuRow(choice, selected)
     end
     self.roleMenu:ClearAllPoints()
     self.roleMenu:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 4, 0)
@@ -144,8 +143,7 @@ function Raid:ShowRaidPlayerMenu(player, anchor)
             end
         end)
         dismiss:Hide()
-        local menu = Panel(UIParent)
-        menu:SetWidth(190)
+        local menu = Menu(UIParent, 190, 32)
         menu:SetFrameStrata("FULLSCREEN_DIALOG")
         menu:SetFrameLevel(91)
         menu:SetClampedToScreen(true)
@@ -238,7 +236,8 @@ function Raid:ShowRaidPlayerMenu(player, anchor)
             row.Text:SetPoint("LEFT", 9, 0)
             row.Text:SetPoint("RIGHT", -7, 0)
             row.Text:SetJustifyH("LEFT")
-            if action.destructive then StyleButton(row, "danger") end
+            StyleMenuRow(
+                row, false, action.destructive and "danger" or nil)
             row.action = action
             row:SetScript("OnClick", function(self)
                 local subject = menu.player
@@ -889,7 +888,7 @@ function Raid:RefreshPersonalAssignmentPresentationInCombat()
 end
 
 function Raid:RefreshPersonalAssignments()
-    if not IsInGroup or not IsInGroup() then
+    if not self:IsInGroupContext() then
         self.personalAssignmentsRefreshPending =
             InCombatLockdown and InCombatLockdown() or nil
         if self.personalAssignmentFrame then
@@ -1062,10 +1061,12 @@ function Raid:CreateRosterButton(index)
             end
         end
         local roleKey = self.player.guid or self.player.name
-        if self.player.raidAssignment == "MAINTANK" then
+        if self.player.groupRole
+            and self.player.groupRole ~= "NONE"
+        then
             GameTooltip:AddDoubleLine(
-                "Role source", "Blizzard Main Tank",
-                .65, .65, .65, .25, .75, 1)
+                "Role source", "Blizzard group role",
+                .65, .65, .65, .75, .75, .75)
         elseif roleKey and Raid.db.roleOverrides[roleKey] then
             GameTooltip:AddDoubleLine(
                 "Role source", "LunaRaids override",
@@ -1074,6 +1075,13 @@ function Raid:CreateRosterButton(index)
             GameTooltip:AddDoubleLine(
                 "Role source", "Blizzard group role",
                 .65, .65, .65, .75, .75, .75)
+        end
+        if self.player.raidAssignment then
+            GameTooltip:AddDoubleLine(
+                "Raid assignment",
+                self.player.raidAssignment == "MAINTANK"
+                    and "Main Tank" or "Main Assist",
+                .65, .65, .65, .25, .75, 1)
         end
         GameTooltip:AddLine(
             "Right-click to change role.",

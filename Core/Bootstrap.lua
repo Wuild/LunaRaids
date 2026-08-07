@@ -102,6 +102,7 @@ local defaults = {
     activeExpansion = "TBC",
     activeRaid = "karazhan",
     activeEncounter = 1,
+    activeBossKills = {},
     currentBossByRaid = {},
     lastRaidByExpansion = {},
     lastEncounterByRaid = {},
@@ -114,6 +115,7 @@ local defaults = {
     savedRaids = {},
     manualPlayers = {},
     raidLocked = false,
+    raidReadOnly = false,
     newRaidExpansion = "TBC",
     plans = {},
     window = {
@@ -193,6 +195,67 @@ function Raid:Print(message)
     print("|cff33b8ffLunaRaids|r  " .. tostring(message))
 end
 
+function Raid:IsSimulating()
+    return self.simulation and self.simulation.enabled == true or false
+end
+
+function Raid:GetLiveRaidMemberCount()
+    local modern = GetNumGroupMembers
+        and tonumber(GetNumGroupMembers()) or 0
+    local legacy = GetNumRaidMembers
+        and tonumber(GetNumRaidMembers()) or 0
+    local detected = 0
+    for index = 1, 40 do
+        if UnitExists and UnitExists("raid" .. index) then
+            detected = index
+        end
+    end
+    local inRaid = IsInRaid and IsInRaid() or legacy > 0 or detected > 0
+    return inRaid and math.max(modern, legacy, detected) or 0
+end
+
+function Raid:GetLivePartyMemberCount()
+    if self:GetLiveRaidMemberCount() > 0 then return 0 end
+    local modern = GetNumSubgroupMembers
+        and tonumber(GetNumSubgroupMembers()) or 0
+    local legacy = GetNumPartyMembers
+        and tonumber(GetNumPartyMembers()) or 0
+    local detected = 0
+    for index = 1, 4 do
+        if UnitExists and UnitExists("party" .. index) then
+            detected = index
+        end
+    end
+    return math.max(modern, legacy, detected)
+end
+
+function Raid:IsInLiveRaid()
+    return self:GetLiveRaidMemberCount() > 0
+end
+
+function Raid:IsInLiveParty()
+    return self:GetLivePartyMemberCount() > 0
+end
+
+function Raid:IsInLiveGroup()
+    return self:IsInLiveRaid() or self:IsInLiveParty()
+end
+
+function Raid:IsInGroupContext()
+    return self:IsSimulating() or self:IsInLiveGroup()
+end
+
+function Raid:IsInRaidContext()
+    return self:IsSimulating() or self:IsInLiveRaid()
+end
+
+function Raid:GetGroupContext()
+    if self:IsSimulating() then return "SIMULATION" end
+    if self:IsInLiveRaid() then return "RAID" end
+    if self:IsInLiveParty() then return "PARTY" end
+    return "SOLO"
+end
+
 function Raid:RequireRaidEditor()
     if self.IsLocalRaidEditor and self:IsLocalRaidEditor() then
         return true
@@ -203,13 +266,14 @@ function Raid:RequireRaidEditor()
 end
 
 function Raid:CanEditRaidGroups()
-    if IsInRaid and IsInRaid() then
+    if self.db and self.db.raidReadOnly then return false end
+    if self:IsInLiveRaid() then
         return UnitIsGroupLeader
                 and UnitIsGroupLeader("player")
             or IsRaidLeader and IsRaidLeader()
             or false
     end
-    return self.simulation and self.simulation.enabled or false
+    return self:IsSimulating()
 end
 
 function Raid:RequireRaidGroupEditor()
@@ -220,7 +284,7 @@ function Raid:RequireRaidGroupEditor()
 end
 
 function Raid:IsActualRaidLeader()
-    return IsInRaid and IsInRaid()
+    return self:IsInLiveRaid()
         and ((UnitIsGroupLeader and UnitIsGroupLeader("player"))
             or (IsRaidLeader and IsRaidLeader())
             or false)
@@ -426,6 +490,21 @@ function Raid:NormalizeDatabase()
     end
     if not self.raidByKey[self.db.activeRaid] then
         self.db.activeRaid = defaults.activeRaid
+    end
+    self.db.savedRaids = self.db.savedRaids or {}
+    for id, saved in pairs(self.db.savedRaids) do
+        if type(saved) == "table" then
+            saved.id = tostring(saved.id or id)
+        end
+    end
+    if self.db.activeSavedRaid and self.db.savedRaids[
+        self.db.activeSavedRaid]
+    then
+        self.db.activeRaidSessionID = tostring(
+            self.db.savedRaids[self.db.activeSavedRaid].id
+                or self.db.activeSavedRaid)
+    elseif not self.db.raidLocked then
+        self.db.activeRaidSessionID = nil
     end
     local activeRaid = self.raidByKey[self.db.activeRaid]
     self.db.activeExpansion =

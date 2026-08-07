@@ -95,8 +95,8 @@ it. It can also be disabled in settings.
 ### Gear Inspect
 
 Gear Inspect shows the raid's known GearScore, item level, and equipped-item
-quality. LunaRaids prefers data reported by another LunaRaids user and uses
-throttled inspection as a fallback.
+quality. Gear is read through a throttled local inspection queue and cache,
+then shared with compatible raid members as low-priority addon traffic.
 
 TacoTip and TipTac data are used when available, but neither addon is
 required.

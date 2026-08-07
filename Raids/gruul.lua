@@ -10,7 +10,7 @@ local Rec = Raid.Recommendation
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
-    key = "gruul", name = "Gruul's Lair", size = 25,
+    key = "gruul", name = "Gruul's Lair", size = 25, instanceID = 565,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\gruul",
     guides = {
         ["High King Maulgar"] = {

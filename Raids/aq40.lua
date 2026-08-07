@@ -11,7 +11,7 @@ local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = tru
 
 local raid = Raid:RegisterRaid({
     expansion = "VANILLA",
-    key = "aq40", name = "Temple of Ahn'Qiraj", size = 40,
+    key = "aq40", name = "Temple of Ahn'Qiraj", size = 40, instanceID = 531,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\aq40",
     guides = {
         ["The Prophet Skeram"] = {

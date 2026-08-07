@@ -12,7 +12,7 @@ local HealerReuse = { roles = { Raid.Role.HEALER }, allowReuse = true }
 
 local raid = Raid:RegisterRaid({
     expansion = "TBC",
-    key = "sunwell", name = "Sunwell Plateau", size = 25,
+    key = "sunwell", name = "Sunwell Plateau", size = 25, instanceID = 580,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\sunwell",
     guides = {
         ["Kalecgos"] = {

@@ -54,12 +54,14 @@
     <!-- Feature services -->
     <Script file="Modules\Communication\Service.lua"/>
     <Script file="Modules\CharacterIntel\Service.lua"/>
+    <Script file="Modules\LootHistory\Service.lua"/>
 
     <!-- User interface -->
     <Script file="UI\Framework.lua"/>
     <Script file="UI\Roster.lua"/>
     <Script file="UI\Assignments.lua"/>
     <Script file="UI\GearInspect.lua"/>
+    <Script file="UI\LootHistory.lua"/>
     <Script file="UI\AssignmentView.lua"/>
     <Script file="UI\MechanicsHUD.lua"/>
     <Script file="UI\ReadyCheckService.lua"/>

@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\ulduar"
 
 Raid:RegisterRaid({
     expansion = "WOTLK",
-    key = "ulduar", name = "Ulduar", size = 25,
+    key = "ulduar", name = "Ulduar", size = 25, instanceID = 603,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

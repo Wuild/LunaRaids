@@ -8,7 +8,7 @@ local RAID_ICON = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\eye_of_eternity
 
 Raid:RegisterRaid({
     expansion = "WOTLK",
-    key = "eye_of_eternity", name = "The Eye of Eternity", size = 25,
+    key = "eye_of_eternity", name = "The Eye of Eternity", size = 25, instanceID = 616,
     icon = RAID_ICON,
     encounters = {
         Encounter("Raid Overview", {

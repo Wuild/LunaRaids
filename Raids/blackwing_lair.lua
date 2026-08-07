@@ -11,7 +11,7 @@ local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = tru
 
 local raid = Raid:RegisterRaid({
     expansion = "VANILLA",
-    key = "blackwing_lair", name = "Blackwing Lair", size = 40,
+    key = "blackwing_lair", name = "Blackwing Lair", size = 40, instanceID = 469,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\blackwing_lair",
     guides = {
         ["Razorgore the Untamed"] = {
