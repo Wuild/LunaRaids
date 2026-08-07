@@ -1818,7 +1818,7 @@ end
 
 local function CurrentClientExpansion()
 	local interfaceVersion = GetBuildInfo
-		and tonumber(select(4, GetBuildInfo())) or 0
+		and tonumber((select(4, GetBuildInfo()))) or 0
 	if interfaceVersion >= 50000 and interfaceVersion < 60000 then
 		return "MOP"
 	elseif interfaceVersion >= 40000 and interfaceVersion < 50000 then
