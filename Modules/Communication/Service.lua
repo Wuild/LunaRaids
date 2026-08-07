@@ -830,7 +830,7 @@ end
 
 function Raid:AcceptLeaderRaidOffer()
     local offer = self.availableLeaderRaid
-    if not offer or not self:IsPeerLeader(offer.sender) then
+    if not offer or not self:IsAuthorizedPeer(offer.sender) then
         self.availableLeaderRaid = nil
         if self.RefreshLeaderRaidToast then self:RefreshLeaderRaidToast() end
         if self.RefreshFooterLayout then self:RefreshFooterLayout() end
@@ -912,11 +912,16 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
             end
             self:BroadcastOwnGear(sender)
         end
+        local ownFullName = GetUnitName and GetUnitName("player", true)
+            or UnitName and UnitName("player")
+        local sessionOwner = self.activeRaidLeader
+            and SamePlayer(self.activeRaidLeader, ownFullName)
         local snapshotAuthority = self.db.raidLocked
             and self:IsLocalRaidEditor()
             and (not self:IsInLiveRaid()
                 or self.IsActualRaidLeader
-                    and self:IsActualRaidLeader())
+                    and self:IsActualRaidLeader()
+                or sessionOwner)
         if fields[5] ~= "R" and snapshotAuthority then
             self:BroadcastSelection(sender)
             self:SendRaidPlanSnapshots(sender)
@@ -1005,9 +1010,8 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     if sequence <= (self.peerSequences[sender] or 0) then return end
     self.peerSequences[sender] = sequence
     if kind == "SELECT" then
-        if not self:IsPeerLeader(sender) then return end
         if raidSessionID and raidSessionID ~= "" then
-            if self:IsGroupAssistant() and self:IsPeerLeader(sender) then
+            if self:CanUseRaidControls() then
                 self.availableLeaderRaid = nil
                 self:ApplyPeerSelection(
                     fields[4], tonumber(fields[5]), true,
@@ -1498,7 +1502,7 @@ function Raid:HandleGroupRosterUpdate()
         Raid.communicationWasAssistant = isAssistant
         Raid:PruneDepartedSyncTargets()
         if Raid.availableLeaderRaid
-            and not Raid:IsPeerLeader(Raid.availableLeaderRaid.sender)
+            and not Raid:IsAuthorizedPeer(Raid.availableLeaderRaid.sender)
         then
             Raid.availableLeaderRaid = nil
             if Raid.RefreshLeaderRaidToast then

@@ -1623,7 +1623,7 @@ end
 
 function Raid:CanStartRaid()
 	if self:IsInLiveRaid() then
-		return self:IsActualRaidLeader()
+		return self:CanUseRaidControls()
 	end
 	if self.simulation.enabled then
 		return true
@@ -1779,6 +1779,8 @@ function Raid:BeginRaid(raidKey)
 	end
 	self.db.manualPlayers[raid.key] = {}
 	self.db.activeRaidSessionID = self:GenerateRaidSessionID()
+	self.activeRaidLeader = GetUnitName and GetUnitName("player", true)
+		or UnitName and UnitName("player") or nil
 	self.db.activeBossKills = {}
 	self.db.raidLocked = true
 	self.db.activeSavedRaid = self.db.activeRaidSessionID

@@ -1857,7 +1857,7 @@ end
 function Raid:FinishOpeningNewRaid(saveCurrent, name)
     if not self:CanStartRaid() then
         self:Print(
-            "Only the raid leader can create or load the active raid.")
+            "Only the raid leader or an assistant can create or load the active raid.")
         return
     end
     if saveCurrent then
@@ -1870,7 +1870,7 @@ end
 function Raid:RequestNewRaid()
     if not self:CanStartRaid() then
         self:Print(
-            "Only the raid leader can create or load the active raid.")
+            "Only the raid leader or an assistant can create or load the active raid.")
         return
     end
     if not self.db.raidLocked then
