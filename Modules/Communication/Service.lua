@@ -12,7 +12,7 @@ local KIND_TO_WIRE = {
     MANUAL = "M", MANUALDEL = "D", BOSSSET = "b",
     BOSSCUSTOM = "u", BOSSCUSTOMDEL = "v",
     BOSSRESET = "r", PRESETSET = "p", PRESETRESET = "q",
-    PRESETCLEAR = "x", RESET = "R", CLOSE = "X",
+    PRESETCLEAR = "x", PRESETCUSTOM = "w", RESET = "R", CLOSE = "X",
     SIM_BEGIN = "Y", SIM_PLAYER = "Z", SIM_END = "y",
     GROUP = "g", GEAR_BEGIN = "j", GEAR = "e", GEAR_END = "f",
     INSPECT_CLAIM = "l", COOLDOWN = "d",
@@ -62,7 +62,17 @@ local ENCOUNTER_SECOND = {
     SNAP_BEGIN = true, SNAP_END = true, BOSSSET = true,
     BOSSCUSTOM = true, BOSSCUSTOMDEL = true,
     BOSSRESET = true, PRESETSET = true, PRESETRESET = true,
-    PRESETCLEAR = true,
+    PRESETCLEAR = true, PRESETCUSTOM = true,
+}
+
+local RAID_DOCUMENT_KIND = {
+    CURRENT = true, PLAN = true, VALUE = true, CLEAR = true,
+    SNAP_BEGIN = true, SNAP_END = true, COMP = true,
+    MANUAL = true, MANUALDEL = true, GROUP = true,
+    BOSSSET = true, BOSSCUSTOM = true, BOSSCUSTOMDEL = true,
+    BOSSRESET = true, PRESETSET = true, PRESETRESET = true,
+    PRESETCLEAR = true, PRESETCUSTOM = true, RESET = true,
+    SIM_BEGIN = true, SIM_PLAYER = true, SIM_END = true,
 }
 
 local function EncodePlanKey(key)
@@ -142,9 +152,12 @@ local function EncodeValues(kind, source)
         values[2] = ({ tanks = "T", healers = "H", damage = "D" })[
             values[2]] or values[2]
         values[3] = Base36(values[3])
-    elseif kind == "BOSSSET" or kind == "PRESETSET" then
+    elseif kind == "BOSSSET" then
         values[3] = EncodeSettingKey(values[3])
         values[4] = Base36(values[4])
+    elseif kind == "PRESETSET" then
+        values[4] = EncodeSettingKey(values[4])
+        values[5] = Base36(values[5])
     end
     return values
 end
@@ -191,9 +204,12 @@ local function DecodeFields(fields)
         fields[5] = ({ T = "tanks", H = "healers", D = "damage" })[
             fields[5]] or fields[5]
         fields[6] = DecodeBase36(fields[6])
-    elseif kind == "BOSSSET" or kind == "PRESETSET" then
+    elseif kind == "BOSSSET" then
         fields[6] = DecodeSettingKey(fields[6])
         fields[7] = DecodeBase36(fields[7])
+    elseif kind == "PRESETSET" then
+        fields[7] = DecodeSettingKey(fields[7])
+        fields[8] = DecodeBase36(fields[8])
     end
     return kind
 end
@@ -255,6 +271,7 @@ function Raid:IsLocalRaidEditor()
     if self:IsSimulating() then return true end
     if not self:IsInLiveRaid() then return true end
     return (UnitIsGroupLeader and UnitIsGroupLeader("player"))
+        or self:IsGroupAssistant()
         or false
 end
 
@@ -265,7 +282,9 @@ function Raid:IsAuthorizedPeer(sender)
         local unitName = GetUnitName and GetUnitName(unit, true)
             or UnitName(unit)
         if SamePlayer(unitName, sender) then
-            return UnitIsGroupLeader(unit) or false
+            return UnitIsGroupLeader and UnitIsGroupLeader(unit)
+                or self:IsUnitGroupAssistant(unit)
+                or false
         end
     end
     return false
@@ -393,6 +412,18 @@ function Raid:BroadcastPlanValue(key, value)
             raid.key, encounterIndex, key, tostring(value),
         })
     end
+    -- Assignment persistence belongs to the shared mutation path. Some UI
+    -- controls only broadcast their changed value, so relying on every caller
+    -- to autosave can leave the history entry with an older/empty plan.
+    if self.db.raidLocked and self.db.activeSavedRaid then
+        if not self.db.savedRaids[self.db.activeSavedRaid]
+            and self.SaveCurrentRaid
+        then
+            self:SaveCurrentRaid(nil, true)
+        elseif self.AutoSaveActiveRaid then
+            self:AutoSaveActiveRaid()
+        end
+    end
 end
 
 function Raid:BroadcastSelection(target)
@@ -506,7 +537,11 @@ function Raid:SendPlanSnapshot(
         and plans[raid.key][encounterIndex] or {}
     local bossOverride = self:GetBossOverride(
         false, raid.key, encounterIndex)
-    local fingerprintState = { plan = plan, boss = bossOverride }
+    local presetCollection = self.db.bossPresets[raid.key]
+        and self.db.bossPresets[raid.key][encounterIndex]
+    local fingerprintState = {
+        plan = plan, boss = bossOverride, presets = presetCollection,
+    }
     if includeSharedRaidState then
         fingerprintState.current = self:GetCurrentBossIndex(raid)
         fingerprintState.composition = self:GetRaidComposition(raid.key)
@@ -578,6 +613,39 @@ function Raid:SendPlanSnapshot(
             self:QueueSync("BOSSSET", {
                 raid.key, encounterIndex, "G:" .. groupIndex, count,
             }, distribution, target)
+        end
+    end
+    self:QueueSync("PRESETCLEAR", {
+        raid.key, encounterIndex, "*",
+    }, distribution, target)
+    if presetCollection and type(presetCollection.items) == "table" then
+        for presetID, preset in pairs(presetCollection.items) do
+            if type(preset) == "table" and type(preset.settings) == "table" then
+                self:QueueSync("PRESETRESET", {
+                    raid.key, encounterIndex, presetID,
+                    preset.name or "", preset.savedAt or 0,
+                    presetCollection.selected == presetID and "1" or "0",
+                }, distribution, target)
+                local settings = preset.settings
+                for _, custom in ipairs(settings.customGroups or {}) do
+                    self:QueueSync("PRESETCUSTOM", {
+                        raid.key, encounterIndex, presetID, custom.id,
+                        custom.name, custom.count or 1,
+                    }, distribution, target)
+                end
+                if tonumber(settings.healers) then
+                    self:QueueSync("PRESETSET", {
+                        raid.key, encounterIndex, presetID,
+                        "HEALERS", settings.healers,
+                    }, distribution, target)
+                end
+                for groupIndex, count in pairs(settings.groups or {}) do
+                    self:QueueSync("PRESETSET", {
+                        raid.key, encounterIndex, presetID,
+                        "G:" .. groupIndex, count,
+                    }, distribution, target)
+                end
+            end
         end
     end
     self:QueueSync("SNAP_END", {
@@ -792,6 +860,15 @@ function Raid:FinalizeReceivedSnapshot()
     if self.frame and self.frame:IsShown() and self.RefreshAll then
         self:RefreshAll()
     end
+    if self.db.raidLocked and self.db.activeSavedRaid then
+        if not self.db.savedRaids[self.db.activeSavedRaid]
+            and self.SaveCurrentRaid
+        then
+            self:SaveCurrentRaid(nil, true)
+        elseif self.AutoSaveActiveRaid then
+            self:AutoSaveActiveRaid()
+        end
+    end
     return true
 end
 
@@ -863,6 +940,14 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     then
         return
     end
+    -- A session is one shared raid document. Never apply an otherwise valid
+    -- editor call to a different locally selected raid.
+    if raidSessionID and RAID_DOCUMENT_KIND[kind]
+        and fields[4] and self.db.activeRaid
+        and fields[4] ~= self.db.activeRaid
+    then
+        return
+    end
     if kind == "GEAR_BEGIN" then
         self.peerGearSnapshots = self.peerGearSnapshots or {}
         self.peerGearSnapshots[PlayerKey(sender)] = {}
@@ -920,9 +1005,18 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     if sequence <= (self.peerSequences[sender] or 0) then return end
     self.peerSequences[sender] = sequence
     if kind == "SELECT" then
+        if not self:IsPeerLeader(sender) then return end
         if raidSessionID and raidSessionID ~= "" then
-            self:OfferLeaderRaid(
-                sender, fields[4], tonumber(fields[5]), raidSessionID)
+            if self:IsGroupAssistant() and self:IsPeerLeader(sender) then
+                self.availableLeaderRaid = nil
+                self:ApplyPeerSelection(
+                    fields[4], tonumber(fields[5]), true,
+                    sender, raidSessionID)
+                if self.RequestPeerSync then self:RequestPeerSync() end
+            else
+                self:OfferLeaderRaid(
+                    sender, fields[4], tonumber(fields[5]), raidSessionID)
+            end
         else
             self:ApplyPeerSelection(
                 fields[4], tonumber(fields[5]), true, sender)
@@ -1253,10 +1347,61 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         if self.db.bossOverrides[raidKey] then
             self.db.bossOverrides[raidKey][encounterIndex] = nil
         end
-    elseif kind == "PRESETSET" or kind == "PRESETRESET"
-        or kind == "PRESETCLEAR"
-    then
-        do end
+    elseif kind == "PRESETRESET" then
+        local raid, presetID = self.raidByKey[raidKey], fields[6]
+        if raid and raid.encounters[encounterIndex]
+            and presetID and presetID ~= ""
+        then
+            self.db.bossPresets[raidKey] =
+                self.db.bossPresets[raidKey] or {}
+            local collection = self.db.bossPresets[raidKey][encounterIndex]
+            if type(collection) ~= "table" or type(collection.items) ~= "table" then
+                collection = { items = {} }
+                self.db.bossPresets[raidKey][encounterIndex] = collection
+            end
+            collection.items[presetID] = {
+                id = presetID, name = fields[7] or "",
+                savedAt = tonumber(fields[8]) or 0,
+                settings = { groups = {}, customGroups = {} },
+            }
+            if fields[9] == "1" then collection.selected = presetID end
+        end
+    elseif kind == "PRESETSET" then
+        local collection = self.db.bossPresets[raidKey]
+            and self.db.bossPresets[raidKey][encounterIndex]
+        local preset = collection and collection.items
+            and collection.items[fields[6]]
+        local key, value = fields[7], tonumber(fields[8])
+        if preset and key and value then
+            if key == "HEALERS" then
+                preset.settings.healers = value
+            else
+                local groupIndex = tonumber(key:match("^G:(%d+)$"))
+                if groupIndex then preset.settings.groups[groupIndex] = value end
+            end
+        end
+    elseif kind == "PRESETCUSTOM" then
+        local collection = self.db.bossPresets[raidKey]
+            and self.db.bossPresets[raidKey][encounterIndex]
+        local preset = collection and collection.items
+            and collection.items[fields[6]]
+        local id, name, count = fields[7], fields[8], tonumber(fields[9]) or 1
+        if preset and id and id ~= "" and name and name ~= "" then
+            local customGroups = preset.settings.customGroups
+            customGroups[#customGroups + 1] = {
+                id = id, name = name, count = count,
+            }
+        end
+    elseif kind == "PRESETCLEAR" then
+        local presets = self.db.bossPresets[raidKey]
+        local collection = presets and presets[encounterIndex]
+        local presetID = fields[6]
+        if presetID == "*" then
+            if presets then presets[encounterIndex] = nil end
+        elseif collection and collection.items then
+            collection.items[presetID] = nil
+            if collection.selected == presetID then collection.selected = nil end
+        end
     elseif kind == "RESET" then
         local plans = self.simulation.enabled
             and self.simulation.plans or self.db.plans
@@ -1276,7 +1421,9 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         self:PropagateOverviewAssignments()
     end
     if (kind == "BOSSSET" or kind == "BOSSRESET"
-        or kind == "BOSSCUSTOM" or kind == "BOSSCUSTOMDEL")
+        or kind == "BOSSCUSTOM" or kind == "BOSSCUSTOMDEL"
+        or kind == "PRESETSET" or kind == "PRESETRESET"
+        or kind == "PRESETCLEAR" or kind == "PRESETCUSTOM")
         and self.PersistRaidConfiguration
     then
         self:PersistRaidConfiguration(raidKey)
@@ -1310,6 +1457,17 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     local applyingSnapshot = self.receivingSnapshots
         and next(self.receivingSnapshots) ~= nil
     if not applyingSnapshot then
+        if self.db.raidLocked and self.db.activeSavedRaid
+            and self.AutoSaveActiveRaid
+        then
+            if not self.db.savedRaids[self.db.activeSavedRaid]
+                and self.SaveCurrentRaid
+            then
+                self:SaveCurrentRaid(nil, true)
+            else
+                self:AutoSaveActiveRaid()
+            end
+        end
         if self.RefreshPersonalAssignments then
             self:RefreshPersonalAssignments()
         end

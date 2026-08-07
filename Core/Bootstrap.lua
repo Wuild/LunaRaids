@@ -255,11 +255,20 @@ function Raid:GetGroupContext()
     return "SOLO"
 end
 
-function Raid:IsGroupAssistant()
-    if UnitIsGroupAssistant and UnitIsGroupAssistant("player") then
+function Raid:IsUnitGroupAssistant(unit)
+    if UnitIsGroupAssistant and UnitIsGroupAssistant(unit) then
         return true
     end
-    return IsRaidOfficer and IsRaidOfficer() or false
+    local raidIndex = unit and tonumber(unit:match("^raid(%d+)$"))
+    if raidIndex and GetRaidRosterInfo then
+        local _, rank = GetRaidRosterInfo(raidIndex)
+        return tonumber(rank) == 1
+    end
+    return unit == "player" and IsRaidOfficer and IsRaidOfficer() or false
+end
+
+function Raid:IsGroupAssistant()
+    return self:IsUnitGroupAssistant("player")
 end
 
 function Raid:CanUseRaidControls()
@@ -275,7 +284,7 @@ function Raid:RequireRaidEditor()
         return true
     end
     self:Print(
-        "This raid is view only. Only the raid leader can edit it.")
+        "This raid is view only. Only the raid leader or an assistant can edit it.")
     return false
 end
 
@@ -444,7 +453,8 @@ function Raid:ResetAllSettings()
         frame:ClearAllPoints()
         frame:SetPoint(
             saved.point or "CENTER", UIParent,
-            saved.point or "CENTER", saved.x or 0, saved.y or 0)
+            saved.relativePoint or saved.point or "CENTER",
+            saved.x or 0, saved.y or 0)
     end
     if self.frame then
         Position(self.frame, self.db.window)

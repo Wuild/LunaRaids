@@ -698,11 +698,12 @@ function Raid:CreatePersonalAssignmentFrame()
         320, math.min(720, tonumber(saved.width) or 360))
     PixelSetSize(frame, savedWidth, 76)
     local savedPoint = saved.point or "CENTER"
+    local savedRelativePoint = saved.relativePoint or savedPoint
     local savedX, savedY = saved.x or 300, saved.y or 40
     local migrateResizeAnchor = savedPoint == "TOPLEFT" and savedY > 0
     frame:SetPoint(
         savedPoint, UIParent,
-        migrateResizeAnchor and "BOTTOMLEFT" or savedPoint,
+        migrateResizeAnchor and "BOTTOMLEFT" or savedRelativePoint,
         savedX, savedY)
     frame:SetFrameStrata("MEDIUM")
     frame:SetClampedToScreen(true)
@@ -715,24 +716,32 @@ function Raid:CreatePersonalAssignmentFrame()
         if frame.SetMaxResize then frame:SetMaxResize(720, 600) end
     end
     frame:EnableMouse(true)
-    local function SaveAssignmentCenterPosition()
-        local centerX, centerY = frame:GetCenter()
-        local parentX, parentY = UIParent:GetCenter()
-        if not centerX or not centerY or not parentX or not parentY then
-            return
-        end
-        local x, y = centerX - parentX, centerY - parentY
+    local function SaveAssignmentTopPosition()
+        local left, top = frame:GetLeft(), frame:GetTop()
+        if not left or not top then return end
         frame:ClearAllPoints()
-        frame:SetPoint("CENTER", UIParent, "CENTER", x, y)
-        saved.point = "CENTER"
-        saved.x, saved.y = x, y
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+        saved.point = "TOPLEFT"
+        saved.relativePoint = "BOTTOMLEFT"
+        saved.x, saved.y = left, top
     end
-    if migrateResizeAnchor then SaveAssignmentCenterPosition() end
+    function frame:SetAssignmentHeight(height)
+        local left, top = self:GetLeft(), self:GetTop()
+        self:SetHeight(height)
+        if left and top then
+            self:ClearAllPoints()
+            self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+            saved.point = "TOPLEFT"
+            saved.relativePoint = "BOTTOMLEFT"
+            saved.x, saved.y = left, top
+        end
+    end
+    SaveAssignmentTopPosition()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        SaveAssignmentCenterPosition()
+        SaveAssignmentTopPosition()
     end)
     frame.Header = frame:CreateTexture(nil, "ARTWORK")
     frame.Header:SetTexture(WHITE)
@@ -791,7 +800,7 @@ function Raid:CreatePersonalAssignmentFrame()
         width = PixelForRegion(frame, width)
         frame:SetWidth(width)
         saved.width = math.floor(width + .5)
-        SaveAssignmentCenterPosition()
+        SaveAssignmentTopPosition()
     end)
     AddButtonTooltip(
         frame.ResizeGrip, "Resize Assignments",
@@ -883,12 +892,12 @@ function Raid:RefreshPersonalAssignmentPresentationInCombat()
     for index = #entries + 1, #frame.Rows do
         frame.Rows[index]:Hide()
     end
-    frame:SetHeight(48 + (#entries * 34))
+    frame:SetAssignmentHeight(48 + (#entries * 34))
     frame:Show()
 end
 
 function Raid:RefreshPersonalAssignments()
-    if not self:IsInGroupContext() then
+    if self.db.raidReadOnly or not self:IsInGroupContext() then
         self.personalAssignmentsRefreshPending =
             InCombatLockdown and InCombatLockdown() or nil
         if self.personalAssignmentFrame then
@@ -945,7 +954,7 @@ function Raid:RefreshPersonalAssignments()
     for index = #entries + 1, #frame.Rows do
         frame.Rows[index]:Hide()
     end
-    frame:SetHeight(48 + (#entries * 34))
+    frame:SetAssignmentHeight(48 + (#entries * 34))
     frame:Show()
 end
 

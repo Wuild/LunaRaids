@@ -443,6 +443,37 @@ function Raid:SyncBossSettings(kind, settings)
 	end
 end
 
+function Raid:SyncBossPreset(preset, selected)
+	if not self.QueueSync or not self:IsLocalRaidEditor()
+	or type(preset) ~= "table" or type(preset.settings) ~= "table"
+	then
+		return
+	end
+	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
+	self:QueueSync("PRESETRESET", {
+		raid.key, encounterIndex, preset.id, preset.name or "",
+		preset.savedAt or 0, selected and "1" or "0",
+	})
+	for _, custom in ipairs(preset.settings.customGroups or {}) do
+		self:QueueSync("PRESETCUSTOM", {
+			raid.key, encounterIndex, preset.id, custom.id,
+			custom.name, custom.count or 1,
+		})
+	end
+	if tonumber(preset.settings.healers) then
+		self:QueueSync("PRESETSET", {
+			raid.key, encounterIndex, preset.id,
+			"HEALERS", preset.settings.healers,
+		})
+	end
+	for groupIndex, count in pairs(preset.settings.groups or {}) do
+		self:QueueSync("PRESETSET", {
+			raid.key, encounterIndex, preset.id,
+			"G:" .. groupIndex, count,
+		})
+	end
+end
+
 function Raid:SaveBossPreset(name)
 	if not self:RequireRaidEditor() then
 		return false
@@ -477,6 +508,7 @@ function Raid:SaveBossPreset(name)
 	preset.settings = settings
 	preset.savedAt = GetServerTime and GetServerTime() or time()
 	collection.selected = preset.id
+	self:SyncBossPreset(preset, true)
 	self:PersistRaidConfiguration(raid.key)
 	if self.RefreshBossSettingsPanel then
 		self:RefreshBossSettingsPanel()
@@ -529,6 +561,10 @@ function Raid:DeleteBossPreset(presetID)
 		collection.selected = nil
 	end
 	self:GetSelectedBossPreset()
+	if self.QueueSync and self:IsLocalRaidEditor() then
+		local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
+		self:QueueSync("PRESETCLEAR", { raid.key, encounterIndex, presetID })
+	end
 	self:PersistRaidConfiguration(self:GetRaid().key)
 	if self.RefreshBossSettingsPanel then
 		self:RefreshBossSettingsPanel()
@@ -1753,9 +1789,9 @@ function Raid:BeginRaid(raidKey)
 	if self.QueueSync and self:IsLocalRaidEditor() then
 		self:QueueSync("RESET", { raid.key })
 	end
-	self.db.activeEncounter = firstBoss
+	self.db.activeEncounter = 1
 	self.db.lastRaidByExpansion[raid.expansion] = raid.key
-	self.db.lastEncounterByRaid[raid.key] = firstBoss
+	self.db.lastEncounterByRaid[raid.key] = 1
 	self.selectedPlayer = nil
 	self.dragPlayer = nil
 	self.raidLootLineIDs = {}
@@ -1934,8 +1970,10 @@ function Raid:SaveCurrentRaid(name, silent)
 	local savedPlayers =
 		Copy(self.db.manualPlayers[raid.key] or {})
 	local rosterSnapshot = {}
+	local rosterNames = {}
 	for _, player in ipairs(self.roster or {}) do
 		if player.name and player.name ~= "" then
+			rosterNames[player.name:lower()] = true
 			rosterSnapshot[#rosterSnapshot + 1] = {
 				name = player.name,
 				class = player.class,
@@ -1947,6 +1985,19 @@ function Raid:SaveCurrentRaid(name, silent)
 				subgroup = tonumber(player.subgroup) or 1,
 				online = player.online,
 			}
+		end
+	end
+	-- The live roster should shrink when somebody leaves, but the saved raid
+	-- is a historical record. Keep departed members and mark them offline so
+	-- a later autosave cannot erase them from that record.
+	for _, player in ipairs(existing and existing.roster or {}) do
+		if player.name and player.name ~= ""
+		and not rosterNames[player.name:lower()]
+		then
+			local departed = Copy(player)
+			departed.online = false
+			rosterSnapshot[#rosterSnapshot + 1] = departed
+			rosterNames[player.name:lower()] = true
 		end
 	end
 	if self.simulation.enabled then
@@ -2041,8 +2092,7 @@ function Raid:LoadSavedRaid(id)
 	self.db.manualPlayers[raid.key] = restoredPlayers
 	self.db.activeRaid = raid.key
 	self.db.activeExpansion = raid.expansion
-	self.db.activeEncounter = math.max(1, math.min(
-		tonumber(saved.activeEncounter) or 1, #raid.encounters))
+	self.db.activeEncounter = 1
 	self.db.activeBossKills = Copy(saved.bossKills or {})
 	local savedCurrentBoss = tonumber(saved.currentBoss)
 	self.db.currentBossByRaid[raid.key] =
