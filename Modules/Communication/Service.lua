@@ -1,13 +1,13 @@
 local _, Raid = ...
 
 local PREFIX = "LunaRaids"
--- Preserve the legacy first field so existing clients keep their field
--- offsets. It is framing metadata only; inbound calls are not version-gated.
+-- Legacy messages include this first field. Compact-capable peers omit it;
+-- DecodeFields restores the placeholder to preserve all internal offsets.
 local WIRE_HEADER = "8"
 
 local KIND_TO_WIRE = {
     HELLO = "H", PROFILE = "P", INTEL = "I", CHECK = "k",
-    SELECT = "S", CURRENT = "c", PLAN = "A", PLANBATCH = "a",
+    SELECT = "S", CURRENT = "c", PLAN = "A", PLANBATCH = "a", NAMES = "N",
     VALUE = "V", CLEAR = "C",
     PLANRESET = "n", TX_BEGIN = "h", TX_END = "s",
     SNAP_BEGIN = "B", SNAP_END = "E", FULL_BEGIN = "t", FULL_END = "T",
@@ -50,6 +50,31 @@ local function Base36(value)
     return result
 end
 
+local function CompactSessionID(value)
+    local hash = 5381
+    value = tostring(value or "")
+    for index = 1, #value do
+        hash = (hash * 33 + value:byte(index)) % 2147483647
+    end
+    return "#" .. Base36(hash)
+end
+
+local function EstimatedMessageSize(owner, raidKey, extra, compact)
+    local sessionID = owner.db and owner.db.activeRaidSessionID or ""
+    local envelopeSize = compact
+        and (20 + #CompactSessionID(sessionID))
+        or (24 + #tostring(raidKey or "") + #tostring(sessionID))
+    return envelopeSize + (tonumber(extra) or 0)
+end
+
+local function EncodeWireMessage(fields, compact)
+    -- Compact-capable peers omit the legacy version/header field. DecodeFields
+    -- restores that placeholder so all downstream field offsets stay stable.
+    return compact
+        and table.concat(fields, "\t", 2, #fields)
+        or table.concat(fields, "\t")
+end
+
 local function FromBase36(value)
     if value == nil or value == "" then return nil end
     return tonumber(value, 36) or 0
@@ -61,7 +86,7 @@ local function DecodeBase36(value)
 end
 
 local ENCOUNTER_SECOND = {
-    SELECT = true, CURRENT = true, PLAN = true, PLANBATCH = true,
+    SELECT = true, CURRENT = true, PLAN = true, PLANBATCH = true, NAMES = true,
     VALUE = true, CLEAR = true,
     PLANRESET = true,
     SNAP_BEGIN = true, SNAP_END = true, BOSSSET = true,
@@ -71,7 +96,8 @@ local ENCOUNTER_SECOND = {
 }
 
 local RAID_DOCUMENT_KIND = {
-    CURRENT = true, PLAN = true, PLANBATCH = true, VALUE = true, CLEAR = true,
+    CURRENT = true, PLAN = true, PLANBATCH = true, NAMES = true,
+    VALUE = true, CLEAR = true,
     PLANRESET = true, TX_BEGIN = true, TX_END = true,
     SNAP_BEGIN = true, SNAP_END = true, FULL_BEGIN = true, FULL_END = true,
     COMP = true,
@@ -125,8 +151,12 @@ local function EncodeValues(kind, source)
     for index, value in ipairs(source or {}) do values[index] = tostring(value) end
     -- Keep raid keys unchanged: registration order can differ between builds.
     if ENCOUNTER_SECOND[kind] then values[2] = Base36(values[2]) end
-    if kind == "PLAN" or kind == "VALUE" then
+    if kind == "PLAN" then
         values[3] = EncodePlanKey(values[3])
+    elseif kind == "VALUE" then
+        for index = 3, #values, 2 do
+            values[index] = EncodePlanKey(values[index])
+        end
     elseif kind == "CLEAR" then
         for index = 3, #values do
             values[index] = EncodePlanKey(values[index])
@@ -139,6 +169,10 @@ local function EncodeValues(kind, source)
             values[index] = EncodePlanKey(values[index])
             values[index + 2] = CLASS_TO_WIRE[values[index + 2]]
                 or values[index + 2]
+        end
+    elseif kind == "NAMES" then
+        for index = 4, #values, 2 do
+            values[index] = CLASS_TO_WIRE[values[index]] or values[index]
         end
     elseif kind == "MANUAL" then
         values[3] = CLASS_TO_WIRE[values[3]] or values[3]
@@ -207,6 +241,9 @@ local function EncodeValues(kind, source)
 end
 
 local function DecodeFields(fields)
+    if WIRE_TO_KIND[fields[1]] then
+        table.insert(fields, 1, WIRE_HEADER)
+    end
     local kind = WIRE_TO_KIND[fields[2]]
     if not kind then return nil end
     fields[2] = kind
@@ -214,8 +251,12 @@ local function DecodeFields(fields)
     if ENCOUNTER_SECOND[kind] then
         fields[5] = DecodeBase36(fields[5])
     end
-    if kind == "PLAN" or kind == "VALUE" then
+    if kind == "PLAN" then
         fields[6] = DecodePlanKey(fields[6])
+    elseif kind == "VALUE" then
+        for index = 6, #fields, 2 do
+            fields[index] = DecodePlanKey(fields[index])
+        end
     elseif kind == "CLEAR" then
         for index = 6, #fields do
             fields[index] = DecodePlanKey(fields[index])
@@ -228,6 +269,10 @@ local function DecodeFields(fields)
             fields[index] = DecodePlanKey(fields[index])
             fields[index + 2] = WIRE_TO_CLASS[fields[index + 2]]
                 or fields[index + 2]
+        end
+    elseif kind == "NAMES" then
+        for index = 7, #fields, 2 do
+            fields[index] = WIRE_TO_CLASS[fields[index]] or fields[index]
         end
     elseif kind == "MANUAL" then
         fields[6] = WIRE_TO_CLASS[fields[6]] or fields[6]
@@ -301,6 +346,12 @@ local function PlayerName(name)
     return name:match("^[^-]+") or name
 end
 
+local function DecodePlanScalar(value)
+    return value == "true" and true
+        or value == "false" and false
+        or tonumber(value) or value
+end
+
 local function PlayerKey(name)
     return tostring(name or ""):gsub("%s+", ""):lower()
 end
@@ -348,7 +399,7 @@ local function Fields(message)
 end
 
 function Raid:IsLocalRaidEditor()
-    if self.db and self.db.raidReadOnly then return false end
+    if self:IsRaidReadOnly() then return false end
     if self:IsSimulating() then return true end
     if not self:IsInLiveRaid() then return true end
     return (UnitIsGroupLeader and UnitIsGroupLeader("player"))
@@ -366,6 +417,12 @@ local function HasPeerFlag(cache, name)
     return cache and (
         cache[PlayerKey(name)]
         or cache[PlayerName(name):lower()]) or false
+end
+
+local function UsesCompactWire(owner, target)
+    return target and (
+        target == "LunaSyncSimulation"
+        or HasPeerFlag(owner.compactSyncPeers, target)) or false
 end
 
 function Raid:RebuildPeerAuthorityCache()
@@ -411,7 +468,37 @@ end
 
 function Raid:IsRaidSyncActive()
     return self.db and self.db.raidLocked
-        and not self.db.raidReadOnly or false
+        and (not self.db.raidReadOnly or self.fullSyncReadOnly ~= nil)
+        or false
+end
+
+function Raid:BeginFullSyncReadOnly(sender, raidKey, raidSessionID)
+    local state = self.fullSyncReadOnly
+    if not state then
+        state = {}
+        self.fullSyncReadOnly = state
+    end
+    state.sender = sender
+    state.raidKey = raidKey
+    state.raidSessionID = raidSessionID
+    self.selectedPlayer = nil
+    self.dragPlayer = nil
+    if self.HideDragGhost then self:HideDragGhost() end
+    if self.RefreshQuickActionBar then self:RefreshQuickActionBar() end
+    if self.RefreshFooterLayout then self:RefreshFooterLayout() end
+    if self.RefreshBossRail then self:RefreshBossRail() end
+end
+
+function Raid:EndFullSyncReadOnly(sender)
+    local state = self.fullSyncReadOnly
+    if not state then return end
+    if sender and state.sender and not SamePlayer(sender, state.sender) then
+        return
+    end
+    self.fullSyncReadOnly = nil
+    if self.RefreshQuickActionBar then self:RefreshQuickActionBar() end
+    if self.RefreshFooterLayout then self:RefreshFooterLayout() end
+    if self.RefreshBossRail then self:RefreshBossRail() end
 end
 
 function Raid:IsLocalRaidSessionOwner()
@@ -424,7 +511,7 @@ function Raid:IsLocalRaidSessionOwner()
 end
 
 local RAID_MUTATION_FIELDS = {
-    PLAN = 5, PLANBATCH = -1, VALUE = 4, CLEAR = -1, PLANRESET = 2,
+    PLAN = 5, PLANBATCH = -1, VALUE = -1, CLEAR = -1, PLANRESET = 2,
     TX_BEGIN = 1, TX_END = 1,
     COMP = -1, MANUAL = 6, MANUALBATCH = -1, MANUALDEL = 2, GROUP = -1,
     CURRENT = 2,
@@ -480,6 +567,8 @@ function Raid:RelayRaidMutation(kind, fields)
     if count < 0 then count = #fields - 3 end
     if (kind == "PLANBATCH" or kind == "CLEAR") and count <= 2 then
         return false
+    elseif kind == "VALUE" and (count < 4 or count % 2 ~= 0) then
+        return false
     end
     local values = {}
     for index = 1, count do values[index] = fields[index + 3] or "" end
@@ -508,15 +597,13 @@ function Raid:QueueRaidClearMutations(raidKey, pendingClears)
     local queued = 0
     for encounterIndex, keys in pairs(pendingClears or {}) do
         local batch = { raidKey, encounterIndex }
-        local estimatedSize = 24 + #tostring(raidKey)
-            + #tostring(self.db.activeRaidSessionID or "")
+        local estimatedSize = EstimatedMessageSize(self, raidKey)
         local function FlushBatch()
             if #batch <= 2 then return end
             self:QueueRaidMutation("CLEAR", batch)
             queued = queued + 1
             batch = { raidKey, encounterIndex }
-            estimatedSize = 24 + #tostring(raidKey)
-                + #tostring(self.db.activeRaidSessionID or "")
+            estimatedSize = EstimatedMessageSize(self, raidKey)
         end
         for _, assignmentKey in ipairs(keys) do
             local entrySize = #EncodePlanKey(assignmentKey) + 1
@@ -568,37 +655,139 @@ function Raid:PruneAssignmentsToCurrentRoster(broadcast)
 end
 
 local function QueuePlanEntries(
-    owner, raidKey, encounterIndex, plan, QueueEntry)
-    local batch = { raidKey, encounterIndex }
-    local estimatedSize = 24 + #tostring(raidKey)
-        + #tostring(owner.db.activeRaidSessionID or "")
-    local function FlushBatch()
-        if #batch <= 2 then return end
-        QueueEntry("PLANBATCH", batch)
-        batch = { raidKey, encounterIndex }
-        estimatedSize = 24 + #tostring(raidKey)
-            + #tostring(owner.db.activeRaidSessionID or "")
+    owner, raidKey, encounterIndex, plan, compact, nameReferences, QueueEntry)
+    local planBatch = { raidKey, encounterIndex }
+    local planSize = EstimatedMessageSize(owner, raidKey, nil, compact)
+    local valueBatch = { raidKey, encounterIndex }
+    local valueSize = planSize
+    local function FlushPlanBatch()
+        if #planBatch <= 2 then return end
+        QueueEntry("PLANBATCH", planBatch)
+        planBatch = { raidKey, encounterIndex }
+        planSize = EstimatedMessageSize(owner, raidKey, nil, compact)
+    end
+    local function FlushValueBatch()
+        if #valueBatch <= 2 then return end
+        QueueEntry("VALUE", valueBatch)
+        valueBatch = { raidKey, encounterIndex }
+        valueSize = EstimatedMessageSize(owner, raidKey, nil, compact)
     end
     for key, value in pairs(plan) do
         if type(value) == "table" then
             local name, class = value.name or "", value.class or ""
             if name ~= "" then
-                local encodedClass = CLASS_TO_WIRE[class] or class
-                local entrySize = #EncodePlanKey(key) + #tostring(name)
+                local reference = nameReferences
+                    and nameReferences[PlayerKey(name)]
+                local wireName = reference and ("~" .. Base36(reference))
+                    or name
+                local wireClass = reference and "" or class
+                local encodedClass = CLASS_TO_WIRE[wireClass] or wireClass
+                local entrySize = #EncodePlanKey(key) + #tostring(wireName)
                     + #tostring(encodedClass) + 3
-                if #batch > 2 and estimatedSize + entrySize > 235 then
-                    FlushBatch()
+                if #planBatch > 2 and planSize + entrySize > 235 then
+                    FlushPlanBatch()
                 end
-                batch[#batch + 1] = key
-                batch[#batch + 1] = name
-                batch[#batch + 1] = class
-                estimatedSize = estimatedSize + entrySize
+                planBatch[#planBatch + 1] = key
+                planBatch[#planBatch + 1] = wireName
+                planBatch[#planBatch + 1] = wireClass
+                planSize = planSize + entrySize
             end
         elseif value ~= "" then
-            QueueEntry("VALUE", {
-                raidKey, encounterIndex, key, tostring(value),
-            })
+            local encodedValue = tostring(value)
+            local entrySize = #EncodePlanKey(key) + #encodedValue + 2
+            if #valueBatch > 2 and valueSize + entrySize > 235 then
+                FlushValueBatch()
+            end
+            valueBatch[#valueBatch + 1] = key
+            valueBatch[#valueBatch + 1] = encodedValue
+            valueSize = valueSize + entrySize
         end
+    end
+    FlushPlanBatch()
+    FlushValueBatch()
+end
+
+local function BuildSnapshotNameDictionary(raidPlans, encounterCount)
+    local candidates = {}
+    for encounterIndex = 1, tonumber(encounterCount) or 0 do
+        local plan = raidPlans and raidPlans[encounterIndex] or {}
+        for _, assignment in pairs(plan or {}) do
+            if type(assignment) == "table"
+                and assignment.name and assignment.name ~= ""
+            then
+                local key = PlayerKey(assignment.name)
+                local candidate = candidates[key]
+                if candidate then
+                    candidate.count = candidate.count + 1
+                    if candidate.class == "" and assignment.class then
+                        candidate.class = assignment.class
+                    end
+                else
+                    candidates[key] = {
+                        name = assignment.name,
+                        class = assignment.class or "",
+                        count = 1,
+                    }
+                end
+            end
+        end
+    end
+    local entries = {}
+    for _, candidate in pairs(candidates) do
+        -- The dictionary entry has its own cost. Three uses is a conservative
+        -- break-even point even for short character names.
+        if candidate.count >= 3 then entries[#entries + 1] = candidate end
+    end
+    table.sort(entries, function(left, right)
+        return PlayerKey(left.name) < PlayerKey(right.name)
+    end)
+    local dictionaryBytes, assignmentBytesSaved = 0, 0
+    for index, entry in ipairs(entries) do
+        local class = CLASS_TO_WIRE[entry.class] or entry.class
+        local originalSize = #tostring(entry.name) + #tostring(class)
+        local referenceSize = 1 + #Base36(index)
+        dictionaryBytes = dictionaryBytes
+            + #tostring(entry.name) + #tostring(class) + 2
+        assignmentBytesSaved = assignmentBytesSaved
+            + entry.count * (originalSize - referenceSize)
+    end
+    -- Do not add a dictionary packet unless the repeated-name savings also
+    -- repay its framing cost. This keeps small snapshots smaller too.
+    local dictionaryEnvelope = 32
+        + math.floor(dictionaryBytes / 190) * 28
+    if assignmentBytesSaved <= dictionaryBytes + dictionaryEnvelope then
+        return {}, {}
+    end
+    local references = {}
+    for index, entry in ipairs(entries) do
+        references[PlayerKey(entry.name)] = index
+    end
+    return entries, references
+end
+
+local function QueueSnapshotNameDictionary(
+    owner, raidKey, entries, distribution, target, priority)
+    if not entries or #entries == 0 then return end
+    local compact = UsesCompactWire(owner, target)
+    local batch, nextIndex = { raidKey, 1 }, 1
+    local estimatedSize = EstimatedMessageSize(owner, raidKey, nil, compact)
+    local function FlushBatch()
+        if #batch <= 2 then return end
+        owner:QueueSync("NAMES", batch, distribution, target, priority)
+        batch = { raidKey, nextIndex }
+        estimatedSize = EstimatedMessageSize(owner, raidKey, nil, compact)
+    end
+    for index, entry in ipairs(entries) do
+        local encodedClass = CLASS_TO_WIRE[entry.class] or entry.class
+        local entrySize = #tostring(entry.name) + #tostring(encodedClass) + 2
+        if #batch > 2 and estimatedSize + entrySize > 235 then
+            FlushBatch()
+        end
+        if #batch == 2 then batch[2] = index end
+        batch[#batch + 1] = entry.name
+        batch[#batch + 1] = entry.class
+        estimatedSize = estimatedSize + entrySize
+        nextIndex = index + 1
     end
     FlushBatch()
 end
@@ -615,23 +804,21 @@ local function PlanHasSyncState(plan)
 end
 
 local function QueueSettingEntries(
-    owner, kind, raidKey, encounterIndex, presetID, settings, QueueEntry)
+    owner, kind, raidKey, encounterIndex, presetID, settings, compact, QueueEntry)
     local prefix = { raidKey, encounterIndex }
     if kind == "PRESETSET" then prefix[#prefix + 1] = presetID end
     local batch = {}
     for index, value in ipairs(prefix) do batch[index] = value end
     local prefixCount = #prefix
-    local estimatedSize = 24 + #tostring(raidKey)
-        + #tostring(presetID or "")
-        + #tostring(owner.db.activeRaidSessionID or "")
+    local estimatedSize = EstimatedMessageSize(
+        owner, raidKey, #tostring(presetID or ""), compact)
     local function FlushBatch()
         if #batch <= prefixCount then return end
         QueueEntry(kind, batch)
         batch = {}
         for index, value in ipairs(prefix) do batch[index] = value end
-        estimatedSize = 24 + #tostring(raidKey)
-            + #tostring(presetID or "")
-            + #tostring(owner.db.activeRaidSessionID or "")
+        estimatedSize = EstimatedMessageSize(
+            owner, raidKey, #tostring(presetID or ""), compact)
     end
     local function Add(key, value)
         if value == nil then return end
@@ -662,30 +849,29 @@ end
 function Raid:QueueRaidSettingMutations(
     kind, raidKey, encounterIndex, presetID, settings)
     QueueSettingEntries(
-        self, kind, raidKey, encounterIndex, presetID, settings,
+        self, kind, raidKey, encounterIndex, presetID, settings, false,
         function(messageKind, values)
             self:QueueRaidMutation(messageKind, values)
         end)
 end
 
 local function QueueCustomEntries(
-    owner, kind, raidKey, encounterIndex, presetID, customGroups, QueueEntry)
+    owner, kind, raidKey, encounterIndex, presetID, customGroups, compact,
+    QueueEntry)
     local prefix = { raidKey, encounterIndex }
     if kind == "PRESETCUSTOM" then prefix[#prefix + 1] = presetID end
     local batch = {}
     for index, value in ipairs(prefix) do batch[index] = value end
     local prefixCount = #prefix
-    local estimatedSize = 24 + #tostring(raidKey)
-        + #tostring(presetID or "")
-        + #tostring(owner.db.activeRaidSessionID or "")
+    local estimatedSize = EstimatedMessageSize(
+        owner, raidKey, #tostring(presetID or ""), compact)
     local function FlushBatch()
         if #batch <= prefixCount then return end
         QueueEntry(kind, batch)
         batch = {}
         for index, value in ipairs(prefix) do batch[index] = value end
-        estimatedSize = 24 + #tostring(raidKey)
-            + #tostring(presetID or "")
-            + #tostring(owner.db.activeRaidSessionID or "")
+        estimatedSize = EstimatedMessageSize(
+            owner, raidKey, #tostring(presetID or ""), compact)
     end
     for _, custom in ipairs(customGroups or {}) do
         local id, name = custom.id or "", custom.name or ""
@@ -710,7 +896,7 @@ end
 function Raid:QueueRaidCustomMutations(
     kind, raidKey, encounterIndex, presetID, customGroups)
     QueueCustomEntries(
-        self, kind, raidKey, encounterIndex, presetID, customGroups,
+        self, kind, raidKey, encounterIndex, presetID, customGroups, false,
         function(messageKind, values)
             self:QueueRaidMutation(messageKind, values)
         end)
@@ -727,7 +913,7 @@ function Raid:BroadcastEncounterPlanMutations(encounterIndex, transactionOpen)
         self:BeginRaidMutationTransaction(raid.key)
     end
     self:QueueRaidMutation("PLANRESET", { raid.key, encounterIndex })
-    QueuePlanEntries(self, raid.key, encounterIndex, plan,
+    QueuePlanEntries(self, raid.key, encounterIndex, plan, false, nil,
         function(kind, values)
             self:QueueRaidMutation(kind, values)
         end)
@@ -750,7 +936,7 @@ local function SyncQueueCoalesceKey(
     kind, values, distribution, target, assignmentGeneration)
     local recipient = tostring(distribution or "")
         .. ":" .. string.lower(tostring(target or ""))
-    if kind == "PLAN" or kind == "VALUE"
+    if kind == "PLAN" or kind == "VALUE" and #values == 4
         or kind == "CLEAR" and #values == 3
     then
         return table.concat({
@@ -856,12 +1042,21 @@ function Raid:QueueSync(kind, values, distribution, target, priority)
         RebuildSyncQueueIndexes(self)
     end
     self.syncSequence = (self.syncSequence or 0) + 1
+    local compactWire = UsesCompactWire(self, target)
     local fields = {
         WIRE_HEADER,
         KIND_TO_WIRE[kind] or kind,
         Base36(self.syncSequence),
     }
-    for _, value in ipairs(EncodeValues(kind, values)) do
+    local encodedValues = EncodeValues(kind, values)
+    if compactWire and RAID_DOCUMENT_KIND[kind]
+        and encodedValues[1] == tostring(self.db.activeRaid or "")
+    then
+        -- SELECT establishes the active raid, so document messages can use
+        -- that context instead of repeating the raid key in every packet.
+        encodedValues[1] = ""
+    end
+    for _, value in ipairs(encodedValues) do
         fields[#fields + 1] = value
     end
     local raidSessionID = not sessionless
@@ -875,9 +1070,13 @@ function Raid:QueueSync(kind, values, distribution, target, priority)
             (self.assignmentCoalesceGeneration or 0) + 1
     end
     if raidSessionID then
-        fields[#fields + 1] = "@" .. tostring(raidSessionID)
+        local wireSessionID = (not compactWire
+            or kind == "SELECT" or kind == "CLOSE")
+            and tostring(raidSessionID)
+            or CompactSessionID(raidSessionID)
+        fields[#fields + 1] = "@" .. wireSessionID
     end
-    local encodedMessage = table.concat(fields, "\t")
+    local encodedMessage = EncodeWireMessage(fields, compactWire)
     if #encodedMessage > 255 then
         self.syncPayloadWarnings = self.syncPayloadWarnings or {}
         if not self.syncPayloadWarnings[kind] then
@@ -896,6 +1095,7 @@ function Raid:QueueSync(kind, values, distribution, target, priority)
         distribution = resolvedDistribution,
         target = target,
         priority = priority,
+        compactWire = compactWire,
         raidSessionID = raidSessionID,
         coalesceKey = SyncQueueCoalesceKey(
             kind, values, resolvedDistribution, target,
@@ -915,7 +1115,7 @@ function Raid:QueueSync(kind, values, distribution, target, priority)
             -- retain its position ahead of later packets.
             item.sequence = pending.sequence
             fields[3] = Base36(item.sequence)
-            item.message = table.concat(fields, "\t")
+            item.message = EncodeWireMessage(fields, item.compactWire)
             if IsNonBulkQueueItem(pending) ~= IsNonBulkQueueItem(item) then
                 self.syncQueueNonBulkCount =
                     (self.syncQueueNonBulkCount or 0)
@@ -983,6 +1183,7 @@ function Raid:DiscardPendingSync()
     self.syncQueueCoalesceIndex = {}
     self.syncQueueFullSnapshotIndex = {}
     self.syncQueueNonBulkCount = 0
+    self.fullSnapshotQueuedAt = {}
     self.outgoingRaidTransactionDepth = 0
     self.outgoingRaidTransactionKey = nil
     self.assignmentCoalesceGeneration =
@@ -991,12 +1192,15 @@ function Raid:DiscardPendingSync()
 end
 
 function Raid:CancelRaidCommunication()
+    self:EndFullSyncReadOnly()
     self:DiscardPendingSync()
     if self.CancelRaidSyncProgress then self:CancelRaidSyncProgress() end
     if self.messageQueue then wipe(self.messageQueue) end
     if self.messageFrame then self.messageFrame:Hide() end
     self.receivingSnapshots = nil
     self.receivingFullSnapshots = nil
+    self.fullSnapshotNames = nil
+    self.fullSnapshotLastActivity = nil
     self.receivingRaidTransactions = nil
     self.raidTransactionTokens = nil
     self.pendingRaidConfigurationTransactions = nil
@@ -1115,7 +1319,7 @@ local function ShouldSendSimulationState(owner, target, fingerprint, force)
     return true
 end
 
-function Raid:BroadcastSimulationClear(target, priority)
+function Raid:BroadcastSimulationClear(target, priority, omitFraming)
     if not self:IsLocalRaidEditor()
         or not self:IsInLiveGroup() and not self.syncSimulationCapture
     then
@@ -1127,6 +1331,8 @@ function Raid:BroadcastSimulationClear(target, priority)
     then
         return
     end
+    -- FULL_BEGIN already clears the remote roster and FULL_END commits it.
+    if omitFraming then return end
     self:QueueSync(
         "SIM_BEGIN", { self.db.activeRaid },
         target and "WHISPER" or nil, target, priority)
@@ -1135,7 +1341,7 @@ function Raid:BroadcastSimulationClear(target, priority)
         target and "WHISPER" or nil, target, priority)
 end
 
-function Raid:BroadcastSimulationRoster(target, priority)
+function Raid:BroadcastSimulationRoster(target, priority, omitFraming)
     if not self:IsLocalRaidEditor()
         or not self:IsInLiveGroup() and not self.syncSimulationCapture
     then
@@ -1149,19 +1355,22 @@ function Raid:BroadcastSimulationRoster(target, priority)
         return
     end
     local distribution = target and "WHISPER" or nil
-    self:QueueSync(
-        "SIM_BEGIN", { self.db.activeRaid }, distribution, target, priority)
+    local compactWire = UsesCompactWire(self, target)
+    if not omitFraming then
+        self:QueueSync(
+            "SIM_BEGIN", { self.db.activeRaid }, distribution, target, priority)
+    end
     local raidKey = self.db.activeRaid
     local batch = { raidKey }
-    local estimatedSize = 24 + #tostring(raidKey)
-        + #tostring(self.db.activeRaidSessionID or "")
+    local estimatedSize = EstimatedMessageSize(
+        self, raidKey, nil, compactWire)
     local function FlushBatch()
         if #batch <= 1 then return end
         self:QueueSync(
             "SIMBATCH", batch, distribution, target, priority)
         batch = { raidKey }
-        estimatedSize = 24 + #tostring(raidKey)
-            + #tostring(self.db.activeRaidSessionID or "")
+        estimatedSize = EstimatedMessageSize(
+            self, raidKey, nil, compactWire)
     end
     for _, player in ipairs(self.simulation.roster or {}) do
         local name = player.name or ""
@@ -1187,8 +1396,10 @@ function Raid:BroadcastSimulationRoster(target, priority)
         estimatedSize = estimatedSize + entrySize
     end
     FlushBatch()
-    self:QueueSync(
-        "SIM_END", { self.db.activeRaid }, distribution, target, priority)
+    if not omitFraming then
+        self:QueueSync(
+            "SIM_END", { self.db.activeRaid }, distribution, target, priority)
+    end
 end
 
 local function SyncFingerprint(value, seen)
@@ -1242,13 +1453,15 @@ function Raid:ClearSentSyncFingerprints(target)
 end
 
 function Raid:SendPlanSnapshot(
-    target, requestedEncounterIndex, includeSharedRaidState)
+    target, requestedEncounterIndex, includeSharedRaidState, fullHeaderState,
+    nameReferences)
     if not self:IsLocalRaidEditor() then return end
     local raid = self:GetRaid()
     local encounterIndex = tonumber(requestedEncounterIndex)
         or select(2, self:GetEncounter())
     if not raid.encounters[encounterIndex] then return end
     local distribution = target and "WHISPER" or nil
+    local compactWire = UsesCompactWire(self, target)
     local priority = "ALERT"
     if includeSharedRaidState == nil then includeSharedRaidState = true end
     local plans = self.simulation.enabled
@@ -1259,30 +1472,33 @@ function Raid:SendPlanSnapshot(
         false, raid.key, encounterIndex)
     local presetCollection = self.db.bossPresets[raid.key]
         and self.db.bossPresets[raid.key][encounterIndex]
-    if includeSharedRaidState then
+    if includeSharedRaidState and not fullHeaderState then
         self:BroadcastCurrentBoss(target, priority)
     end
-    QueuePlanEntries(self, raid.key, encounterIndex, plan,
+    QueuePlanEntries(
+        self, raid.key, encounterIndex, plan, compactWire, nameReferences,
         function(kind, values)
             self:QueueSync(kind, values, distribution, target, priority)
         end)
     if includeSharedRaidState then
         local composition = self:GetRaidComposition(raid.key)
-        self:QueueSync("COMP", {
-            raid.key,
-            "tanks", composition.tanks,
-            "healers", composition.healers,
-        }, distribution, target, priority)
+        if not fullHeaderState then
+            self:QueueSync("COMP", {
+                raid.key,
+                "tanks", composition.tanks,
+                "healers", composition.healers,
+            }, distribution, target, priority)
+        end
         local manualBatch = { raid.key }
-        local manualSize = 24 + #tostring(raid.key)
-            + #tostring(self.db.activeRaidSessionID or "")
+        local manualSize = EstimatedMessageSize(
+            self, raid.key, nil, compactWire)
         local function FlushManualBatch()
             if #manualBatch <= 1 then return end
             self:QueueSync("MANUALBATCH", manualBatch,
                 distribution, target, priority)
             manualBatch = { raid.key }
-            manualSize = 24 + #tostring(raid.key)
-                + #tostring(self.db.activeRaidSessionID or "")
+            manualSize = EstimatedMessageSize(
+                self, raid.key, nil, compactWire)
         end
         for _, player in pairs(self.db.manualPlayers[raid.key] or {}) do
             local name = player.name or ""
@@ -1306,20 +1522,23 @@ function Raid:SendPlanSnapshot(
         end
         FlushManualBatch()
         if self:IsSimulating() then
-            self:BroadcastSimulationRoster(target, priority)
+            self:BroadcastSimulationRoster(
+                target, priority, fullHeaderState)
         elseif self:IsLocalRaidSessionOwner() then
-            self:BroadcastSimulationClear(target, priority)
+            self:BroadcastSimulationClear(
+                target, priority, fullHeaderState)
         end
     end
     if bossOverride then
         QueueCustomEntries(
             self, "BOSSCUSTOM", raid.key, encounterIndex, nil,
-            bossOverride.customGroups, function(kind, values)
+            bossOverride.customGroups, compactWire, function(kind, values)
                 self:QueueSync(
                     kind, values, distribution, target, priority)
             end)
         QueueSettingEntries(
             self, "BOSSSET", raid.key, encounterIndex, nil, bossOverride,
+            compactWire,
             function(kind, values)
                 self:QueueSync(
                     kind, values, distribution, target, priority)
@@ -1336,13 +1555,14 @@ function Raid:SendPlanSnapshot(
                 local settings = preset.settings
                 QueueCustomEntries(
                     self, "PRESETCUSTOM", raid.key, encounterIndex,
-                    presetID, settings.customGroups, function(kind, values)
+                    presetID, settings.customGroups, compactWire,
+                    function(kind, values)
                         self:QueueSync(
                             kind, values, distribution, target, priority)
                     end)
                 QueueSettingEntries(
                     self, "PRESETSET", raid.key, encounterIndex,
-                    presetID, settings, function(kind, values)
+                    presetID, settings, compactWire, function(kind, values)
                         self:QueueSync(
                             kind, values, distribution, target, priority)
                     end)
@@ -1371,16 +1591,15 @@ function Raid:BroadcastOwnGear(target)
     if self.sentGearFingerprints[cacheKey] == fingerprint then return end
     self.sentGearFingerprints[cacheKey] = fingerprint
     local distribution = target and "WHISPER" or nil
+    local compactWire = UsesCompactWire(self, target)
     self:QueueSync("GEAR_BEGIN", {}, distribution, target, "BULK")
     local batch = {}
-    local estimatedSize = 24
-        + #tostring(self.db.activeRaidSessionID or "")
+    local estimatedSize = EstimatedMessageSize(self, nil, nil, compactWire)
     local function FlushGearBatch()
         if #batch == 0 then return end
         self:QueueSync("GEAR", batch, distribution, target, "BULK")
         batch = {}
-        estimatedSize = 24
-            + #tostring(self.db.activeRaidSessionID or "")
+        estimatedSize = EstimatedMessageSize(self, nil, nil, compactWire)
     end
     for slotID = 1, 19 do
         local link = gear[slotID]
@@ -1449,6 +1668,11 @@ end
 function Raid:RequestPeerSync(force)
     if not self:IsInLiveGroup() then return end
     if self.db.raidLocked and self:IsLocalRaidSessionOwner() then return end
+    if self.receivingFullSnapshots
+        and next(self.receivingFullSnapshots) ~= nil
+    then
+        return
+    end
     local now = GetTime and GetTime() or 0
     if not force and now > 0 and self.lastPeerSyncRequestAt
         and now - self.lastPeerSyncRequestAt < 3
@@ -1457,7 +1681,7 @@ function Raid:RequestPeerSync(force)
     end
     self.lastPeerSyncRequestAt = now
     self:QueueSync("HELLO", {
-        self.syncVersion or self.version or "unknown", "Q",
+        self.syncVersion or self.version or "unknown", "Q", "C",
     })
 end
 
@@ -1469,7 +1693,9 @@ function Raid:ApplyPeerSelection(
         and self.db.activeRaid == raid.key
         and raidSessionID and raidSessionID ~= ""
         and self.db.activeRaidSessionID == raidSessionID
-    if sameSession and not self.db.raidReadOnly then
+    if sameSession and (
+        not self.db.raidReadOnly or self.fullSyncReadOnly)
+    then
         if leader then self.activeRaidLeader = leader end
         return
     end
@@ -1477,6 +1703,7 @@ function Raid:ApplyPeerSelection(
         not replaceOpenRaid
         and self.db.raidLocked and self.db.activeRaid == raid.key)
     if replaceOpenRaid and not sameSession then
+        self:EndFullSyncReadOnly()
         if self.DiscardPendingSync then self:DiscardPendingSync() end
         -- A leader selection starts a new shared session. Detach assistants
         -- from their previous open plan without deleting the saved plan.
@@ -1491,6 +1718,8 @@ function Raid:ApplyPeerSelection(
         self.sentSimulationFingerprints = nil
         self.receivingSnapshots = nil
         self.receivingFullSnapshots = nil
+        self.fullSnapshotNames = nil
+        self.fullSnapshotLastActivity = nil
         self.receivingRaidTransactions = nil
         self.raidTransactionTokens = nil
         self.pendingRaidConfigurationTransactions = nil
@@ -1527,12 +1756,13 @@ function Raid:ApplyPeerSelection(
 		for index, kill in pairs(saved and saved.bossKills or {}) do
 			self.db.activeBossKills[index] = kill
 		end
-	end
+    end
     if leader then self.activeRaidLeader = leader end
-    if leader and not continuingCurrentRaid
-        and self.BeginRaidSyncProgress
-    then
-        self:BeginRaidSyncProgress(nil, raid.name)
+    if leader and not continuingCurrentRaid then
+        self:BeginFullSyncReadOnly(leader, raid.key, raidSessionID)
+        if self.BeginRaidSyncProgress then
+            self:BeginRaidSyncProgress(nil, raid.name)
+        end
     end
     self:ApplyRaidComposition(raid)
     local isAssistant = self:IsGroupAssistant()
@@ -1680,6 +1910,7 @@ function Raid:CloseRaidFromPeer()
     self.receivingSimulation = nil
     self.receivingSnapshots = nil
     self.receivingFullSnapshots = nil
+    self.fullSnapshotLastActivity = nil
     self.snapshotFinalizeGeneration =
         (self.snapshotFinalizeGeneration or 0) + 1
     wipe(self.messageQueue)
@@ -1724,6 +1955,17 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     end
     local kind = DecodeFields(fields)
     if not kind then return end
+    if raidSessionID and raidSessionID:sub(1, 1) == "#" then
+        local activeSessionID = self.db.activeRaidSessionID
+        if activeSessionID
+            and CompactSessionID(activeSessionID) == raidSessionID
+        then
+            raidSessionID = activeSessionID
+        end
+    end
+    if RAID_DOCUMENT_KIND[kind] and fields[4] == "" then
+        fields[4] = self.db.activeRaid or ""
+    end
     local sequence = tonumber(fields[3]) or 0
     if kind == "HELLO" then
         self:RebuildPeerAuthorityCache()
@@ -1738,6 +1980,13 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         -- A successful HELLO establishes the peer. Display versions and the
         -- legacy wire-header value are informational only.
         self.compatiblePeers[sender] = true
+        self.compactSyncPeers = self.compactSyncPeers or {}
+        if fields[6] == "C" then
+            CachePeerFlag(self.compactSyncPeers, sender)
+        else
+            self.compactSyncPeers[PlayerKey(sender)] = nil
+            self.compactSyncPeers[PlayerName(sender):lower()] = nil
+        end
         self.peerSequences = self.peerSequences or {}
         self.peerSequences[sender] = 0
         self.profileSequences = self.profileSequences or {}
@@ -1748,7 +1997,7 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
                 or self:IsLocalRaidSessionOwner())
         if fields[5] ~= "R" then
             self:QueueSync("HELLO", {
-                self.syncVersion or self.version or "unknown", "R",
+                self.syncVersion or self.version or "unknown", "R", "C",
             }, "WHISPER", sender, "ALERT")
             if snapshotAuthority then
                 self:BroadcastSelection(sender, "ALERT")
@@ -1845,8 +2094,23 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     end
     if not self:IsAuthorizedPeer(sender) then return end
     self.peerSequences = self.peerSequences or {}
-    if sequence <= (self.peerSequences[sender] or 0) then return end
-    self.peerSequences[sender] = sequence
+    local receivingFullSnapshot = self.receivingFullSnapshots
+        and self.receivingFullSnapshots[sender]
+        and raidSessionID == self.db.activeRaidSessionID
+    local startingFullSnapshot = kind == "FULL_BEGIN"
+        and raidSessionID == self.db.activeRaidSessionID
+        and (not self.activeRaidLeader
+            or SamePlayer(sender, self.activeRaidLeader))
+    -- The throttle may interleave a later raid heartbeat with a whispered full
+    -- snapshot. Do not let that unrelated higher sequence discard FULL_BEGIN
+    -- or the rest of an active snapshot; the session and FULL framing guard it.
+    if not receivingFullSnapshot and not startingFullSnapshot
+        and sequence <= (self.peerSequences[sender] or 0)
+    then
+        return
+    end
+    self.peerSequences[sender] = math.max(
+        self.peerSequences[sender] or 0, sequence)
     if kind == "SELECT" then
         if raidSessionID and raidSessionID ~= "" then
             if self:CanUseRaidControls() and not self.manuallyLeftSharedRaid then
@@ -1903,9 +2167,13 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     if kind ~= "FULL_BEGIN" and kind ~= "FULL_END"
         and self.receivingFullSnapshots
         and self.receivingFullSnapshots[sender]
-        and self.AdvanceRaidSyncProgress
     then
-        self:AdvanceRaidSyncProgress()
+        self.fullSnapshotLastActivity = self.fullSnapshotLastActivity or {}
+        self.fullSnapshotLastActivity[sender] =
+            GetTime and GetTime() or 0
+        if self.AdvanceRaidSyncProgress then
+            self:AdvanceRaidSyncProgress()
+        end
     end
     if kind == "MANUAL" then
         local raidKey, name = fields[4], fields[5]
@@ -2208,6 +2476,7 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
     elseif kind == "FULL_BEGIN" then
         local raid = self.raidByKey[raidKey]
         if raid then
+            self:BeginFullSyncReadOnly(sender, raidKey, raidSessionID)
             if self.BeginRaidSyncProgress then
                 self:BeginRaidSyncProgress(tonumber(fields[5]), raid.name)
             end
@@ -2216,6 +2485,12 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
             self.fullSnapshotTokens[sender] = fullToken
             self.receivingFullSnapshots = self.receivingFullSnapshots or {}
             self.receivingFullSnapshots[sender] = raidKey
+            self.fullSnapshotNames = self.fullSnapshotNames or {}
+            self.fullSnapshotNames[sender] = {}
+            self.fullSnapshotLastActivity =
+                self.fullSnapshotLastActivity or {}
+            self.fullSnapshotLastActivity[sender] =
+                GetTime and GetTime() or 0
             self.receivingSnapshots = self.receivingSnapshots or {}
             self.receivingSnapshots[sender] = true
             self.receivingRaidTransactions = nil
@@ -2228,11 +2503,28 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
             self.db.bossOverrides[raidKey] = {}
             self.db.bossPresets[raidKey] = {}
             self.db.manualPlayers[raidKey] = {}
+            local tanks = tonumber(fields[6])
+            local healers = tonumber(fields[7])
+            if tanks or healers then
+                self.db.raidCompositions[raidKey] =
+                    self.db.raidCompositions[raidKey] or {}
+                local composition = self.db.raidCompositions[raidKey]
+                if tanks then composition.tanks = tanks end
+                if healers then composition.healers = healers end
+                self:ApplyRaidComposition(raid)
+            end
+            local currentBoss = tonumber(fields[8])
+            if currentBoss and currentBoss >= 2
+                and currentBoss <= #raid.encounters
+            then
+                self.db.currentBossByRaid = self.db.currentBossByRaid or {}
+                self.db.currentBossByRaid[raidKey] = currentBoss
+            end
             self.remoteSimulationRoster = nil
-            self.pendingRemoteSimulationRoster = nil
-            self.receivingSimulation = nil
+            self.pendingRemoteSimulationRoster = {}
+            self.receivingSimulation = sender
             if C_Timer and C_Timer.After then
-                C_Timer.After(20, function()
+                local function CheckFullSnapshotTimeout()
                     if not Raid.receivingFullSnapshots
                         or not Raid.receivingFullSnapshots[sender]
                         or not Raid.fullSnapshotTokens
@@ -2240,23 +2532,41 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
                     then
                         return
                     end
+                    local now = GetTime and GetTime() or 0
+                    local lastActivity = Raid.fullSnapshotLastActivity
+                        and Raid.fullSnapshotLastActivity[sender] or 0
+                    local idle = now > 0 and lastActivity > 0
+                        and now - lastActivity or 20
+                    if idle < 20 then
+                        C_Timer.After(
+                            math.max(.25, 20 - idle),
+                            CheckFullSnapshotTimeout)
+                        return
+                    end
                     Raid.receivingFullSnapshots[sender] = nil
+                    if Raid.fullSnapshotNames then
+                        Raid.fullSnapshotNames[sender] = nil
+                    end
+                    if Raid.fullSnapshotLastActivity then
+                        Raid.fullSnapshotLastActivity[sender] = nil
+                    end
                     if Raid.receivingSnapshots then
                         Raid.receivingSnapshots[sender] = nil
                     end
-                    if Raid.PersistRaidConfiguration then
-                        Raid:PersistRaidConfiguration(raidKey)
+                    if Raid.receivingSimulation == sender then
+                        Raid.pendingRemoteSimulationRoster = nil
+                        Raid.receivingSimulation = nil
                     end
-                    if Raid.CancelRaidSyncProgress then
-                        Raid:CancelRaidSyncProgress()
+                    if Raid.BeginRaidSyncProgress then
+                        Raid:BeginRaidSyncProgress(nil, raid.name)
                     end
-                    Raid:FinalizeReceivedSnapshot()
                     if not Raid:IsLocalRaidSessionOwner()
                         and Raid.RequestPeerSync
                     then
                         Raid:RequestPeerSync()
                     end
-                end)
+                end
+                C_Timer.After(20, CheckFullSnapshotTimeout)
             end
         end
     elseif kind == "FULL_END" then
@@ -2317,6 +2627,25 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         if self.db.bossOverrides[raidKey] then
             self.db.bossOverrides[raidKey][encounterIndex] = nil
         end
+    elseif kind == "NAMES" then
+        if self.receivingFullSnapshots
+            and self.receivingFullSnapshots[sender]
+        then
+            self.fullSnapshotNames = self.fullSnapshotNames or {}
+            local dictionary = self.fullSnapshotNames[sender] or {}
+            self.fullSnapshotNames[sender] = dictionary
+            local dictionaryIndex = tonumber(fields[5]) or 1
+            for index = 6, #fields, 2 do
+                local name = fields[index]
+                if name and name ~= "" then
+                    dictionary[dictionaryIndex] = {
+                        name = name,
+                        class = fields[index + 1] or "",
+                    }
+                end
+                dictionaryIndex = dictionaryIndex + 1
+            end
+        end
     elseif kind == "PLANRESET" then
         local raid = self.raidByKey[raidKey]
         if raid and raid.encounters[encounterIndex] then
@@ -2355,6 +2684,15 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
             for index = 6, #fields, 3 do
                 local key, name, class =
                     fields[index], fields[index + 1], fields[index + 2]
+                local reference = name and name:match("^~([0-9a-z]+)$")
+                if reference then
+                    local dictionary = self.fullSnapshotNames
+                        and self.fullSnapshotNames[sender]
+                    local entry = dictionary
+                        and dictionary[FromBase36(reference)]
+                    name = entry and entry.name or nil
+                    class = entry and entry.class or ""
+                end
                 if key and name and name ~= "" and (
                     not validateRoster
                     or HasPeerFlag(rosterNames, name))
@@ -2366,6 +2704,22 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
                 end
             end
             fields = accepted
+        end
+    elseif kind == "VALUE" and #fields > 7 then
+        local raid = self.raidByKey[raidKey]
+        if raid and raid.encounters[encounterIndex] then
+            local plans = self.simulation.enabled
+                and self.simulation.plans or self.db.plans
+            plans[raidKey] = plans[raidKey] or {}
+            plans[raidKey][encounterIndex] =
+                plans[raidKey][encounterIndex] or {}
+            local plan = plans[raidKey][encounterIndex]
+            for index = 6, #fields, 2 do
+                local key, value = fields[index], fields[index + 1]
+                if key and value ~= nil then
+                    plan[key] = DecodePlanScalar(value)
+                end
+            end
         end
     elseif kind == "CLEAR" and #fields > 6 then
         local raid = self.raidByKey[raidKey]
@@ -2409,10 +2763,7 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
             elseif kind == "CLEAR" then
                 plan[key] = nil
             else
-                local value = fields[7]
-                plan[key] = value == "true" and true
-                    or value == "false" and false
-                    or tonumber(value) or value
+                plan[key] = DecodePlanScalar(fields[7])
             end
             if not snapshot and (kind == "PLAN" or kind == "CLEAR")
                 and key and key:match("^S:")
@@ -2652,6 +3003,20 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         return
     end
     if kind == "FULL_END" then
+        if self.fullSnapshotNames then
+            self.fullSnapshotNames[sender] = nil
+        end
+        if self.receivingSimulation == sender then
+            local simulatedRoster = self.pendingRemoteSimulationRoster or {}
+            self.remoteSimulationRoster = #simulatedRoster > 0
+                and simulatedRoster or nil
+            self.pendingRemoteSimulationRoster = nil
+            self.receivingSimulation = nil
+            if self.simulationReceiveTokens then
+                self.simulationReceiveTokens[sender] =
+                    (self.simulationReceiveTokens[sender] or 0) + 1
+            end
+        end
         if self.fullSnapshotTokens then
             self.fullSnapshotTokens[sender] =
                 (self.fullSnapshotTokens[sender] or 0) + 1
@@ -2659,9 +3024,13 @@ function Raid:CHAT_MSG_ADDON(_, prefix, message, _, sender)
         if self.receivingFullSnapshots then
             self.receivingFullSnapshots[sender] = nil
         end
+        if self.fullSnapshotLastActivity then
+            self.fullSnapshotLastActivity[sender] = nil
+        end
         if self.receivingSnapshots then
             self.receivingSnapshots[sender] = nil
         end
+        self:EndFullSyncReadOnly(sender)
         if self.snapshotReceiveTokens then
             self.snapshotReceiveTokens[sender] =
                 (self.snapshotReceiveTokens[sender] or 0) + 1
@@ -2768,12 +3137,21 @@ function Raid:SendRaidPlanSnapshots(target, rosterReady, skipPrune)
         return
     end
     local raid = self:GetRaid()
+    local snapshotKey
     if target then
         if not self.syncQueueFullSnapshotIndex then
             RebuildSyncQueueIndexes(self)
         end
-        local snapshotKey = FullSnapshotTargetKey(
+        snapshotKey = FullSnapshotTargetKey(
             self.db.activeRaidSessionID, target)
+        local now = GetTime and GetTime() or 0
+        local lastQueued = self.fullSnapshotQueuedAt
+            and self.fullSnapshotQueuedAt[snapshotKey]
+        if not self.syncSimulationCapture and now > 0 and lastQueued
+            and now - lastQueued < 10
+        then
+            return
+        end
         local pendingIndex = snapshotKey
             and self.syncQueueFullSnapshotIndex[snapshotKey]
         local pending = pendingIndex and self.syncQueue[pendingIndex]
@@ -2793,9 +3171,16 @@ function Raid:SendRaidPlanSnapshots(target, rosterReady, skipPrune)
     if not skipPrune then self:PruneAssignmentsToCurrentRoster(false) end
     local distribution = target and "WHISPER" or nil
     local priority = "ALERT"
-    local beginItem, beginFields = self:QueueSync("FULL_BEGIN", {
-        raid.key, 0,
-    }, distribution, target, priority)
+    local compactFull = UsesCompactWire(self, target)
+    local beginValues = { raid.key, 0 }
+    if compactFull then
+        local composition = self:GetRaidComposition(raid.key)
+        beginValues[3] = composition.tanks
+        beginValues[4] = composition.healers
+        beginValues[5] = self:GetCurrentBossIndex(raid) or ""
+    end
+    local beginItem, beginFields = self:QueueSync(
+        "FULL_BEGIN", beginValues, distribution, target, priority)
     local payloadQueueStart = self.syncQueueTail or 0
     -- FULL_BEGIN already clears the remote raid document atomically. Only send
     -- encounters that contain state; empty encounters need no per-boss reset
@@ -2803,6 +3188,13 @@ function Raid:SendRaidPlanSnapshots(target, rosterReady, skipPrune)
     local plans = self.simulation.enabled
         and self.simulation.plans or self.db.plans
     local raidPlans = plans[raid.key] or {}
+    local snapshotNames, nameReferences
+    if compactFull then
+        snapshotNames, nameReferences = BuildSnapshotNameDictionary(
+            raidPlans, #raid.encounters)
+        QueueSnapshotNameDictionary(
+            self, raid.key, snapshotNames, distribution, target, priority)
+    end
     local overrides = self.db.bossOverrides[raid.key] or {}
     local presets = self.db.bossPresets[raid.key] or {}
     for encounterIndex = 1, #raid.encounters do
@@ -2814,18 +3206,25 @@ function Raid:SendRaidPlanSnapshots(target, rosterReady, skipPrune)
             and next(collection.items) ~= nil
         if encounterIndex == 1 or hasPlan or hasOverride or hasPresets then
             self:SendPlanSnapshot(
-                target, encounterIndex, encounterIndex == 1)
+                target, encounterIndex, encounterIndex == 1, compactFull,
+                nameReferences)
         end
     end
     if beginItem and beginFields then
         local payloadCount = math.max(
             0, (self.syncQueueTail or payloadQueueStart) - payloadQueueStart)
         beginFields[5] = tostring(payloadCount)
-        beginItem.message = table.concat(beginFields, "\t")
+        beginItem.message = EncodeWireMessage(
+            beginFields, beginItem.compactWire)
     end
-    self:QueueSync("FULL_END", {
+    local endItem = self:QueueSync("FULL_END", {
         raid.key,
     }, distribution, target, priority)
+    if endItem and snapshotKey and not self.syncSimulationCapture then
+        self.fullSnapshotQueuedAt = self.fullSnapshotQueuedAt or {}
+        self.fullSnapshotQueuedAt[snapshotKey] =
+            GetTime and GetTime() or 0
+    end
 end
 
 function Raid:RunSynchronizationSimulation()
@@ -2833,7 +3232,7 @@ function Raid:RunSynchronizationSimulation()
         self:Print("Wait for the active synchronization to finish before testing.")
         return false
     end
-    if not self.db.raidLocked or self.db.raidReadOnly then
+    if not self.db.raidLocked or self:IsRaidReadOnly() then
         self:Print("Start or join an editable raid before running /lr syncsim.")
         return false
     end
@@ -2924,6 +3323,8 @@ function Raid:RunSynchronizationSimulation()
 
     local payload, bytes, declaredTotal = {}, 0
     local errors, previousSequence = {}, nil
+    local simulatedNames = {}
+    local dictionaryEntries, nameReferences = 0, 0
     for _, queueError in ipairs(queueInvariantErrors) do
         errors[#errors + 1] = queueError
     end
@@ -2931,6 +3332,12 @@ function Raid:RunSynchronizationSimulation()
     for _, item in ipairs(captured) do
         bytes = bytes + #(item.message or "")
         local fields = Fields(item.message or "")
+        if not WIRE_TO_KIND[fields[1]] then
+            errors[#errors + 1] = "snapshot used a legacy envelope"
+        end
+        if #(item.message or "") > 255 then
+            errors[#errors + 1] = "packet exceeded 255 bytes"
+        end
         local last = fields[#fields]
         if last and last:sub(1, 1) == "@" then fields[#fields] = nil end
         local kind = DecodeFields(fields)
@@ -2948,8 +3355,23 @@ function Raid:RunSynchronizationSimulation()
             previousSequence = sequence or previousSequence
             if kind == "FULL_BEGIN" then
                 declaredTotal = tonumber(fields[5])
+                if not tonumber(fields[6]) or not tonumber(fields[7]) then
+                    errors[#errors + 1] = "full header omitted composition"
+                end
             elseif kind ~= "FULL_END" then
                 payload[#payload + 1] = item
+            end
+            if kind == "CURRENT" or kind == "COMP"
+                or kind == "SIM_BEGIN" or kind == "SIM_END"
+            then
+                errors[#errors + 1] = "redundant compact framing: " .. kind
+            elseif kind == "NAMES" then
+                local dictionaryIndex = tonumber(fields[5]) or 1
+                for index = 6, #fields, 2 do
+                    simulatedNames[dictionaryIndex] = fields[index]
+                    dictionaryEntries = dictionaryEntries + 1
+                    dictionaryIndex = dictionaryIndex + 1
+                end
             end
             if kind == "PLAN" and (not fields[7] or fields[7] == "") then
                 errors[#errors + 1] = "empty PLAN assignment"
@@ -2958,6 +3380,16 @@ function Raid:RunSynchronizationSimulation()
                     if not fields[index + 1] or fields[index + 1] == "" then
                         errors[#errors + 1] = "empty PLANBATCH assignment"
                         break
+                    end
+                    local reference = fields[index + 1]
+                        and fields[index + 1]:match("^~([0-9a-z]+)$")
+                    if reference then
+                        nameReferences = nameReferences + 1
+                        if not simulatedNames[FromBase36(reference)] then
+                            errors[#errors + 1] =
+                                "PLANBATCH used an unknown name reference"
+                            break
+                        end
                     end
                 end
             end
@@ -2979,7 +3411,12 @@ function Raid:RunSynchronizationSimulation()
         ChatThrottleLib and ChatThrottleLib.SendAddonMessage and .03 or .15)
     self:Print(("Sync simulation: %d data packets, %d bytes, "
         .. "about %.1fs in the current queue mode."):format(
-        #payload, bytes, estimatedQueueTime))
+            #payload, bytes, estimatedQueueTime))
+    if dictionaryEntries > 0 then
+        self:Print((
+            "Compact name table: %d players, %d assignment references."
+        ):format(dictionaryEntries, nameReferences))
+    end
     if #errors > 0 then
         self:Print("Sync validation failed: " .. table.concat(errors, "; "))
     else

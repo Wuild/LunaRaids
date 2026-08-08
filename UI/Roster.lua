@@ -897,7 +897,7 @@ function Raid:RefreshPersonalAssignmentPresentationInCombat()
 end
 
 function Raid:RefreshPersonalAssignments()
-    if self.db.raidReadOnly or not self:IsInGroupContext() then
+    if self:IsRaidReadOnly() or not self:IsInGroupContext() then
         self.personalAssignmentsRefreshPending =
             InCombatLockdown and InCombatLockdown() or nil
         if self.personalAssignmentFrame then

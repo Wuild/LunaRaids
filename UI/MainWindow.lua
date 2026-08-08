@@ -100,27 +100,33 @@ function Raid:RefreshLeaderRaidToast()
     end
 end
 
+local function RaidSyncProgressLabel(frame, status)
+    if frame.readOnly then
+        status = "READ ONLY  ·  " .. status
+    end
+    local raidName = tostring(frame.raidName or "")
+    if raidName ~= "" then
+        return raidName:upper() .. "  ·  " .. status
+    end
+    return status
+end
+
 function Raid:CreateRaidSyncProgress()
     if self.raidSyncProgress then return self.raidSyncProgress end
     self:CreateUI()
-    local parent = self.assignmentPanel or self.frame
+    local parent = self.frame
     local frame = Panel(parent)
-    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, -86)
-    frame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, -86)
-    SetPixelHeight(frame, 62)
+    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 1, -126)
+    frame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -1, -126)
+    SetPixelHeight(frame, 20)
     frame:SetFrameLevel(parent:GetFrameLevel() + 15)
-    frame:SetBackdropColor(unpack(THEME.surfaceRaised))
+    frame:SetBackdropColor(unpack(THEME.content))
     frame:SetBackdropBorderColor(unpack(THEME.positiveBorder))
-    frame.Title = Font(frame, 10, "accent", "JOINING ACTIVE RAID")
-    frame.Title:SetPoint("TOPLEFT", 12, -10)
-    frame.Detail = Font(frame, 9, "muted", "")
-    frame.Detail:SetPoint("TOPRIGHT", -12, -11)
 
     frame.Track = frame:CreateTexture(nil, "BACKGROUND")
     frame.Track:SetTexture(WHITE)
-    frame.Track:SetPoint("BOTTOMLEFT", 12, 10)
-    frame.Track:SetPoint("BOTTOMRIGHT", -12, 10)
-    SetPixelHeight(frame.Track, 16)
+    frame.Track:SetPoint("TOPLEFT", 1, -1)
+    frame.Track:SetPoint("BOTTOMRIGHT", -1, 1)
     frame.Track:SetVertexColor(
         THEME.borderSoft[1], THEME.borderSoft[2], THEME.borderSoft[3], .8)
 
@@ -148,15 +154,6 @@ function Raid:RefreshRaidSyncProgressVisibility()
         and not self.raidPickerActive
         and not (self.settingsView and self.settingsView:IsShown())
     frame:SetShown(frame.active and raidPageVisible or false)
-    if raidPageVisible and self.assignmentScroll then
-        self.assignmentScroll:ClearAllPoints()
-        self.assignmentScroll:SetPoint(
-            "TOPLEFT", 6, frame.active and -154 or -84)
-        self.assignmentScroll:SetPoint("BOTTOMRIGHT", -6, 8)
-        if self.assignmentScroll.UpdateScrollbar then
-            self.assignmentScroll:UpdateScrollbar()
-        end
-    end
 end
 
 function Raid:BeginRaidSyncProgress(total, raidName)
@@ -164,37 +161,69 @@ function Raid:BeginRaidSyncProgress(total, raidName)
     total = tonumber(total)
     frame.total = total and total > 0 and total or nil
     frame.current = 0
-    frame.Detail:SetText(raidName or "")
-    frame.Status:SetText(
-        frame.total and "RECEIVING RAID DATA... 0%"
-            or "REQUESTING RAID DATA...")
+    frame.raidName = raidName or ""
+    frame.readOnly = self.fullSyncReadOnly ~= nil
+    frame.Status:SetText(RaidSyncProgressLabel(
+        frame, frame.total and "RECEIVING RAID DATA... 0%"
+            or "REQUESTING RAID DATA..."))
     frame.Bar:SetValue(frame.total and 0 or .06)
     frame.active = true
+    frame.lastActivity = GetTime and GetTime() or 0
     if self.leaderRaidToast then self.leaderRaidToast:Hide() end
-    self:RefreshRaidSyncProgressVisibility()
+    if self.RefreshFooterLayout then
+        self:RefreshFooterLayout()
+    else
+        self:RefreshRaidSyncProgressVisibility()
+    end
     self.raidSyncProgressToken = (self.raidSyncProgressToken or 0) + 1
     local token = self.raidSyncProgressToken
     if C_Timer and C_Timer.After then
-        C_Timer.After(25, function()
-            if Raid.raidSyncProgressToken == token then
+        local function CheckTimeout()
+            if Raid.raidSyncProgressToken ~= token
+                or not Raid.raidSyncProgress
+                or not Raid.raidSyncProgress.active
+            then
+                return
+            end
+            local now = GetTime and GetTime() or 0
+            local lastActivity = Raid.raidSyncProgress.lastActivity or 0
+            local idle = now > 0 and lastActivity > 0
+                and now - lastActivity or 25
+            if idle < 25 then
+                C_Timer.After(math.max(.25, 25 - idle), CheckTimeout)
+            elseif Raid.fullSyncReadOnly and Raid.RequestPeerSync then
+                -- Keep one continuous read-only join state if FULL_BEGIN was
+                -- delayed or dropped. The next request resumes this same bar.
+                Raid.raidSyncProgress.lastActivity = now
+                Raid.raidSyncProgress.Status:SetText(
+                    RaidSyncProgressLabel(
+                        Raid.raidSyncProgress,
+                        "WAITING FOR RAID DATA..."))
+                Raid:RequestPeerSync(true)
+                C_Timer.After(25, CheckTimeout)
+            else
                 Raid:CancelRaidSyncProgress()
             end
-        end)
+        end
+        C_Timer.After(25, CheckTimeout)
     end
 end
 
 function Raid:AdvanceRaidSyncProgress(amount)
     local frame = self.raidSyncProgress
     if not frame or not frame.active then return end
+    frame.lastActivity = GetTime and GetTime() or 0
     frame.current = (frame.current or 0) + (tonumber(amount) or 1)
     if frame.total then
         local progress = math.min(.95, frame.current / frame.total)
         frame.Bar:SetValue(progress)
-        frame.Status:SetText(("RECEIVING RAID DATA... %d%%"):format(
-            math.min(95, math.floor(progress * 100 + .5))))
+        frame.Status:SetText(RaidSyncProgressLabel(frame,
+            ("RECEIVING RAID DATA... %d%%"):format(
+                math.min(95, math.floor(progress * 100 + .5)))))
     else
         frame.Bar:SetValue(math.min(.85, .06 + frame.current * .035))
-        frame.Status:SetText("RECEIVING RAID DATA...")
+        frame.Status:SetText(RaidSyncProgressLabel(
+            frame, "RECEIVING RAID DATA..."))
     end
 end
 
@@ -203,27 +232,41 @@ function Raid:CompleteRaidSyncProgress()
     if not frame then return end
     self.raidSyncProgressToken = (self.raidSyncProgressToken or 0) + 1
     local token = self.raidSyncProgressToken
+    frame.readOnly = self.fullSyncReadOnly ~= nil
     frame.Bar:SetValue(1)
-    frame.Status:SetText("RAID DATA RECEIVED")
+    frame.Status:SetText(RaidSyncProgressLabel(
+        frame, "RAID DATA RECEIVED"))
     if C_Timer and C_Timer.After then
         C_Timer.After(.5, function()
             if Raid.raidSyncProgressToken == token
                 and Raid.raidSyncProgress
             then
                 Raid.raidSyncProgress.active = false
-                Raid:RefreshRaidSyncProgressVisibility()
+                if Raid.RefreshFooterLayout then
+                    Raid:RefreshFooterLayout()
+                else
+                    Raid:RefreshRaidSyncProgressVisibility()
+                end
             end
         end)
     else
         frame.active = false
-        self:RefreshRaidSyncProgressVisibility()
+        if self.RefreshFooterLayout then
+            self:RefreshFooterLayout()
+        else
+            self:RefreshRaidSyncProgressVisibility()
+        end
     end
 end
 
 function Raid:CancelRaidSyncProgress()
     self.raidSyncProgressToken = (self.raidSyncProgressToken or 0) + 1
     if self.raidSyncProgress then self.raidSyncProgress.active = false end
-    self:RefreshRaidSyncProgressVisibility()
+    if self.RefreshFooterLayout then
+        self:RefreshFooterLayout()
+    else
+        self:RefreshRaidSyncProgressVisibility()
+    end
 end
 
 function Raid:GetRosterPanelWidth(width)
@@ -260,7 +303,7 @@ function Raid:EnterBossUI(initialWorkspace, rosterReady)
     self.workspaceMode = initialWorkspace == "ASSIGNMENTS"
         and "ASSIGNMENTS" or "GROUPS"
     self.activeBossTab = "ASSIGNMENTS"
-    if not self.db.raidReadOnly and not rosterReady then self:UpdateRoster() end
+    if not self:IsRaidReadOnly() and not rosterReady then self:UpdateRoster() end
     self:RefreshAll()
     self.frame:Show()
 end

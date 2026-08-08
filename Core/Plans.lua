@@ -1835,7 +1835,7 @@ end
 function Raid:AutoSaveActiveRaid()
 	local saved = self.db.activeSavedRaid
 		and self.db.savedRaids[self.db.activeSavedRaid]
-	if not saved or not self.db.raidLocked or self.db.raidReadOnly
+	if not saved or not self.db.raidLocked or self:IsRaidReadOnly()
 		or self.receivingSync
 	then
 		return false
@@ -1954,7 +1954,7 @@ function Raid:HandleRaidInstanceChanged()
 end
 
 function Raid:SaveCurrentRaid(name, silent)
-	if self.db.raidReadOnly then return false end
+	if self:IsRaidReadOnly() then return false end
 	local raid = self:GetRaid()
 	local existing = self.db.activeSavedRaid
 		and self.db.savedRaids[self.db.activeSavedRaid]
@@ -2456,7 +2456,7 @@ function Raid:FormatBossTime(seconds)
 end
 
 function Raid:RecordBossKill(index, encounterID, encounterName)
-	if self.db.raidReadOnly or not self.db.raidLocked or not index then
+	if self:IsRaidReadOnly() or not self.db.raidLocked or not index then
 		return false
 	end
 	self.db.activeBossKills = self.db.activeBossKills or {}
@@ -2483,7 +2483,7 @@ end
 
 function Raid:HandleEncounterStarted(_, encounterID, encounterName)
 	self.pendingBossAdvance = nil
-	if not self.db.raidLocked or self.db.raidReadOnly then return end
+	if not self.db.raidLocked or self:IsRaidReadOnly() then return end
 	encounterID = tonumber(encounterID)
 	if not encounterID then return end
 	local raid = self:GetRaid()
@@ -2521,7 +2521,7 @@ function Raid:HandleBossKill(_, encounterID, encounterName)
 			"BOSS_KILL", encounterID, encounterName, nil, nil, 1)
 		return
 	end
-	if not self.db.raidLocked or self.db.raidReadOnly then return end
+	if not self.db.raidLocked or self:IsRaidReadOnly() then return end
 	local raid = self:GetRaid()
 	local index = self:GetCurrentBossIndex(raid)
 	local encounter = index and raid.encounters[index]

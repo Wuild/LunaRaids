@@ -413,7 +413,7 @@ function Raid:RefreshFooterLayout()
     local showRaidToolbar = self.db.raidLocked
         and not self.raidPickerActive
         and self.workspaceMode == "ASSIGNMENTS"
-    local readOnly = self.db.raidReadOnly == true
+    local readOnly = self:IsRaidReadOnly()
     if self.raidToolbar then
         self.raidToolbar:ClearAllPoints()
         self.raidToolbar:SetPoint(
@@ -445,7 +445,7 @@ function Raid:RefreshFooterLayout()
     end
     if self.raidToolbarHistoryButton then
         self.raidToolbarHistoryButton:SetShown(
-            showRaidToolbar and readOnly or false)
+            showRaidToolbar and self.db.raidReadOnly == true or false)
     end
     if self.raidToolbarLootButton then
         self.raidToolbarLootButton:SetShown(showRaidToolbar or false)
@@ -460,6 +460,23 @@ function Raid:RefreshFooterLayout()
     local contentTop = -88
         - (showInactiveBanner and 38 or 0)
         - (showRaidToolbar and 38 or 0)
+    local showSyncProgress = self.raidSyncProgress
+        and self.raidSyncProgress.active
+        and showRaidToolbar
+        and self.workspaceMode == "ASSIGNMENTS"
+        and self.activeBossTab ~= "LOOT"
+        and not self.raidPickerActive
+        and not (self.settingsView and self.settingsView:IsShown())
+        or false
+    if self.raidSyncProgress then
+        self.raidSyncProgress:ClearAllPoints()
+        self.raidSyncProgress:SetPoint(
+            "TOPLEFT", self.frame, "TOPLEFT", 1, contentTop)
+        self.raidSyncProgress:SetPoint(
+            "TOPRIGHT", self.frame, "TOPRIGHT", -1, contentTop)
+        self.raidSyncProgress:SetShown(showSyncProgress)
+    end
+    if showSyncProgress then contentTop = contentTop - 24 end
     if self.settingsView then
         self.settingsView:ClearAllPoints()
         self.settingsView:SetPoint("TOPLEFT", 1, contentTop)
@@ -685,13 +702,13 @@ function Raid:RefreshWorkspaceNavigation()
         local hasGroupRoster = self:IsInGroupContext()
         self.raidGroupQuickActions:SetShown(
             not picker and groups and workspaceVisible
-                and hasGroupRoster and not self.db.raidReadOnly)
+                and hasGroupRoster and not self:IsRaidReadOnly())
     end
     if self.raidStatusView and self.raidStatusView.ActionBar then
         local hasGroup = self:IsInGroupContext()
         self.raidStatusView.ActionBar:SetShown(
             not picker and status and workspaceVisible
-                and hasGroup and not self.db.raidReadOnly)
+                and hasGroup and not self:IsRaidReadOnly())
     end
     if self.assignmentScroll then
         local usesSharedScroll = not status and not gear and not about

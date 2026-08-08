@@ -279,6 +279,12 @@ function Raid:CanUseRaidControls()
         or false
 end
 
+function Raid:IsRaidReadOnly()
+    return self.db and self.db.raidReadOnly == true
+        or self.fullSyncReadOnly ~= nil
+        or false
+end
+
 function Raid:RequireRaidEditor()
     if self.IsLocalRaidEditor and self:IsLocalRaidEditor() then
         return true
@@ -289,7 +295,7 @@ function Raid:RequireRaidEditor()
 end
 
 function Raid:CanEditRaidGroups()
-    if self.db and self.db.raidReadOnly then return false end
+    if self:IsRaidReadOnly() then return false end
     return self:IsInRaidContext() and self:CanUseRaidControls()
 end
 

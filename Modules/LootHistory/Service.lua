@@ -93,7 +93,7 @@ local function IsTrackedLoot(itemLink, itemID)
 end
 
 function Raid:IsRaidLootRecordingActive()
-    if not self.db or not self.db.raidLocked or self.db.raidReadOnly then
+    if not self.db or not self.db.raidLocked or self:IsRaidReadOnly() then
         return false
     end
     local instanceRaid = self.FindRaidForCurrentInstance

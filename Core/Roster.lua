@@ -869,7 +869,7 @@ function Raid:StopSimulation(silent)
 end
 
 function Raid:UpdateRoster(suppressRosterRefresh)
-    if self.db and self.db.raidReadOnly then
+    if self:IsRaidReadOnly() then
         self:SortRosterByRole()
         if not suppressRosterRefresh and self.RefreshRoster then
             self:RefreshRoster()
