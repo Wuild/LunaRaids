@@ -58,6 +58,13 @@ local function IsKnownSpec(spec)
 end
 
 local function DetectSpecialization(inspect, unit)
+    if not inspect and GetSpecialization and GetSpecializationInfo then
+        local index = GetSpecialization()
+        if index then
+            local _, name = GetSpecializationInfo(index)
+            if name and name ~= "" then return name, 0 end
+        end
+    end
     if GetNumTalentTabs and GetTalentTabInfo then
         local ok, count = pcall(GetNumTalentTabs, inspect, false)
         if not ok then ok, count = pcall(GetNumTalentTabs) end
@@ -71,13 +78,6 @@ local function DetectSpecialization(inspect, unit)
         end
         if bestName and (bestPoints or 0) > 0 then
             return bestName, bestPoints
-        end
-    end
-    if not inspect and GetSpecialization and GetSpecializationInfo then
-        local index = GetSpecialization()
-        if index then
-            local _, name = GetSpecializationInfo(index)
-            if name and name ~= "" then return name, 0 end
         end
     end
     if inspect and GetInspectSpecialization and GetSpecializationInfoByID then
@@ -222,10 +222,11 @@ function Raid:BroadcastCharacterProfile(target, force)
     }, "\t")
     local recipient = target and string.lower(target) or "*"
     self.sentProfileFingerprints = self.sentProfileFingerprints or {}
+    local previous = self.sentProfileFingerprints[recipient]
     if not force
-        and signature == self.sentProfileFingerprints[recipient]
+        and signature == previous
     then
-        return
+        return false
     end
     self.sentProfileFingerprints[recipient] = signature
     self.lastBroadcastCharacterProfile = signature
@@ -234,6 +235,7 @@ function Raid:BroadcastCharacterProfile(target, force)
         data.spec, data.points, data.updated, data.race,
         data.gearScore, data.itemLevel,
     }, target and "WHISPER" or nil, target)
+    return signature ~= previous
 end
 
 function Raid:BroadcastInspectedIntel(data)
@@ -369,26 +371,45 @@ function Raid:INSPECT_READY(_, guid)
     self:BroadcastInspectedIntel(data)
 end
 
+function Raid:ScheduleOwnCharacterProfileRefresh()
+    self.ownProfileRefreshGeneration =
+        (self.ownProfileRefreshGeneration or 0) + 1
+    local generation = self.ownProfileRefreshGeneration
+    local function Refresh()
+        if generation ~= Raid.ownProfileRefreshGeneration then return end
+        local changed = Raid:BroadcastCharacterProfile()
+        if changed then
+            Raid:UpdateRoster(true)
+            if Raid.RefreshRoster and Raid.rosterPanel
+                and Raid.rosterPanel:IsShown()
+            then
+                Raid:RefreshRoster()
+            end
+        end
+    end
+    Refresh()
+    if C_Timer and C_Timer.After then
+        C_Timer.After(.35, Refresh)
+        C_Timer.After(1, Refresh)
+    end
+end
+
 function Raid:PLAYER_TALENT_UPDATE()
-    self:UpdateRoster()
-    self:BroadcastCharacterProfile()
+    self:ScheduleOwnCharacterProfileRefresh()
 end
 
 function Raid:PLAYER_ROLES_ASSIGNED()
-    self:UpdateRoster()
-    self:BroadcastCharacterProfile()
+    self:ScheduleOwnCharacterProfileRefresh()
 end
 
 function Raid:PLAYER_SPECIALIZATION_CHANGED(_, unit)
     if not unit or unit == "player" then
-        self:UpdateRoster()
-        self:BroadcastCharacterProfile()
+        self:ScheduleOwnCharacterProfileRefresh()
     end
 end
 
 function Raid:ACTIVE_TALENT_GROUP_CHANGED()
-    self:UpdateRoster()
-    self:BroadcastCharacterProfile()
+    self:ScheduleOwnCharacterProfileRefresh()
 end
 
 function Raid:InitializeCharacterIntel()

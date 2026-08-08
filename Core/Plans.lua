@@ -95,7 +95,7 @@ function Raid:SetRaidCompositionCount(raidKey, role, value)
 		math.max(0, math.min(raid.size, math.floor(value or 0)))
 	self:ApplyRaidComposition(raid)
 	if self.QueueSync and self:IsLocalRaidEditor() then
-		self:QueueSync("COMP", {
+		self:QueueRaidMutation("COMP", {
 			raidKey, role, self.db.raidCompositions[raidKey][role],
 		})
 	end
@@ -119,11 +119,11 @@ function Raid:ResetRaidComposition(raidKey)
 	self:ApplyRaidComposition(raid)
 	if self.QueueSync and self:IsLocalRaidEditor() then
 		local composition = self:GetRaidComposition(raidKey)
-		for _, role in ipairs({ "tanks", "healers" }) do
-			self:QueueSync("COMP", {
-				raidKey, role, composition[role],
-			})
-		end
+		self:QueueRaidMutation("COMP", {
+			raidKey,
+			"tanks", composition.tanks,
+			"healers", composition.healers,
+		})
 	end
 	if raidKey == self.db.activeRaid then
 		self:AutoSaveActiveRaid()
@@ -280,7 +280,7 @@ function Raid:SetBossGroupCount(groupIndex, count)
 			override.groups[groupIndex]
 	end
 	if self.QueueSync and self:IsLocalRaidEditor() then
-		self:QueueSync("BOSSSET", {
+		self:QueueRaidMutation("BOSSSET", {
 			raid.key, encounterIndex, "G:" .. groupIndex,
 			override.groups[groupIndex],
 		})
@@ -300,7 +300,7 @@ function Raid:SetBossHealerCount(count)
 	override.healers = math.max(
 		0, math.min(raid.size, math.floor(tonumber(count) or 0)))
 	if self.QueueSync and self:IsLocalRaidEditor() then
-		self:QueueSync("BOSSSET", {
+		self:QueueRaidMutation("BOSSSET", {
 			raid.key, encounterIndex, "HEALERS", override.healers,
 		})
 	end
@@ -319,7 +319,7 @@ function Raid:ResetBossOverride()
 		self.db.bossOverrides[raid.key][encounterIndex] = nil
 	end
 	if self.QueueSync and self:IsLocalRaidEditor() then
-		self:QueueSync("BOSSRESET", { raid.key, encounterIndex })
+		self:QueueRaidMutation("BOSSRESET", { raid.key, encounterIndex })
 	end
 	self:PersistRaidConfiguration(raid.key)
 	if self.RefreshAssignments then
@@ -422,25 +422,16 @@ function Raid:SyncBossSettings(kind, settings)
 		return
 	end
 	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
-	self:QueueSync(kind .. "RESET", { raid.key, encounterIndex })
+	self:BeginRaidMutationTransaction(raid.key)
+	self:QueueRaidMutation(kind .. "RESET", { raid.key, encounterIndex })
 	if kind == "BOSS" then
-		for _, custom in ipairs(settings and settings.customGroups or {}) do
-			self:QueueSync("BOSSCUSTOM", {
-				raid.key, encounterIndex, custom.id,
-				custom.name, custom.count or 1,
-			})
-		end
+		self:QueueRaidCustomMutations(
+			"BOSSCUSTOM", raid.key, encounterIndex, nil,
+			settings and settings.customGroups)
 	end
-	if settings and tonumber(settings.healers) then
-		self:QueueSync(kind .. "SET", {
-			raid.key, encounterIndex, "HEALERS", settings.healers,
-		})
-	end
-	for groupIndex, count in pairs(settings and settings.groups or {}) do
-		self:QueueSync(kind .. "SET", {
-			raid.key, encounterIndex, "G:" .. groupIndex, count,
-		})
-	end
+	self:QueueRaidSettingMutations(
+		kind .. "SET", raid.key, encounterIndex, nil, settings)
+	self:EndRaidMutationTransaction()
 end
 
 function Raid:SyncBossPreset(preset, selected)
@@ -450,28 +441,17 @@ function Raid:SyncBossPreset(preset, selected)
 		return
 	end
 	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
-	self:QueueSync("PRESETRESET", {
+	self:BeginRaidMutationTransaction(raid.key)
+	self:QueueRaidMutation("PRESETRESET", {
 		raid.key, encounterIndex, preset.id, preset.name or "",
 		preset.savedAt or 0, selected and "1" or "0",
 	})
-	for _, custom in ipairs(preset.settings.customGroups or {}) do
-		self:QueueSync("PRESETCUSTOM", {
-			raid.key, encounterIndex, preset.id, custom.id,
-			custom.name, custom.count or 1,
-		})
-	end
-	if tonumber(preset.settings.healers) then
-		self:QueueSync("PRESETSET", {
-			raid.key, encounterIndex, preset.id,
-			"HEALERS", preset.settings.healers,
-		})
-	end
-	for groupIndex, count in pairs(preset.settings.groups or {}) do
-		self:QueueSync("PRESETSET", {
-			raid.key, encounterIndex, preset.id,
-			"G:" .. groupIndex, count,
-		})
-	end
+	self:QueueRaidCustomMutations(
+		"PRESETCUSTOM", raid.key, encounterIndex,
+		preset.id, preset.settings.customGroups)
+	self:QueueRaidSettingMutations(
+		"PRESETSET", raid.key, encounterIndex, preset.id, preset.settings)
+	self:EndRaidMutationTransaction()
 end
 
 function Raid:SaveBossPreset(name)
@@ -563,7 +543,7 @@ function Raid:DeleteBossPreset(presetID)
 	self:GetSelectedBossPreset()
 	if self.QueueSync and self:IsLocalRaidEditor() then
 		local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
-		self:QueueSync("PRESETCLEAR", { raid.key, encounterIndex, presetID })
+		self:QueueRaidMutation("PRESETCLEAR", { raid.key, encounterIndex, presetID })
 	end
 	self:PersistRaidConfiguration(self:GetRaid().key)
 	if self.RefreshBossSettingsPanel then
@@ -607,17 +587,26 @@ function Raid:SetAssignment(groupIndex, slotIndex, player)
 	if not self:RequireRaidEditor() then
 		return false
 	end
+	if player and self.IsCurrentRaidPlayerName
+	and self.IsCurrentRosterAuthoritative
+	and self:IsCurrentRosterAuthoritative()
+	and not self:IsCurrentRaidPlayerName(player.name)
+	then
+		return false
+	end
 	local plan = self:GetPlan(true)
 	local key = self:SlotKey(groupIndex, slotIndex)
 	plan[key] = player and {
 		name = player.name,
 		class = player.class,
 	} or nil
-	if self.BroadcastPlanValue then
-		self:BroadcastPlanValue(key, plan[key])
-	end
 	if self.db.activeEncounter == 1 and player then
 		self:PropagateOverviewAssignments()
+		if self.BroadcastAllPlanMutations then
+			self:BroadcastAllPlanMutations()
+		end
+	elseif self.BroadcastPlanValue then
+		self:BroadcastPlanValue(key, plan[key])
 	end
 	self:AutoSaveActiveRaid()
 	if self.RefreshAssignments then
@@ -637,7 +626,7 @@ function Raid:PropagateOverviewAssignments()
 	and self.simulation.plans or self.db.plans
 	local raidPlans = plans[raid.key]
 	local overviewPlan = raidPlans and raidPlans[1]
-	if not overviewPlan then
+	if not overviewPlan or next(overviewPlan) == nil then
 		return 0
 	end
 
@@ -961,7 +950,7 @@ function Raid:AddBossCustomGroup(name)
 		+ #override.customGroups
 	override.groups[groupIndex] = 1
 	if self.QueueSync and self:IsLocalRaidEditor() then
-		self:QueueSync("BOSSCUSTOM", {
+		self:QueueRaidMutation("BOSSCUSTOM", {
 			raid.key, encounterIndex, custom.id, custom.name, 1,
 		})
 	end
@@ -986,7 +975,7 @@ function Raid:RemoveBossCustomGroup(groupIndex)
 	end
 	override.groups = rebuilt
 	if self.QueueSync and self:IsLocalRaidEditor() then
-		self:QueueSync("BOSSCUSTOMDEL", {
+		self:QueueRaidMutation("BOSSCUSTOMDEL", {
 			raid.key, encounterIndex, custom.id,
 		})
 	end
@@ -1162,11 +1151,11 @@ function Raid:AutoAssignEncounter()
 	end
 	if assigned > 0 then
 		if encounter.name == "Raid Overview"
-		and self.SendRaidPlanSnapshots
+		and self.BroadcastAllPlanMutations
 		then
-			self:SendRaidPlanSnapshots()
-		elseif self.SendPlanSnapshot then
-			self:SendPlanSnapshot()
+			self:BroadcastAllPlanMutations()
+		elseif self.BroadcastEncounterPlanMutations then
+			self:BroadcastEncounterPlanMutations(self.db.activeEncounter)
 		end
 	end
 	if self.RefreshAssignments then
@@ -1503,8 +1492,8 @@ function Raid:AutoAssignMarkers()
 		plan["M:" .. index] =
 			self:GetDefaultMarkerAssignment(index)
 	end
-	if self.SendPlanSnapshot then
-		self:SendPlanSnapshot()
+	if self.BroadcastEncounterPlanMutations then
+		self:BroadcastEncounterPlanMutations(self.db.activeEncounter)
 	end
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
@@ -1542,8 +1531,8 @@ function Raid:ToggleAutoMarker()
 		end
 		self:ApplyAutoMarkers()
 	end
-	if self.SendPlanSnapshot then
-		self:SendPlanSnapshot()
+	if self.BroadcastEncounterPlanMutations then
+		self:BroadcastEncounterPlanMutations(self.db.activeEncounter)
 	end
 	if self.RefreshAssignments then
 		self:RefreshAssignments()
@@ -1611,9 +1600,8 @@ function Raid:ClearPlan()
 	if plans[raid.key] then
 		plans[raid.key][encounterIndex] = nil
 	end
-	if self.QueueSync and self:IsLocalRaidEditor() then
-		self:QueueSync("SNAP_BEGIN", { raid.key, encounterIndex })
-		self:QueueSync("SNAP_END", { raid.key, encounterIndex })
+	if self.QueueRaidMutation and self:IsLocalRaidEditor() then
+		self:QueueRaidMutation("PLANRESET", { raid.key, encounterIndex })
 	end
 	self:AutoSaveActiveRaid()
 	if self.RefreshAssignments then
@@ -1662,7 +1650,9 @@ function Raid:CompleteRaid()
 		return true
 	end
 	if not self:CanStartRaid() then
-		if self.DiscardPendingSync then self:DiscardPendingSync() end
+		if self.CancelRaidCommunication then
+			self:CancelRaidCommunication()
+		end
 		self.db.raidLocked = false
 		self.db.activeSavedRaid = nil
 		self.db.activeRaidSessionID = nil
@@ -1680,19 +1670,24 @@ function Raid:CompleteRaid()
 		end
 		self:ShowNewRaidWizard(false)
 		self.activeRaidLeader = nil
-		if self.RequestPeerSync then self:RequestPeerSync() end
 		return true
 	end
 	self:AutoSaveActiveRaid()
 	local raid = self:GetRaid()
+	local ownsSharedRaid = self.IsLocalRaidSessionOwner
+		and self:IsLocalRaidSessionOwner()
+	local canRejoinSharedRaid = self:IsInLiveGroup()
+		and not ownsSharedRaid
 	local saved = self.db.activeSavedRaid
 		and self.db.savedRaids[self.db.activeSavedRaid]
 	if saved then
 		saved.closedAt = GetServerTime and GetServerTime()
 			or time and time() or saved.savedAt
 	end
-	if self.QueueSync and self:IsLocalRaidEditor() then
-		if self.DiscardPendingSync then self:DiscardPendingSync() end
+	if self.CancelRaidCommunication then
+		self:CancelRaidCommunication()
+	end
+	if ownsSharedRaid and self.QueueSync and self:IsLocalRaidEditor() then
 		self:QueueSync("CLOSE", { raid.key })
 	end
 	self.db.raidLocked = false
@@ -1714,16 +1709,22 @@ function Raid:CompleteRaid()
 	if self.ShowNewRaidWizard then
 		self:ShowNewRaidWizard()
 	end
+	if canRejoinSharedRaid and self.RequestPeerSync then
+		self.manuallyLeftSharedRaid = true
+		self:RequestPeerSync(true)
+	end
 	self:Print(self:Localize("RAID_COMPLETED", raid.name))
 	return true
 end
 
 function Raid:ClearCurrentRaidSession()
 	local raid = self:GetRaid()
+	if self.CancelRaidCommunication then
+		self:CancelRaidCommunication()
+	end
 	if self.db.raidLocked and self.QueueSync
 	and self:IsLocalRaidEditor()
 	then
-		if self.DiscardPendingSync then self:DiscardPendingSync() end
 		self:QueueSync("CLOSE", { raid.key })
 	end
 	self.db.plans[raid.key] = nil
@@ -1762,6 +1763,7 @@ function Raid:BeginRaid(raidKey)
 		return false
 	end
 	if self.DiscardPendingSync then self:DiscardPendingSync() end
+	self.manuallyLeftSharedRaid = nil
 	self.raidSelectionUnlocked = true
 	self.db.activeRaid = raid.key
 	self.db.activeExpansion = raid.expansion
@@ -1802,20 +1804,19 @@ function Raid:BeginRaid(raidKey)
 	if self.assignmentScroll then
 		self.assignmentScroll:SetVerticalScroll(0)
 	end
-	if self.RefreshAll then
-		self:RefreshAll()
-	end
 	if self.RefreshQuickActionBar then
 		self:RefreshQuickActionBar()
 	end
 	if self.BroadcastSelection then
 		self:BroadcastSelection()
 	end
-	if self.SendPlanSnapshot then
-		self:SendPlanSnapshot()
+	if self.SendRaidPlanSnapshots then
+		self:SendRaidPlanSnapshots(nil, true)
 	end
 	if self.EnterBossUI then
-		self:EnterBossUI("ASSIGNMENTS")
+		self:EnterBossUI("ASSIGNMENTS", true)
+	elseif self.RefreshAll then
+		self:RefreshAll()
 	end
 	self:Print(self:Localize("PLAN_STARTED", raid.name))
 	return true
@@ -2120,14 +2121,13 @@ function Raid:LoadSavedRaid(id)
 		end
 	end
 	self:SortRosterByRole()
-	if self.RefreshAll then
-		self:RefreshAll()
-	end
 	if self.RefreshQuickActionBar then
 		self:RefreshQuickActionBar()
 	end
 	if self.EnterBossUI then
-		self:EnterBossUI("ASSIGNMENTS")
+		self:EnterBossUI("ASSIGNMENTS", true)
+	elseif self.RefreshAll then
+		self:RefreshAll()
 	end
 	self:Print(self:Localize("RAID_PLAN_LOADED", saved.name))
 	return true
@@ -2251,10 +2251,7 @@ function Raid:SetCurrentBoss(index, fromSync)
 	self.db.currentBossByRaid = self.db.currentBossByRaid or {}
 	self.db.currentBossByRaid[raid.key] = index
 	if not fromSync and self.QueueSync then
-		self:QueueSync("CURRENT", { raid.key, index })
-		if self.SendPlanSnapshot then
-			self:SendPlanSnapshot(nil, index, false)
-		end
+		self:QueueRaidMutation("CURRENT", { raid.key, index })
 	end
 	if not fromSync then self:AutoSaveActiveRaid() end
 	if self.RefreshPersonalAssignments then

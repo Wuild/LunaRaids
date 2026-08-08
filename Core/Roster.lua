@@ -184,7 +184,7 @@ function Raid:AddManualPlayer(name, class, role, spec, subgroup)
         manual = true,
     }
     if self.QueueSync and self:IsLocalRaidEditor() then
-        self:QueueSync("MANUAL", {
+        self:QueueRaidMutation("MANUAL", {
             raid.key, name, class, role, strtrim(spec or ""), subgroup,
         })
     end
@@ -200,6 +200,8 @@ function Raid:RemoveManualPlayer(name)
     self.db.manualPlayers[raid.key][key] = nil
     local plans = self:IsSimulating()
         and self.simulation.plans or self.db.plans
+    local shouldSync = self.QueueSync and self:IsLocalRaidEditor()
+    local pendingClears = {}
     for encounterIndex, plan in pairs(plans[raid.key] or {}) do
         for assignmentKey, assignment in pairs(plan) do
             if type(assignment) == "table"
@@ -207,10 +209,11 @@ function Raid:RemoveManualPlayer(name)
                 and assignment.name:lower() == key
             then
                 plan[assignmentKey] = nil
-                if self.QueueSync and self:IsLocalRaidEditor() then
-                    self:QueueSync("CLEAR", {
-                        raid.key, encounterIndex, assignmentKey,
-                    })
+                if shouldSync then
+                    pendingClears[encounterIndex] =
+                        pendingClears[encounterIndex] or {}
+                    pendingClears[encounterIndex][
+                        #pendingClears[encounterIndex] + 1] = assignmentKey
                 end
             end
         end
@@ -221,8 +224,13 @@ function Raid:RemoveManualPlayer(name)
     then
         self.selectedPlayer = nil
     end
-    if self.QueueSync and self:IsLocalRaidEditor() then
-        self:QueueSync("MANUALDEL", { raid.key, name })
+    if shouldSync and next(pendingClears) ~= nil then
+        self:BeginRaidMutationTransaction(raid.key)
+        self:QueueRaidClearMutations(raid.key, pendingClears)
+        self:QueueRaidMutation("MANUALDEL", { raid.key, name })
+        self:EndRaidMutationTransaction()
+    elseif shouldSync then
+        self:QueueRaidMutation("MANUALDEL", { raid.key, name })
     end
     self:UpdateRoster()
     self:AutoSaveActiveRaid()
@@ -307,7 +315,7 @@ local function LiveRaidIndex(player)
         and tonumber(player.unit:match("^raid(%d+)$"))
 end
 
-function Raid:SetVirtualPlayerGroup(player, subgroup)
+function Raid:SetVirtualPlayerGroup(player, subgroup, pendingChanges)
     if not player then return end
     subgroup = math.max(1, math.min(8, tonumber(subgroup) or 1))
     player.subgroup = subgroup
@@ -339,11 +347,16 @@ function Raid:SetVirtualPlayerGroup(player, subgroup)
         end
     end
     if self.QueueSync then
-        self:QueueSync("GROUP", {
-            self.db.activeRaid, player.name, subgroup,
-        })
+        if pendingChanges then
+            pendingChanges[#pendingChanges + 1] = player.name
+            pendingChanges[#pendingChanges + 1] = subgroup
+        else
+            self:QueueRaidMutation("GROUP", {
+                self.db.activeRaid, player.name, subgroup,
+            })
+        end
     end
-    self:AutoSaveActiveRaid()
+    if not pendingChanges then self:AutoSaveActiveRaid() end
 end
 
 function Raid:MoveRosterPlayer(player, subgroup, target)
@@ -379,11 +392,15 @@ function Raid:MoveRosterPlayer(player, subgroup, target)
             return
         end
     end
+    local pendingChanges = { self.db.activeRaid }
     if not sourceIndex then
-        self:SetVirtualPlayerGroup(player, targetGroup)
+        self:SetVirtualPlayerGroup(player, targetGroup, pendingChanges)
     end
     if target and not targetIndex then
-        self:SetVirtualPlayerGroup(target, sourceGroup)
+        self:SetVirtualPlayerGroup(target, sourceGroup, pendingChanges)
+    end
+    if #pendingChanges > 1 then
+        self:QueueRaidMutation("GROUP", pendingChanges)
     end
     self.selectedPlayer = nil
     self.dragPlayer = nil
@@ -837,11 +854,15 @@ function Raid:StopSimulation(silent)
     self.db.simulationRestore = nil
     self.db.simulationSession = nil
     self.selectedPlayer = nil
-    self:UpdateRoster()
+    self:UpdateRoster(true)
     if self.RefreshRaidCooldowns then
         self:RefreshRaidCooldowns()
     end
-    if self.frame then self:RefreshAll() end
+    if self.frame and self.frame:IsShown() then
+        self:RefreshAll()
+    elseif self.RefreshPersonalAssignments then
+        self:RefreshPersonalAssignments()
+    end
     if not silent then
         self:Print(self.L.SIMULATION_CLEARED)
     end

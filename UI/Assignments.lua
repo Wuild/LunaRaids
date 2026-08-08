@@ -723,6 +723,9 @@ function Raid:RefreshWorkspaceNavigation()
     if self.rosterScroll then
         self.rosterScroll:SetShown(showRoster)
     end
+    if self.RefreshRaidSyncProgressVisibility then
+        self:RefreshRaidSyncProgressVisibility()
+    end
     self:RefreshFooterLayout()
 end
 

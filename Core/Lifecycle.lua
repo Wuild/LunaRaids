@@ -171,6 +171,21 @@ function Raid:OnInitialize()
         hideOnEscape = true,
         preferredIndex = 3,
     }
+    StaticPopupDialogs.LUNARAIDS_REMOTE_CLOSE_RAID = {
+        text = "%s closed the active raid. Close it here as well?",
+        button1 = self.L.CLOSE_RAID,
+        button2 = "View Read Only",
+        OnAccept = function()
+            Raid:CloseRaidFromPeer()
+        end,
+        OnCancel = function()
+            Raid:KeepRaidAfterPeerClose()
+        end,
+        timeout = 0,
+        whileDead = true,
+        hideOnEscape = false,
+        preferredIndex = 3,
+    }
     StaticPopupDialogs.LUNARAIDS_JOINED_GROUP_CLOSE_RAID = {
         text = self.L.JOINED_GROUP_ACTIVE_RAID,
         button1 = self.L.CLOSE_RAID,
@@ -320,6 +335,10 @@ function Raid:HandleSlashCommand(input)
         if self.RequestPeerSync then
             self:RequestPeerSync()
             self:Print(self.L.CURRENT_PLAN_REQUESTED)
+        end
+    elseif input == "syncsim" or input == "sync simulate" then
+        if self.RunSynchronizationSimulation then
+            self:RunSynchronizationSimulation()
         end
     elseif input == "minimap" then
         self.db.minimap.hide = not self.db.minimap.hide

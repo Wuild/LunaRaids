@@ -100,6 +100,132 @@ function Raid:RefreshLeaderRaidToast()
     end
 end
 
+function Raid:CreateRaidSyncProgress()
+    if self.raidSyncProgress then return self.raidSyncProgress end
+    self:CreateUI()
+    local parent = self.assignmentPanel or self.frame
+    local frame = Panel(parent)
+    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 8, -86)
+    frame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -8, -86)
+    SetPixelHeight(frame, 62)
+    frame:SetFrameLevel(parent:GetFrameLevel() + 15)
+    frame:SetBackdropColor(unpack(THEME.surfaceRaised))
+    frame:SetBackdropBorderColor(unpack(THEME.positiveBorder))
+    frame.Title = Font(frame, 10, "accent", "JOINING ACTIVE RAID")
+    frame.Title:SetPoint("TOPLEFT", 12, -10)
+    frame.Detail = Font(frame, 9, "muted", "")
+    frame.Detail:SetPoint("TOPRIGHT", -12, -11)
+
+    frame.Track = frame:CreateTexture(nil, "BACKGROUND")
+    frame.Track:SetTexture(WHITE)
+    frame.Track:SetPoint("BOTTOMLEFT", 12, 10)
+    frame.Track:SetPoint("BOTTOMRIGHT", -12, 10)
+    SetPixelHeight(frame.Track, 16)
+    frame.Track:SetVertexColor(
+        THEME.borderSoft[1], THEME.borderSoft[2], THEME.borderSoft[3], .8)
+
+    frame.Bar = CreateFrame("StatusBar", nil, frame)
+    frame.Bar:SetPoint("TOPLEFT", frame.Track, "TOPLEFT", 1, -1)
+    frame.Bar:SetPoint("BOTTOMRIGHT", frame.Track, "BOTTOMRIGHT", -1, 1)
+    frame.Bar:SetStatusBarTexture(WHITE)
+    frame.Bar:SetStatusBarColor(unpack(THEME.accent))
+    frame.Bar:SetMinMaxValues(0, 1)
+    frame.Bar:SetValue(0)
+    frame.Status = Font(frame.Bar, 8, "text", "REQUESTING RAID DATA...")
+    frame.Status:SetPoint("CENTER", 0, 0)
+    frame:Hide()
+    self.raidSyncProgress = frame
+    return frame
+end
+
+function Raid:RefreshRaidSyncProgressVisibility()
+    local frame = self.raidSyncProgress
+    if not frame then return end
+    local raidPageVisible = self.frame and self.frame:IsShown()
+        and self.assignmentPanel and self.assignmentPanel:IsShown()
+        and self.workspaceMode == "ASSIGNMENTS"
+        and self.activeBossTab ~= "LOOT"
+        and not self.raidPickerActive
+        and not (self.settingsView and self.settingsView:IsShown())
+    frame:SetShown(frame.active and raidPageVisible or false)
+    if raidPageVisible and self.assignmentScroll then
+        self.assignmentScroll:ClearAllPoints()
+        self.assignmentScroll:SetPoint(
+            "TOPLEFT", 6, frame.active and -154 or -84)
+        self.assignmentScroll:SetPoint("BOTTOMRIGHT", -6, 8)
+        if self.assignmentScroll.UpdateScrollbar then
+            self.assignmentScroll:UpdateScrollbar()
+        end
+    end
+end
+
+function Raid:BeginRaidSyncProgress(total, raidName)
+    local frame = self:CreateRaidSyncProgress()
+    total = tonumber(total)
+    frame.total = total and total > 0 and total or nil
+    frame.current = 0
+    frame.Detail:SetText(raidName or "")
+    frame.Status:SetText(
+        frame.total and "RECEIVING RAID DATA... 0%"
+            or "REQUESTING RAID DATA...")
+    frame.Bar:SetValue(frame.total and 0 or .06)
+    frame.active = true
+    if self.leaderRaidToast then self.leaderRaidToast:Hide() end
+    self:RefreshRaidSyncProgressVisibility()
+    self.raidSyncProgressToken = (self.raidSyncProgressToken or 0) + 1
+    local token = self.raidSyncProgressToken
+    if C_Timer and C_Timer.After then
+        C_Timer.After(25, function()
+            if Raid.raidSyncProgressToken == token then
+                Raid:CancelRaidSyncProgress()
+            end
+        end)
+    end
+end
+
+function Raid:AdvanceRaidSyncProgress(amount)
+    local frame = self.raidSyncProgress
+    if not frame or not frame.active then return end
+    frame.current = (frame.current or 0) + (tonumber(amount) or 1)
+    if frame.total then
+        local progress = math.min(.95, frame.current / frame.total)
+        frame.Bar:SetValue(progress)
+        frame.Status:SetText(("RECEIVING RAID DATA... %d%%"):format(
+            math.min(95, math.floor(progress * 100 + .5))))
+    else
+        frame.Bar:SetValue(math.min(.85, .06 + frame.current * .035))
+        frame.Status:SetText("RECEIVING RAID DATA...")
+    end
+end
+
+function Raid:CompleteRaidSyncProgress()
+    local frame = self.raidSyncProgress
+    if not frame then return end
+    self.raidSyncProgressToken = (self.raidSyncProgressToken or 0) + 1
+    local token = self.raidSyncProgressToken
+    frame.Bar:SetValue(1)
+    frame.Status:SetText("RAID DATA RECEIVED")
+    if C_Timer and C_Timer.After then
+        C_Timer.After(.5, function()
+            if Raid.raidSyncProgressToken == token
+                and Raid.raidSyncProgress
+            then
+                Raid.raidSyncProgress.active = false
+                Raid:RefreshRaidSyncProgressVisibility()
+            end
+        end)
+    else
+        frame.active = false
+        self:RefreshRaidSyncProgressVisibility()
+    end
+end
+
+function Raid:CancelRaidSyncProgress()
+    self.raidSyncProgressToken = (self.raidSyncProgressToken or 0) + 1
+    if self.raidSyncProgress then self.raidSyncProgress.active = false end
+    self:RefreshRaidSyncProgressVisibility()
+end
+
 function Raid:GetRosterPanelWidth(width)
     local frameWidth = self.frame and self.frame:GetWidth() or FRAME_WIDTH
     local maximum = math.max(280, math.min(460, frameWidth - 540))
@@ -123,7 +249,7 @@ function Raid:ApplyRosterPanelWidth(width)
     return width
 end
 
-function Raid:EnterBossUI(initialWorkspace)
+function Raid:EnterBossUI(initialWorkspace, rosterReady)
     self:CreateUI()
     if self.newRaidWizard then self.newRaidWizard:Hide() end
     self:SetRaidPickerMode(false)
@@ -134,7 +260,7 @@ function Raid:EnterBossUI(initialWorkspace)
     self.workspaceMode = initialWorkspace == "ASSIGNMENTS"
         and "ASSIGNMENTS" or "GROUPS"
     self.activeBossTab = "ASSIGNMENTS"
-    if not self.db.raidReadOnly then self:UpdateRoster() end
+    if not self.db.raidReadOnly and not rosterReady then self:UpdateRoster() end
     self:RefreshAll()
     self.frame:Show()
 end
@@ -1193,7 +1319,7 @@ function Raid:Toggle()
         if not self.db.raidLocked then
             self:ShowNewRaidWizard()
         else
-            self:UpdateRoster()
+            self:UpdateRoster(true)
             self:RefreshAll()
         end
     end
