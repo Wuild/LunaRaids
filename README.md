@@ -469,3 +469,16 @@ entire LunaRaids window; other pages remain open.
 | `/lr sim 25` | Simulate a 25-player raid |
 | `/lr sim 40` | Simulate a 40-player raid |
 | `/lr sim clear` | Clear simulation |
+
+# Development setup
+
+This project targets World of Warcraft's Lua 5.1-era environment.
+
+- In PhpStorm, use the **EmmyLua2** plugin for Lua syntax highlighting and completion. The project keeps the separate Luau plugin assigned to `.luau` files so it does not claim addon `.lua` files.
+- `Types/WoW/` is the repository-owned, editor-only WoW API library. Its 500+ definition files cover Blizzard APIs, Warcraft Wiki globals, widgets, events, enums, global strings, common FrameXML helpers, and Classic additions; it is deliberately absent from the `.toc` manifests.
+- WoW Lua LS automatically treats the second vararg in `.toc`-linked Lua files as the addon's shared namespace, so `local _, Raid = ...` needs no editor annotations.
+- Locale completion is inferred from the assignments in `Locales/enUS.lua`; adding `L.NEW_KEY = "..."` there makes `Raid.L.NEW_KEY` resolvable without regenerating a type file.
+- Lua for Windows 5.1.5 provides the local `lua` interpreter and `luac` compiler. Restart PhpStorm after installation so its terminal inherits the updated `PATH`.
+- Run `pwsh -NoProfile -File .\tools\Test-LuaSyntax.ps1` from the project root to compile-check every Lua file without executing game APIs.
+
+The standalone interpreter cannot run the complete addon because WoW supplies globals such as `CreateFrame`, `C_ChatInfo`, and `UnitName`. Use it for pure-Lua modules and syntax checks; behavior that touches the WoW API still needs mocks or an in-game test.

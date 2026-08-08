@@ -1,9 +1,5 @@
 local _, Raid = ...
 local Core = Raid.Core
-local Copy = Core.Copy
-local classNames = Core.classNames
-local simulatedNames = Core.simulatedNames
-local simulatedByRole = Core.simulatedByRole
 local SlotLabel = Core.SlotLabel
 
 function Raid:QueueMessage(channel, target, text, allowHyperlinks)

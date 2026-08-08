@@ -1209,16 +1209,6 @@ function Raid:RefreshRaidCooldownConfig()
     end
 end
 
-function Raid:ToggleRaidCooldownConfig()
-    local panel = self:CreateRaidCooldownConfig()
-    if panel:IsShown() then
-        panel:Hide()
-    else
-        self:RefreshRaidCooldownConfig()
-        panel:Show()
-    end
-end
-
 function Raid:ToggleRaidCooldowns()
     local settings = self:GetRaidCooldownSettings()
     settings.enabled = not settings.enabled

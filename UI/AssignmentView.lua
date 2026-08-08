@@ -4,35 +4,17 @@ local ICONS = UI.ICONS
 local L = Raid.L
 local THEME = UI.THEME
 
-local ROW_HEIGHT = UI.ROW_HEIGHT
-local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
-local ROSTER_WIDTH, ROSTER_ROW_WIDTH = UI.ROSTER_WIDTH, UI.ROSTER_ROW_WIDTH
 local ASSIGNMENT_ROW_WIDTH = UI.ASSIGNMENT_ROW_WIDTH
-local BOSS_RAIL_WIDTH, BOSS_BUTTON_SIZE = UI.BOSS_RAIL_WIDTH, UI.BOSS_BUTTON_SIZE
-local NAV_RAIL_WIDTH, BOSS_RAIL_GAP = UI.NAV_RAIL_WIDTH, UI.BOSS_RAIL_GAP
+local BOSS_BUTTON_SIZE = UI.BOSS_BUTTON_SIZE
+local BOSS_RAIL_GAP = UI.BOSS_RAIL_GAP
 local ACCENT, BORDER, MUTED, WHITE = UI.ACCENT, UI.BORDER, UI.MUTED, UI.WHITE
-local ROLE_TEXTURE, ROLE_COORDS = UI.ROLE_TEXTURE, UI.ROLE_COORDS
-local READY_CHECK_COLUMNS = UI.READY_CHECK_COLUMNS
-local READY_CHECK_BY_SPELL = UI.READY_CHECK_BY_SPELL
-local READY_CHECK_FOOD_MATCHES = UI.READY_CHECK_FOOD_MATCHES
-local READY_CHECK_GRID_START = UI.READY_CHECK_GRID_START
-local READY_CHECK_COLUMN_WIDTH = UI.READY_CHECK_COLUMN_WIDTH
-local GEAR_INSPECT_SLOTS = UI.GEAR_INSPECT_SLOTS
-local Pixel, PixelForRegion = UI.Pixel, UI.PixelForRegion
-local PhysicalPixels = UI.PhysicalPixels
-local SetPixelHeight, SetPixelWidth = UI.SetPixelHeight, UI.SetPixelWidth
-local PixelSetSize, FitAndClampToScreen = UI.PixelSetSize, UI.FitAndClampToScreen
-local SnapAnchors, SnapTree = UI.SnapAnchors, UI.SnapTree
-local BackdropFrame, Font = UI.BackdropFrame, UI.Font
-local InstallPixelBorder, Button = UI.InstallPixelBorder, UI.Button
+local ROLE_COORDS = UI.ROLE_COORDS
+local SetPixelWidth = UI.SetPixelWidth
+local PixelSetSize = UI.PixelSetSize
+local Font = UI.Font
+local Button = UI.Button
 local StyleButton, AddButtonIcon = UI.StyleButton, UI.AddButtonIcon
-local AddDropdownArrow, AddButtonTooltip = UI.AddDropdownArrow, UI.AddButtonTooltip
-local Panel, SectionHeader, EditField = UI.Panel, UI.SectionHeader, UI.EditField
-local ShowSelectionMenu = UI.ShowSelectionMenu
-local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
-local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
-local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
-local CreateScrollArea = UI.CreateScrollArea
+local SetClassText = UI.SetClassText
 local ROW_SEPARATOR = THEME.borderSoft
 local FILLED_ROW_SEPARATOR = THEME.divider
 local SetMarkerTexture = UI.SetMarkerTexture
@@ -260,7 +242,7 @@ function Raid:RefreshAssignments()
         for targetIndex, targetName in ipairs(encounterTargets) do
             local row = self.markerRows[targetIndex]
             if not row then
-                row = self:CreateMarkerRow(targetIndex)
+                row = self:CreateMarkerRow()
                 self.markerRows[targetIndex] = row
             end
             row:ClearAllPoints()
@@ -332,7 +314,7 @@ function Raid:RefreshAssignments()
             slotNumber = slotNumber + 1
             local slot = self.assignmentSlots[slotNumber]
             if not slot then
-                slot = self:CreateAssignmentSlot(slotNumber)
+                slot = self:CreateAssignmentSlot()
                 self.assignmentSlots[slotNumber] = slot
             end
             slot:ClearAllPoints()
@@ -404,7 +386,7 @@ function Raid:RefreshAssignments()
             slotNumber = slotNumber + 1
             local slot = self.assignmentSlots[slotNumber]
             if not slot then
-                slot = self:CreateAssignmentSlot(slotNumber)
+                slot = self:CreateAssignmentSlot()
                 self.assignmentSlots[slotNumber] = slot
             end
             slot:ClearAllPoints()
@@ -626,7 +608,7 @@ function Raid:RefreshBossStats()
     self.assignmentContent:SetHeight(height)
 end
 
-function Raid:CreateBossRailButton(index)
+function Raid:CreateBossRailButton()
     local button = Button(
         self.bossRail, "", BOSS_BUTTON_SIZE, BOSS_BUTTON_SIZE)
     button.Icon = button:CreateTexture(nil, "ARTWORK")
@@ -765,7 +747,7 @@ function Raid:RefreshBossRail()
     for index, encounter in ipairs(raid.encounters) do
         local button = self.bossButtons[index]
         if not button then
-            button = self:CreateBossRailButton(index)
+            button = self:CreateBossRailButton()
             self.bossButtons[index] = button
         end
         button:ClearAllPoints()

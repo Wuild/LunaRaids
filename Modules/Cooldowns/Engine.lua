@@ -3,9 +3,6 @@ local Cooldowns = Raid:NewModule("Cooldowns", "AceEvent-3.0")
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local THEME = Raid.UI.THEME
-local ACCENT = Raid.UI.ACCENT
-local MUTED = Raid.UI.MUTED
-
 local DEFINITIONS = Raid.CooldownDefinitions
 
 local BY_SPELL = {}

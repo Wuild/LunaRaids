@@ -3,27 +3,9 @@ local UI = Raid.UI
 local L = Raid.L
 local THEME = UI.THEME
 
-local ROW_HEIGHT = UI.ROW_HEIGHT
-local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
-local ROSTER_WIDTH, ROSTER_ROW_WIDTH = UI.ROSTER_WIDTH, UI.ROSTER_ROW_WIDTH
-local ASSIGNMENT_ROW_WIDTH = UI.ASSIGNMENT_ROW_WIDTH
-local BOSS_RAIL_WIDTH, BOSS_BUTTON_SIZE = UI.BOSS_RAIL_WIDTH, UI.BOSS_BUTTON_SIZE
-local NAV_RAIL_WIDTH, BOSS_RAIL_GAP = UI.NAV_RAIL_WIDTH, UI.BOSS_RAIL_GAP
-local ACCENT, BORDER, MUTED, WHITE = UI.ACCENT, UI.BORDER, UI.MUTED, UI.WHITE
-local ROLE_TEXTURE, ROLE_COORDS = UI.ROLE_TEXTURE, UI.ROLE_COORDS
-local READY_CHECK_COLUMNS = UI.READY_CHECK_COLUMNS
-local READY_CHECK_BY_SPELL = UI.READY_CHECK_BY_SPELL
-local READY_CHECK_FOOD_MATCHES = UI.READY_CHECK_FOOD_MATCHES
-local READY_CHECK_GRID_START = UI.READY_CHECK_GRID_START
-local READY_CHECK_COLUMN_WIDTH = UI.READY_CHECK_COLUMN_WIDTH
-local GEAR_INSPECT_SLOTS = UI.GEAR_INSPECT_SLOTS
-local Pixel, PixelForRegion = UI.Pixel, UI.PixelForRegion
-local PhysicalPixels = UI.PhysicalPixels
-local SetPixelHeight, SetPixelWidth = UI.SetPixelHeight, UI.SetPixelWidth
-local PixelSetSize, FitAndClampToScreen = UI.PixelSetSize, UI.FitAndClampToScreen
-local SnapAnchors, SnapTree = UI.SnapAnchors, UI.SnapTree
-local BackdropFrame, Font = UI.BackdropFrame, UI.Font
-local InstallPixelBorder, Button = UI.InstallPixelBorder, UI.Button
+local WHITE = UI.WHITE
+local Font = UI.Font
+local Button = UI.Button
 local StyleButton, AddButtonIcon = UI.StyleButton, UI.AddButtonIcon
 local AddDropdownArrow, AddButtonTooltip = UI.AddDropdownArrow, UI.AddButtonTooltip
 local Panel, SectionHeader, EditField = UI.Panel, UI.SectionHeader, UI.EditField
@@ -31,7 +13,6 @@ local Slider = UI.Slider
 local ShowSelectionMenu = UI.ShowSelectionMenu
 local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
 local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
-local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
 local CreateScrollArea = UI.CreateScrollArea
 function Raid:CreateSettingsView()
     if self.settingsView then return self.settingsView end
@@ -115,7 +96,7 @@ function Raid:CreateSettingsView()
         detail:SetPoint("TOPLEFT", 14, y - 16)
         return label, detail
     end
-    local function ScaleSlider(name, parent, y, onChanged)
+    local function ScaleSlider(parent, y, onChanged)
         local slider = Slider(
             parent, 164, .25, 1.25, .05,
             function(value)
@@ -131,7 +112,7 @@ function Raid:CreateSettingsView()
         slider.High:SetText("125%")
         return slider
     end
-    local function SpacingSlider(name, parent, y, onChanged)
+    local function SpacingSlider(parent, y, onChanged)
         local slider = Slider(
             parent, 164, 0, 12, 1,
             function(value)
@@ -210,7 +191,7 @@ function Raid:CreateSettingsView()
         L.HUD_SCALE_DESC,
         -174)
     view.HUDScale = ScaleSlider(
-        "LunaRaidsHUDScale", interfaceCard, -181,
+        interfaceCard, -181,
         function(value)
             Raid.db.hudScale = value
             Raid:ApplyInterfaceScale()
@@ -617,7 +598,7 @@ function Raid:CreateSettingsView()
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         rowSpacingDetail
     view.CooldownRowSpacing = SpacingSlider(
-        "LunaRaidsCooldownRowSpacing", cooldowns, -585,
+        cooldowns, -585,
         function(value)
             Raid:GetRaidCooldownSettings().rowSpacing = value
             Raid:RefreshRaidCooldowns()
@@ -631,7 +612,7 @@ function Raid:CreateSettingsView()
     view.CooldownDisplayControls[#view.CooldownDisplayControls + 1] =
         columnSpacingDetail
     view.CooldownColumnSpacing = SpacingSlider(
-        "LunaRaidsCooldownColumnSpacing", cooldowns, -629,
+        cooldowns, -629,
         function(value)
             Raid:GetRaidCooldownSettings().columnSpacing = value
             Raid:RefreshRaidCooldowns()
@@ -1032,7 +1013,7 @@ function Raid:CreateSettingsView()
         Raid.playerNameInsertKey = "masterLooter"
     end)
     view.MasterLooter:HookScript(
-        "OnEditFocusLost", function(self)
+        "OnEditFocusLost", function()
             Raid:ApplyLootRules(false, true)
         end)
     view.MasterLooter:HookScript("OnHide", function(self)
@@ -1835,23 +1816,6 @@ function Raid:SetRaidWorkspaceVisible(visible)
     if visible then self:RefreshWorkspaceNavigation() end
 end
 
-function Raid:ExitNewRaidWizard()
-    if not self.db.raidLocked then
-        if self.newRaidWizard then self.newRaidWizard:Show() end
-        return
-    end
-    if self.newRaidWizard then self.newRaidWizard:Hide() end
-    self:SetRaidPickerMode(false)
-    if self.db.raidLocked then
-        self:SetRaidWorkspaceVisible(true)
-        self:RefreshAll()
-    elseif self.frame then
-        self:SetRaidWorkspaceVisible(true)
-        self:RefreshWorkspaceNavigation()
-        self:RefreshAssignments()
-    end
-end
-
 function Raid:FinishOpeningNewRaid(saveCurrent, name)
     if not self:CanStartRaid() then
         self:Print(
@@ -1863,38 +1827,6 @@ function Raid:FinishOpeningNewRaid(saveCurrent, name)
     end
     self:ClearCurrentRaidSession()
     self:ShowNewRaidWizard(false)
-end
-
-function Raid:RequestNewRaid()
-    if not self:CanStartRaid() then
-        self:Print(
-            "Only the raid leader or an assistant can create or load the active raid.")
-        return
-    end
-    if not self.db.raidLocked then
-        self:ShowNewRaidWizard(false)
-        return
-    end
-    local saved = self.db.activeSavedRaid
-        and self.db.savedRaids[self.db.activeSavedRaid]
-    if saved then
-        self:SaveCurrentRaid(saved.name)
-        self:FinishOpeningNewRaid(false)
-        return
-    end
-    if StaticPopup_Show then
-        local raid = self:GetRaid()
-        local popup = StaticPopup_Show(
-            "LUNARAIDS_NEW_RAID_SAVE", raid.name)
-        local editBox = self:GetPopupEditBox(popup)
-        if editBox then
-            editBox:SetText(Raid:Localize("RAID_PLAN_NAME", raid.name))
-            editBox:HighlightText()
-            editBox:SetFocus()
-        end
-    else
-        self:FinishOpeningNewRaid(false)
-    end
 end
 
 function Raid:ShowNewRaidWizard(clearCurrentRaid)

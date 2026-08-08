@@ -670,6 +670,13 @@ local function Panel(parent)
     return panel
 end
 
+local function UseRowSeparator(frame)
+    if not frame.PixelBorders then return end
+    frame.PixelBorders[1]:Hide()
+    frame.PixelBorders[3]:Hide()
+    frame.PixelBorders[4]:Hide()
+end
+
 local function Menu(parent, width, height)
     local menu = BackdropFrame("Frame", nil, parent)
     PixelSetSize(menu, width, height)
@@ -1253,6 +1260,7 @@ Raid.UI = {
     BackdropFrame = BackdropFrame,
     Font = Font,
     InstallPixelBorder = InstallPixelBorder,
+    UseRowSeparator = UseRowSeparator,
     Button = Button,
     MakeButton = MakeButton,
     StyleButton = StyleButton,

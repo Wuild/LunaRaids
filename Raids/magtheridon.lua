@@ -2,7 +2,6 @@ local _, Raid = ...
 
 local Encounter = Raid.DataEncounter
 local Group = Raid.DataGroup
-local Boss = Raid.DataBoss
 local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
@@ -15,7 +14,7 @@ for index, marker in ipairs({
     clickers[index].label = marker .. " Clicker"
 end
 
-local raid = Raid:RegisterRaid({
+Raid:RegisterRaid({
     expansion = "TBC",
     key = "magtheridon", name = "Magtheridon's Lair", size = 25, instanceID = 544,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\magtheridon",

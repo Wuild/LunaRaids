@@ -374,7 +374,7 @@ local function AssignmentLabel(raid, encounterIndex, key)
     local encounter = raid.encounters
         and raid.encounters[encounterIndex]
     if not encounter then return key end
-    for groupIndex, group in ipairs(Raid:GetEncounterGroups(
+    for groupIndex in ipairs(Raid:GetEncounterGroups(
         encounter, raid.key, encounterIndex)) do
         local slots = Raid:GetEncounterGroupSlots(
             groupIndex, encounter, raid.key, encounterIndex)

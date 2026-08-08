@@ -15,7 +15,7 @@ function Raid:HideLootHistory()
     for _, row in ipairs(self.lootHistoryRows or {}) do row:Hide() end
 end
 
-function Raid:CreateLootHistoryRow(index)
+function Raid:CreateLootHistoryRow()
     local row = UI.MakeCard(self.assignmentContent)
     row:SetHeight(38)
     row:EnableMouse(true)
@@ -168,7 +168,7 @@ function Raid:RefreshLootHistory()
         local entry = entries[#entries - displayIndex + 1]
         local row = self.lootHistoryRows[displayIndex]
         if not row then
-            row = self:CreateLootHistoryRow(displayIndex)
+            row = self:CreateLootHistoryRow()
             self.lootHistoryRows[displayIndex] = row
         end
         row:ClearAllPoints()
@@ -213,121 +213,6 @@ function Raid:RefreshLootHistory()
     end
     self.assignmentContent:SetHeight(
         math.max(120, 34 + (#entries * 41)))
-    if self.assignmentScroll.UpdateScrollbar then
-        self.assignmentScroll:UpdateScrollbar()
-    end
-end
-
-function Raid:HideRaidHistory()
-    if self.raidHistoryHeader then self.raidHistoryHeader:Hide() end
-    if self.raidHistoryEmpty then self.raidHistoryEmpty:Hide() end
-    for _, row in ipairs(self.raidHistoryRows or {}) do row:Hide() end
-end
-
-function Raid:CreateRaidHistoryRow(index)
-    local row = UI.MakeCard(self.assignmentContent)
-    row:SetHeight(48)
-    row:SetBackdropBorderColor(0, 0, 0, 0)
-    if row.InnerGlow then row.InnerGlow:Hide() end
-    if row.TopLine then row.TopLine:Hide() end
-    row.Icon = row:CreateTexture(nil, "ARTWORK")
-    row.Icon:SetSize(36, 36)
-    row.Icon:SetPoint("LEFT", 7, 0)
-    row.Name = UI.Font(row, 10, "accent", "")
-    row.Name:SetPoint("TOPLEFT", row.Icon, "TOPRIGHT", 10, -5)
-    row.Name:SetPoint("RIGHT", row, "RIGHT", -94, 0)
-    row.Name:SetJustifyH("LEFT")
-    row.Meta = UI.Font(row, 9, "muted", "")
-    row.Meta:SetPoint("BOTTOMLEFT", row.Icon, "BOTTOMRIGHT", 10, 5)
-    row.Meta:SetPoint("RIGHT", row, "RIGHT", -94, 0)
-    row.Meta:SetJustifyH("LEFT")
-    row.Delete = UI.Button(row, Raid.L.DELETE, 76, 28)
-    row.Delete:SetPoint("RIGHT", -8, 0)
-    UI.StyleButton(row.Delete, "danger")
-    UI.AddButtonIcon(row.Delete, UI.ICONS.DELETE, 14)
-    return row
-end
-
-function Raid:RefreshRaidHistory()
-    if not self.assignmentContent then return end
-    self.raidHistoryRows = self.raidHistoryRows or {}
-    if not self.raidHistoryHeader then
-        local header = CreateFrame("Frame", nil, self.assignmentContent)
-        header:SetHeight(28)
-        header.Background = header:CreateTexture(nil, "BACKGROUND")
-        header.Background:SetTexture(WHITE)
-        header.Background:SetAllPoints()
-        header.Background:SetVertexColor(unpack(THEME.tableHeader))
-        header.Title = UI.Font(header, 10, "accent", self.L.RAID_HISTORY)
-        header.Title:SetPoint("LEFT", 9, 0)
-        header.Help = UI.Font(
-            header, 9, "muted", "Saved raid sessions, newest first")
-        header.Help:SetPoint("RIGHT", -9, 0)
-        self.raidHistoryHeader = header
-        self.raidHistoryEmpty = UI.Font(
-            self.assignmentContent, 11, "muted", self.L.NO_SAVED_RAIDS)
-        self.raidHistoryEmpty:SetJustifyH("CENTER")
-    end
-    local saved = {}
-    for id, data in pairs(self.db.savedRaids or {}) do
-        saved[#saved + 1] = { id = id, data = data }
-    end
-    table.sort(saved, function(left, right)
-        return (left.data.createdAt or left.data.savedAt or 0)
-            > (right.data.createdAt or right.data.savedAt or 0)
-    end)
-    local width = math.max(1, self.assignmentContent:GetWidth())
-    self.raidHistoryHeader:ClearAllPoints()
-    self.raidHistoryHeader:SetPoint("TOPLEFT", 0, 0)
-    self.raidHistoryHeader:SetWidth(width)
-    self.raidHistoryHeader:Show()
-    self.raidHistoryEmpty:ClearAllPoints()
-    self.raidHistoryEmpty:SetPoint("TOP", 0, -70)
-    self.raidHistoryEmpty:SetWidth(width - 24)
-    self.raidHistoryEmpty:SetShown(#saved == 0)
-    for index, entry in ipairs(saved) do
-        local row = self.raidHistoryRows[index]
-        if not row then
-            row = self:CreateRaidHistoryRow(index)
-            self.raidHistoryRows[index] = row
-        end
-        local data = entry.data
-        local raid = self.raidByKey[data.raidKey]
-        local isActive = self.db.raidLocked
-            and self.db.activeSavedRaid == entry.id
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", 0, -(31 + ((index - 1) * 51)))
-        row:SetWidth(width)
-        row.Icon:SetTexture(raid and raid.icon
-            or "Interface\\Icons\\INV_Misc_QuestionMark")
-        row.Name:SetText((data.name or "Saved Raid")
-            .. (isActive and "  |  ACTIVE" or ""))
-        local rosterCount = #(data.roster or {})
-        local lootCount = #(data.lootHistory or {})
-        local stamp = tonumber(data.createdAt or data.savedAt) or 0
-        row.Meta:SetText((date and date("%Y-%m-%d %H:%M", stamp) or "")
-            .. "  |  " .. rosterCount .. " players"
-            .. "  |  " .. lootCount .. " loot items")
-        row.Delete:SetEnabled(not isActive)
-        row.Delete:SetAlpha(isActive and .35 or 1)
-        local savedID, savedName = entry.id, data.name
-        row.Delete:SetScript("OnClick", function()
-            if isActive then return end
-            Raid.pendingDeleteSavedRaidID = savedID
-            if StaticPopup_Show then
-                StaticPopup_Show(
-                    "LUNARAIDS_DELETE_SAVED_RAID",
-                    savedName or "Saved Raid", nil, savedID)
-            else
-                Raid:DeleteSavedRaid(savedID)
-            end
-        end)
-        row:Show()
-    end
-    for index = #saved + 1, #self.raidHistoryRows do
-        self.raidHistoryRows[index]:Hide()
-    end
-    self.assignmentContent:SetHeight(math.max(120, 34 + (#saved * 51)))
     if self.assignmentScroll.UpdateScrollbar then
         self.assignmentScroll:UpdateScrollbar()
     end

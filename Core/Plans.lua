@@ -2,8 +2,6 @@ local _, Raid = ...
 local Core = Raid.Core
 local Copy = Core.Copy
 local classNames = Core.classNames
-local simulatedNames = Core.simulatedNames
-local simulatedByRole = Core.simulatedByRole
 local function SlotLabel(slot)
 	return type(slot) == "table" and slot.label or tostring(slot or "")
 end
@@ -79,58 +77,6 @@ function Raid:GetRaidComposition(raidKey)
 		healers = tonumber(override.healers) or defaultsForRaid.healers,
 		damage = tonumber(override.damage) or defaultsForRaid.damage,
 	}
-end
-
-function Raid:SetRaidCompositionCount(raidKey, role, value)
-	if not self:RequireRaidEditor() then
-		return
-	end
-	local raid = self.raidByKey[raidKey]
-	if not raid then
-		return
-	end
-	self.db.raidCompositions[raidKey] =
-		self.db.raidCompositions[raidKey] or {}
-	self.db.raidCompositions[raidKey][role] =
-		math.max(0, math.min(raid.size, math.floor(value or 0)))
-	self:ApplyRaidComposition(raid)
-	if self.QueueSync and self:IsLocalRaidEditor() then
-		self:QueueRaidMutation("COMP", {
-			raidKey, role, self.db.raidCompositions[raidKey][role],
-		})
-	end
-	if raidKey == self.db.activeRaid then
-		self:AutoSaveActiveRaid()
-	end
-	if self.frame and raidKey == self.db.activeRaid then
-		self:RefreshAssignments()
-	end
-end
-
-function Raid:ResetRaidComposition(raidKey)
-	if not self:RequireRaidEditor() then
-		return
-	end
-	local raid = self.raidByKey[raidKey]
-	if not raid then
-		return
-	end
-	self.db.raidCompositions[raidKey] = nil
-	self:ApplyRaidComposition(raid)
-	if self.QueueSync and self:IsLocalRaidEditor() then
-		local composition = self:GetRaidComposition(raidKey)
-		self:QueueRaidMutation("COMP", {
-			raidKey,
-			"tanks", composition.tanks,
-			"healers", composition.healers,
-		})
-	end
-	if raidKey == self.db.activeRaid then
-		self:AutoSaveActiveRaid()
-	end
-	if self.frame and raidKey == self.db.activeRaid then
-		self:RefreshAssignments()
-	end
 end
 
 function Raid:ApplyRaidComposition(raid)
@@ -383,11 +329,6 @@ function Raid:GetSelectedBossPreset()
 	end
 end
 
-function Raid:GetBossPreset()
-	local preset = self:GetSelectedBossPreset()
-	return preset and preset.settings or nil
-end
-
 function Raid:SelectBossPreset(presetID)
 	local collection = self:GetBossPresetCollection(false)
 	if not collection or not collection.items[presetID] then
@@ -421,7 +362,8 @@ function Raid:SyncBossSettings(kind, settings)
 	if not self.QueueSync or not self:IsLocalRaidEditor() then
 		return
 	end
-	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
+	local raid, encounterIndex =
+		self:GetRaid(), select(2, self:GetEncounter())
 	self:BeginRaidMutationTransaction(raid.key)
 	self:QueueRaidMutation(kind .. "RESET", { raid.key, encounterIndex })
 	if kind == "BOSS" then
@@ -463,7 +405,7 @@ function Raid:SaveBossPreset(name)
 		self:Print(self.L.ENTER_PRESET_NAME)
 		return false
 	end
-	local raid, encounterIndex = self:GetRaid(), select(2, self:GetEncounter())
+	local raid = self:GetRaid()
 	local override = self:GetBossOverride(false)
 	local settings = override and Copy(override) or { groups = {} }
 	local collection = self:GetBossPresetCollection(true)
@@ -675,7 +617,7 @@ function Raid:PropagateOverviewAssignments()
 				plan[key] = nil
 			end
 		end
-		for groupIndex, group in ipairs(self:GetEncounterGroups(
+		for groupIndex in ipairs(self:GetEncounterGroups(
 			encounter, raid.key, encounterIndex)) do
 			local slots = self:GetEncounterGroupSlots(
 				groupIndex, encounter, raid.key, encounterIndex)
@@ -691,7 +633,7 @@ function Raid:PropagateOverviewAssignments()
 			end
 		end
 		local used = {}
-		for groupIndex, group in ipairs(self:GetEncounterGroups(
+		for groupIndex in ipairs(self:GetEncounterGroups(
 			encounter, raid.key, encounterIndex)) do
 			for slotIndex, slot in ipairs(self:GetEncounterGroupSlots(
 				groupIndex, encounter, raid.key, encounterIndex))
@@ -716,7 +658,7 @@ function Raid:PropagateOverviewAssignments()
 			[self.Role.HEALER] = 1,
 			[self.Role.DAMAGE] = 1,
 		}
-		local function IsCompatible(player, role, slot)
+		local function IsCompatible(player, slot)
 			if not player or not player.name then
 				return false
 			end
@@ -736,7 +678,7 @@ function Raid:PropagateOverviewAssignments()
 				or next(slot.recommendedSpecs or {}) ~= nil
 				or next(slot.recommendedRoles or {}) ~= nil)
 			if preferred and preferred.name
-			and IsCompatible(preferred, role, slot)
+			and IsCompatible(preferred, slot)
 			and not hasRecommendations
 			then
 				return preferred
@@ -755,7 +697,7 @@ function Raid:PropagateOverviewAssignments()
 			if hasRecommendations then
 				local best, bestScore
 				for poolIndex, player in ipairs(pool) do
-					if IsCompatible(player, role, slot) then
+					if IsCompatible(player, slot) then
 						local spec = tostring(player.spec or ""):lower()
 						local classes = slot.recommendedClasses or {}
 						local classBonus = tonumber(classes[player.class]) or 0
@@ -775,7 +717,7 @@ function Raid:PropagateOverviewAssignments()
 			end
 			if type(slot) == "table" and slot.allowedClasses then
 				for _, player in ipairs(pool) do
-					if IsCompatible(player, role, slot) then
+					if IsCompatible(player, slot) then
 						return player
 					end
 				end
@@ -1002,7 +944,7 @@ end
 function Raid:GetAssignedPlayerNames()
 	local used, plan = {}, self:GetPlan(false) or {}
 	local encounter = self:GetEncounter()
-	for groupIndex, group in ipairs(self:GetEncounterGroups(encounter)) do
+	for groupIndex in ipairs(self:GetEncounterGroups(encounter)) do
 		for slotIndex, slot in ipairs(self:GetEncounterGroupSlots(
 			groupIndex, encounter)) do
 			local assignment = plan[self:SlotKey(groupIndex, slotIndex)]
@@ -1479,27 +1421,6 @@ function Raid:CycleMarkerAssignment(targetIndex)
 	end
 end
 
-function Raid:AutoAssignMarkers()
-	if not self:RequireRaidEditor() then
-		return
-	end
-	local targets = self:GetEncounterTargets()
-	if #targets == 0 then
-		return
-	end
-	local plan = self:GetPlan(true)
-	for index = 1, #targets do
-		plan["M:" .. index] =
-			self:GetDefaultMarkerAssignment(index)
-	end
-	if self.BroadcastEncounterPlanMutations then
-		self:BroadcastEncounterPlanMutations(self.db.activeEncounter)
-	end
-	if self.RefreshAssignments then
-		self:RefreshAssignments()
-	end
-end
-
 function Raid:IsAutoMarkerEnabled()
 	if self.db.autoMarkerEnabled == nil then
 		local enabled = false
@@ -1826,12 +1747,6 @@ function Raid:StartNewRaid()
 	self:BeginRaid(self.db.activeRaid)
 end
 
-function Raid:ConfirmNewRaid()
-	if self.ShowNewRaidWizard then
-		self:ShowNewRaidWizard()
-	end
-end
-
 function Raid:AutoSaveActiveRaid()
 	local saved = self.db.activeSavedRaid
 		and self.db.savedRaids[self.db.activeSavedRaid]
@@ -2156,63 +2071,6 @@ function Raid:DeleteSavedRaid(id)
 	return true
 end
 
-function Raid:SetRaid(key)
-	if self.db.raidLocked and not self.raidSelectionUnlocked then
-		self:Print(self.L.USE_NEW_RAID_CHANGE_RAID)
-		return
-	end
-	if not self.raidByKey[key] then
-		return
-	end
-	self.db.activeRaid = key
-	self.db.activeExpansion = self.raidByKey[key].expansion
-	self.db.lastRaidByExpansion[self.db.activeExpansion] = key
-	self.db.activeEncounter =
-		self.db.lastEncounterByRaid[key] or 1
-	if self.assignmentScroll then
-		self.assignmentScroll:SetVerticalScroll(0)
-	end
-	if self.RefreshAll then
-		self:RefreshAll()
-	end
-end
-
-function Raid:SetExpansion(key)
-	if self.db.raidLocked and not self.raidSelectionUnlocked then
-		self:Print(self.L.USE_NEW_RAID_CHANGE_EXPANSION)
-		return
-	end
-	local valid
-	for _, expansion in ipairs(self.expansions) do
-		if expansion.key == key then
-			valid = true break
-		end
-	end
-	if not valid then
-		return
-	end
-	self.db.activeExpansion = key
-	local raids = self:GetRaidsForExpansion()
-	if #raids == 0 then
-		return
-	end
-	local remembered = self.db.lastRaidByExpansion[key]
-	local rememberedRaid = remembered and self.raidByKey[remembered]
-	if not rememberedRaid or rememberedRaid.expansion ~= key then
-		rememberedRaid = raids[1]
-	end
-	self.db.activeRaid = rememberedRaid.key
-	self.db.lastRaidByExpansion[key] = rememberedRaid.key
-	self.db.activeEncounter =
-		self.db.lastEncounterByRaid[rememberedRaid.key] or 1
-	if self.assignmentScroll then
-		self.assignmentScroll:SetVerticalScroll(0)
-	end
-	if self.RefreshAll then
-		self:RefreshAll()
-	end
-end
-
 function Raid:SetEncounter(index)
 	local raid = self:GetRaid()
 	self.db.activeEncounter =
@@ -2500,7 +2358,7 @@ function Raid:HandleEncounterStarted(_, encounterID, encounterName)
 end
 
 function Raid:HandleEncounterEnded(
-	_, encounterID, encounterName, difficultyID, groupSize, success)
+	_, encounterID, encounterName, _difficultyID, _groupSize, success)
 	local pending = self.pendingBossAdvance
 	self.pendingBossAdvance = nil
 	if not pending or tonumber(success) ~= 1

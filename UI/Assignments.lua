@@ -4,43 +4,21 @@ local ICONS = UI.ICONS
 local L = Raid.L
 local THEME = UI.THEME
 
-local ROW_HEIGHT = UI.ROW_HEIGHT
-local FRAME_WIDTH, FRAME_HEIGHT = UI.FRAME_WIDTH, UI.FRAME_HEIGHT
-local ROSTER_WIDTH, ROSTER_ROW_WIDTH = UI.ROSTER_WIDTH, UI.ROSTER_ROW_WIDTH
 local ASSIGNMENT_ROW_WIDTH = UI.ASSIGNMENT_ROW_WIDTH
-local BOSS_RAIL_WIDTH, BOSS_BUTTON_SIZE = UI.BOSS_RAIL_WIDTH, UI.BOSS_BUTTON_SIZE
-local NAV_RAIL_WIDTH, BOSS_RAIL_GAP = UI.NAV_RAIL_WIDTH, UI.BOSS_RAIL_GAP
-local ACCENT, BORDER, MUTED, WHITE = UI.ACCENT, UI.BORDER, UI.MUTED, UI.WHITE
+local ACCENT, MUTED, WHITE = UI.ACCENT, UI.MUTED, UI.WHITE
 local ROLE_TEXTURE, ROLE_COORDS = UI.ROLE_TEXTURE, UI.ROLE_COORDS
-local READY_CHECK_COLUMNS = UI.READY_CHECK_COLUMNS
-local READY_CHECK_BY_SPELL = UI.READY_CHECK_BY_SPELL
-local READY_CHECK_FOOD_MATCHES = UI.READY_CHECK_FOOD_MATCHES
-local READY_CHECK_GRID_START = UI.READY_CHECK_GRID_START
-local READY_CHECK_COLUMN_WIDTH = UI.READY_CHECK_COLUMN_WIDTH
-local GEAR_INSPECT_SLOTS = UI.GEAR_INSPECT_SLOTS
-local Pixel, PixelForRegion = UI.Pixel, UI.PixelForRegion
-local PhysicalPixels = UI.PhysicalPixels
+local Pixel = UI.Pixel
 local SetPixelHeight, SetPixelWidth = UI.SetPixelHeight, UI.SetPixelWidth
-local PixelSetSize, FitAndClampToScreen = UI.PixelSetSize, UI.FitAndClampToScreen
-local SnapAnchors, SnapTree = UI.SnapAnchors, UI.SnapTree
+local PixelSetSize = UI.PixelSetSize
 local BackdropFrame, Font = UI.BackdropFrame, UI.Font
 local InstallPixelBorder, Button = UI.InstallPixelBorder, UI.Button
+local UseRowSeparator = UI.UseRowSeparator
 local StyleButton, AddButtonIcon = UI.StyleButton, UI.AddButtonIcon
-local AddDropdownArrow, AddButtonTooltip = UI.AddDropdownArrow, UI.AddButtonTooltip
-local Panel, SectionHeader, EditField = UI.Panel, UI.SectionHeader, UI.EditField
+local AddButtonTooltip = UI.AddButtonTooltip
+local Panel = UI.Panel
 local ShowSelectionMenu = UI.ShowSelectionMenu
-local ShowMultiSelectionMenu = UI.ShowMultiSelectionMenu
-local CurrentGuildRankEntries = UI.CurrentGuildRankEntries
-local SetClassText, GetClassRowColor = UI.SetClassText, UI.GetClassRowColor
-local CreateScrollArea = UI.CreateScrollArea
+local SetClassText = UI.SetClassText
 local ROW_SEPARATOR = THEME.borderSoft
-
-local function UseRowSeparator(frame)
-    if not frame.PixelBorders then return end
-    frame.PixelBorders[1]:Hide()
-    frame.PixelBorders[3]:Hide()
-    frame.PixelBorders[4]:Hide()
-end
 
 local function RecommendationText(values, classNames)
     local entries = {}
@@ -63,7 +41,7 @@ local function RecommendationText(values, classNames)
     return table.concat(labels, ", ")
 end
 
-function Raid:CreateAssignmentSlot(index)
+function Raid:CreateAssignmentSlot()
     local slot = Button(
         self.assignmentContent, "",
         self.assignmentRowWidth or ASSIGNMENT_ROW_WIDTH, 34)
@@ -210,7 +188,7 @@ function Raid:CreateAssignmentSlot(index)
     return slot
 end
 
-function Raid:CreateMarkerRow(index)
+function Raid:CreateMarkerRow()
     local row = Button(
         self.assignmentContent, "",
         self.assignmentRowWidth or ASSIGNMENT_ROW_WIDTH, 27)
@@ -847,7 +825,7 @@ end
 function Raid:RefreshBossSettingsPanel()
     local panel = self:CreateBossSettingsPanel()
     if not panel:IsShown() then return end
-    local raid, encounter = self:GetRaid(), self:GetEncounter()
+    local encounter = self:GetEncounter()
     local presets = self:GetBossPresets()
     local selected = self:GetSelectedBossPreset()
     local hasPreset = selected ~= nil

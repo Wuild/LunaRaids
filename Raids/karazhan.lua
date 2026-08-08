@@ -2,8 +2,6 @@ local _, Raid = ...
 
 local Encounter = Raid.DataEncounter
 local Group = Raid.DataGroup
-local Boss = Raid.DataBoss
-local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
 
@@ -29,7 +27,7 @@ local function RepeatedUtility(id, label, count, classes, specs)
     return result
 end
 
-local raid = Raid:RegisterRaid({
+Raid:RegisterRaid({
     expansion = "TBC",
     key = "karazhan", name = "Karazhan", size = 10, instanceID = 532,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\karazhan",

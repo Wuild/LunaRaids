@@ -1,9 +1,4 @@
 local _, Raid = ...
-local Core = Raid.Core
-local Copy = Core.Copy
-local classNames = Core.classNames
-local simulatedNames = Core.simulatedNames
-local simulatedByRole = Core.simulatedByRole
 function Raid:OnInitialize()
     self:InitializeDatabase()
     StaticPopupDialogs.LUNARAIDS_RESET_ALL_SETTINGS = {

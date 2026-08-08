@@ -2,14 +2,12 @@ local _, Raid = ...
 
 local Encounter = Raid.DataEncounter
 local Group = Raid.DataGroup
-local Boss = Raid.DataBoss
-local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
 local Rec = Raid.Recommendation
 local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
 
-local raid = Raid:RegisterRaid({
+Raid:RegisterRaid({
     expansion = "TBC",
     key = "hyjal", name = "Battle for Mount Hyjal", size = 25, instanceID = 534,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\hyjal",

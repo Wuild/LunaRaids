@@ -3,13 +3,12 @@ local _, Raid = ...
 local Encounter = Raid.DataEncounter
 local Group = Raid.DataGroup
 local Boss = Raid.DataBoss
-local Slots = Raid.DataSlots
 local A = Raid.Assignment
 local Mechanic = Raid.DataMechanic
 local Rec = Raid.Recommendation
 local Reuse = { roles = { Raid.Role.HEALER, Raid.Role.DAMAGE }, allowReuse = true }
 
-local raid = Raid:RegisterRaid({
+Raid:RegisterRaid({
     expansion = "VANILLA",
     key = "blackwing_lair", name = "Blackwing Lair", size = 40, instanceID = 469,
     icon = "Interface\\AddOns\\LunaRaids\\Assets\\Bosses\\blackwing_lair",

@@ -1,8 +1,6 @@
 local ADDON, Raid = ...
-
 Raid.name = ADDON
-local GetMetadata = C_AddOns and C_AddOns.GetAddOnMetadata
-    or GetAddOnMetadata
+local GetMetadata = C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
 local addonVersion = GetMetadata and GetMetadata(ADDON, "Version")
 local developmentVersion = not addonVersion or addonVersion == ""
     or addonVersion:find("@project%-version@") ~= nil
